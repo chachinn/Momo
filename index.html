@@ -15,7 +15,7 @@
   <meta name="apple-mobile-web-app-title" content="Momo">
 
   <title>Momo — Spending Diary</title>
-  <meta name="momo-app-version" content="20260808-8">
+  <meta name="momo-app-version" content="20260808-9">
 
   <link rel="manifest" href="manifest.json">
   <link rel="apple-touch-icon" href="icon-192.png">
@@ -184,6 +184,19 @@
           <span class="drawer-copy">
             <strong>Savings Goals</strong>
             <small>Track money you are setting aside for something special.</small>
+          </span>
+          <span class="drawer-arrow">›</span>
+        </button>
+
+        <button
+          class="drawer-item"
+          type="button"
+          data-drawer-nav="payables"
+        >
+          <span class="drawer-icon">🌸</span>
+          <span class="drawer-copy">
+            <strong>Payables</strong>
+            <small>Keep cards, loans, installments, and borrowed money in one gentle place.</small>
           </span>
           <span class="drawer-arrow">›</span>
         </button>
@@ -2017,6 +2030,60 @@
       </section>
 
 
+      <!-- PAYABLES -->
+      <section class="screen" data-screen="payables">
+        <div class="page-heading compact">
+          <div>
+            <p class="eyebrow">A little lighter</p>
+            <h1>Payables</h1>
+            <p class="page-description">Cards, loans, installments, and little things you owe — all in one soft place.</p>
+          </div>
+          <button id="addPayableButton" class="round-add-btn" type="button" aria-label="Add payable">＋</button>
+        </div>
+
+        <section class="payables-hero">
+          <div class="payables-hero-copy">
+            <span class="payables-peach">🍑</span>
+            <p>Still to pay</p>
+            <strong id="payablesTotal">₱0.00</strong>
+            <small id="payablesCount">Nothing waiting on you 🌸</small>
+          </div>
+          <div class="payables-hero-sparkles" aria-hidden="true">✦<br>♡</div>
+        </section>
+
+        <div class="payables-mini-grid">
+          <article class="payables-mini-card">
+            <span>🌷</span>
+            <small>Coming up</small>
+            <strong id="payablesDueSoon">₱0.00</strong>
+            <em>next 30 days</em>
+          </article>
+          <article class="payables-mini-card">
+            <span>✨</span>
+            <small>Paid this month</small>
+            <strong id="payablesPaidMonth">₱0.00</strong>
+            <em>nice work</em>
+          </article>
+        </div>
+
+        <div class="payables-section-heading">
+          <div>
+            <p class="section-kicker">Your little list</p>
+            <h2>What’s waiting</h2>
+          </div>
+          <span id="payablesActiveCount" class="momo-soft-pill">0 active</span>
+        </div>
+
+        <div id="payablesList" class="payables-list"></div>
+        <div id="payablesEmpty" class="empty-state payables-empty">
+          <span class="empty-icon">🌸</span>
+          <h3>Nothing to pay</h3>
+          <p>Add a credit card, loan, shop installment, or anything else you want Momo to remember.</p>
+          <button class="secondary-button" type="button" data-payable-add>Add your first payable</button>
+        </div>
+      </section>
+
+
       <!-- BACKUP & EXPORT -->
       <section
         class="screen"
@@ -3080,6 +3147,155 @@
           >
             Record Payment
           </button>
+        </form>
+      </section>
+    </div>
+
+
+    <!-- ========================================
+         PAYABLES
+    ========================================= -->
+    <div id="payableModal" class="modal-backdrop" hidden>
+      <section class="modal-card payable-modal-card" role="dialog" aria-modal="true" aria-labelledby="payableModalTitle">
+        <div class="modal-header">
+          <div>
+            <p class="eyebrow">Payables</p>
+            <h2 id="payableModalTitle">Add something to pay</h2>
+          </div>
+          <button id="closePayableModal" class="icon-btn soft" type="button" aria-label="Close payable">×</button>
+        </div>
+
+        <form id="payableForm">
+          <input id="payableId" type="hidden">
+
+          <label>
+            <span>What kind is it?</span>
+            <select id="payableType" required>
+              <option value="credit-card">💳 Credit Card</option>
+              <option value="installment">🛍️ Shop Installment</option>
+              <option value="loan">🏦 Loan</option>
+              <option value="borrowed">🤝 Borrowed Money</option>
+              <option value="other">🌷 Other</option>
+            </select>
+          </label>
+
+          <label>
+            <span>Name</span>
+            <input id="payableName" type="text" maxlength="60" placeholder="BPI Rewards Card" required>
+          </label>
+
+          <label>
+            <span>Lender / Store <small>(optional)</small></span>
+            <input id="payableProvider" type="text" maxlength="60" placeholder="BPI, Apple Store, Mom…">
+          </label>
+
+          <div class="modal-field-row">
+            <label>
+              <span>Original Amount</span>
+              <input id="payableOriginalAmount" type="number" inputmode="decimal" min="0" step="0.01" placeholder="0">
+            </label>
+            <label>
+              <span>Still to Pay</span>
+              <input id="payableBalance" type="number" inputmode="decimal" min="0" step="0.01" placeholder="0" required>
+            </label>
+          </div>
+
+          <div class="modal-field-row">
+            <label>
+              <span>Currency</span>
+              <select id="payableCurrency">
+                <option value="PHP">PHP ₱</option>
+                <option value="JPY">JPY ¥</option>
+                <option value="USD">USD $</option>
+                <option value="GBP">GBP £</option>
+                <option value="HKD">HKD HK$</option>
+                <option value="SGD">SGD S$</option>
+                <option value="CNY">CNY ¥</option>
+              </select>
+            </label>
+            <label>
+              <span>Next Due Date</span>
+              <input id="payableDueDate" type="date">
+            </label>
+          </div>
+
+          <div class="modal-field-row">
+            <label>
+              <span>Regular Payment <small>(optional)</small></span>
+              <input id="payableRegularPayment" type="number" inputmode="decimal" min="0" step="0.01" placeholder="0">
+            </label>
+            <label>
+              <span>Payment Frequency</span>
+              <select id="payableFrequency">
+                <option value="monthly">Monthly</option>
+                <option value="biweekly">Every 2 weeks</option>
+                <option value="weekly">Weekly</option>
+                <option value="quarterly">Quarterly</option>
+                <option value="one-time">One-time</option>
+                <option value="custom">Custom</option>
+              </select>
+            </label>
+          </div>
+
+          <div id="payableCreditFields" class="payable-special-fields">
+            <p class="section-kicker">Credit card details</p>
+            <div class="modal-field-row">
+              <label><span>Credit Limit</span><input id="payableCreditLimit" type="number" inputmode="decimal" min="0" step="0.01" placeholder="0"></label>
+              <label><span>Statement Balance</span><input id="payableStatementBalance" type="number" inputmode="decimal" min="0" step="0.01" placeholder="0"></label>
+            </div>
+            <div class="modal-field-row">
+              <label><span>Minimum Due</span><input id="payableMinimumDue" type="number" inputmode="decimal" min="0" step="0.01" placeholder="0"></label>
+              <label><span>Statement Day</span><input id="payableStatementDay" type="number" inputmode="numeric" min="1" max="31" placeholder="15"></label>
+            </div>
+          </div>
+
+          <div id="payableInstallmentFields" class="payable-special-fields" hidden>
+            <p class="section-kicker">Installment details</p>
+            <div class="modal-field-row">
+              <label><span>Total Installments</span><input id="payableInstallmentCount" type="number" inputmode="numeric" min="1" step="1" placeholder="12"></label>
+              <label><span>Installments Paid</span><input id="payableInstallmentsPaid" type="number" inputmode="numeric" min="0" step="1" placeholder="0"></label>
+            </div>
+          </div>
+
+          <label>
+            <span>Notes <small>(optional)</small></span>
+            <textarea id="payableNotes" rows="3" maxlength="300" placeholder="Anything Momo should remember?"></textarea>
+          </label>
+
+          <button class="primary-button payable-save-btn" type="submit">Save Payable</button>
+        </form>
+      </section>
+    </div>
+
+    <div id="payableDetailModal" class="modal-backdrop" hidden>
+      <section class="modal-card payable-detail-card" role="dialog" aria-modal="true" aria-labelledby="payableDetailTitle">
+        <div class="modal-header">
+          <div>
+            <p id="payableDetailKicker" class="eyebrow">Payable</p>
+            <h2 id="payableDetailTitle">Details</h2>
+          </div>
+          <button id="closePayableDetail" class="icon-btn soft" type="button" aria-label="Close payable details">×</button>
+        </div>
+        <div id="payableDetailBody"></div>
+      </section>
+    </div>
+
+    <div id="payablePaymentModal" class="modal-backdrop" hidden>
+      <section class="modal-card payable-payment-card" role="dialog" aria-modal="true" aria-labelledby="payablePaymentTitle">
+        <div class="modal-header">
+          <div>
+            <p class="eyebrow">A little lighter</p>
+            <h2 id="payablePaymentTitle">Record Payment</h2>
+          </div>
+          <button id="closePayablePayment" class="icon-btn soft" type="button" aria-label="Close payment">×</button>
+        </div>
+        <form id="payablePaymentForm">
+          <input id="payablePaymentId" type="hidden">
+          <label><span>Amount Paid</span><input id="payablePaymentAmount" type="number" inputmode="decimal" min="0.01" step="0.01" required></label>
+          <label><span>Date</span><input id="payablePaymentDate" type="date" required></label>
+          <label><span>Note <small>(optional)</small></span><input id="payablePaymentNote" type="text" maxlength="100" placeholder="Paid via bank transfer"></label>
+          <p class="payable-payment-note">🌸 This reduces the payable balance. It does not create a new spending expense.</p>
+          <button class="primary-button" type="submit">Record Payment</button>
         </form>
       </section>
     </div>

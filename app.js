@@ -3844,6 +3844,16 @@ function showScreen(
 
   if (
     name ===
+    "payables"
+  ) {
+
+    renderPayables();
+
+  }
+
+
+  if (
+    name ===
     "backup"
   ) {
 
@@ -33321,6 +33331,351 @@ document
   );
 
 
+
+// ========================================
+// PAYABLES
+// ========================================
+
+const PAYABLE_TYPE_META = {
+  "credit-card": { label: "Credit Card", icon: "💳" },
+  installment: { label: "Shop Installment", icon: "🛍️" },
+  loan: { label: "Loan", icon: "🏦" },
+  borrowed: { label: "Borrowed Money", icon: "🤝" },
+  other: { label: "Other", icon: "🌷" }
+};
+
+let selectedPayableId = "";
+
+function getPayableMeta(payable) {
+  return PAYABLE_TYPE_META[payable?.type] || PAYABLE_TYPE_META.other;
+}
+
+function getPayablePayments(payable) {
+  return Array.isArray(payable?.payments) ? payable.payments : [];
+}
+
+function getPayableBalance(payable) {
+  return Math.max(0, Number(payable?.balance || 0));
+}
+
+function payablePHPValue(payable, amount) {
+  return convertCurrency(Number(amount || 0), payable?.currency || "PHP", "PHP");
+}
+
+function nextPayableDueDate(currentDate, frequency) {
+  const base = createLocalDate(currentDate) || new Date();
+  const next = new Date(base);
+  if (frequency === "weekly") next.setDate(next.getDate() + 7);
+  else if (frequency === "biweekly") next.setDate(next.getDate() + 14);
+  else if (frequency === "quarterly") next.setMonth(next.getMonth() + 3);
+  else if (frequency === "one-time") return "";
+  else next.setMonth(next.getMonth() + 1);
+  return `${next.getFullYear()}-${String(next.getMonth() + 1).padStart(2, "0")}-${String(next.getDate()).padStart(2, "0")}`;
+}
+
+function payableDueTone(dateString) {
+  if (!dateString) return "";
+  const due = createLocalDate(dateString);
+  const today = createLocalDate(getTodayString());
+  const days = Math.ceil((due - today) / 86400000);
+  if (days < 0) return "overdue";
+  if (days <= 7) return "soon";
+  return "";
+}
+
+function renderPayables() {
+  const list = document.getElementById("payablesList");
+  const empty = document.getElementById("payablesEmpty");
+  if (!list || !empty) return;
+
+  const active = cards.filter((item) => getPayableBalance(item) > 0);
+  const total = active.reduce((sum, item) => sum + payablePHPValue(item, getPayableBalance(item)), 0);
+  const today = createLocalDate(getTodayString());
+  const soonLimit = new Date(today);
+  soonLimit.setDate(soonLimit.getDate() + 30);
+
+  const dueSoon = active.reduce((sum, item) => {
+    const due = createLocalDate(item.dueDate);
+    if (!due || due < today || due > soonLimit) return sum;
+    const amount = Number(item.regularPayment || item.minimumDue || item.balance || 0);
+    return sum + payablePHPValue(item, Math.min(amount, getPayableBalance(item)));
+  }, 0);
+
+  const now = new Date();
+  const paidMonth = cards.reduce((sum, item) => {
+    return sum + getPayablePayments(item).reduce((paymentSum, payment) => {
+      const date = createLocalDate(payment.date);
+      if (!date || date.getMonth() !== now.getMonth() || date.getFullYear() !== now.getFullYear()) return paymentSum;
+      return paymentSum + payablePHPValue(item, payment.amount);
+    }, 0);
+  }, 0);
+
+  const totalEl = document.getElementById("payablesTotal");
+  const countEl = document.getElementById("payablesCount");
+  const dueEl = document.getElementById("payablesDueSoon");
+  const paidEl = document.getElementById("payablesPaidMonth");
+  const activeCountEl = document.getElementById("payablesActiveCount");
+
+  if (totalEl) totalEl.textContent = formatPHP(total);
+  if (dueEl) dueEl.textContent = formatPHP(dueSoon);
+  if (paidEl) paidEl.textContent = formatPHP(paidMonth);
+  if (activeCountEl) activeCountEl.textContent = `${active.length} active`;
+  if (countEl) countEl.textContent = active.length ? `${active.length} ${active.length === 1 ? "thing" : "things"} waiting on you` : "Nothing waiting on you 🌸";
+
+  const sorted = [...cards].sort((a, b) => {
+    const doneA = getPayableBalance(a) <= 0;
+    const doneB = getPayableBalance(b) <= 0;
+    if (doneA !== doneB) return doneA ? 1 : -1;
+    return String(a.dueDate || "9999-12-31").localeCompare(String(b.dueDate || "9999-12-31"));
+  });
+
+  empty.hidden = sorted.length > 0;
+  list.innerHTML = sorted.map((item) => {
+    const meta = getPayableMeta(item);
+    const balance = getPayableBalance(item);
+    const original = Number(item.originalAmount || 0);
+    const paidPercent = original > 0 ? Math.min(100, Math.max(0, ((original - balance) / original) * 100)) : 0;
+    const done = balance <= 0;
+    const tone = payableDueTone(item.dueDate);
+    const dueCopy = done ? "All paid! 🌸" : item.dueDate ? `Next payment · ${formatShortDate(item.dueDate)}` : "No due date set";
+    return `
+      <button class="payable-item ${done ? "is-paid" : ""}" type="button" data-payable-open="${escapeHTML(item.id)}">
+        <span class="payable-item-icon">${meta.icon}</span>
+        <span class="payable-item-main">
+          <span class="payable-item-topline">
+            <span>
+              <strong>${escapeHTML(item.name || meta.label)}</strong>
+              <small>${escapeHTML(item.provider || meta.label)}</small>
+            </span>
+            <b>${formatCurrency(balance, item.currency || "PHP")}</b>
+          </span>
+          <span class="payable-progress"><i style="width:${paidPercent}%"></i></span>
+          <span class="payable-item-foot">
+            <small class="${tone}">${dueCopy}</small>
+            <em>${done ? "finished" : "still to pay"}</em>
+          </span>
+        </span>
+      </button>`;
+  }).join("");
+}
+
+function updatePayableSpecialFields() {
+  const type = document.getElementById("payableType")?.value;
+  const credit = document.getElementById("payableCreditFields");
+  const installment = document.getElementById("payableInstallmentFields");
+  if (credit) credit.hidden = type !== "credit-card";
+  if (installment) installment.hidden = type !== "installment";
+}
+
+function openPayableEditor(id = "") {
+  const modal = document.getElementById("payableModal");
+  const form = document.getElementById("payableForm");
+  if (!modal || !form) return;
+  form.reset();
+  const item = cards.find((entry) => String(entry.id) === String(id));
+  document.getElementById("payableId").value = item?.id || "";
+  document.getElementById("payableModalTitle").textContent = item ? "Edit Payable" : "Add something to pay";
+  document.getElementById("payableType").value = item?.type || "credit-card";
+  document.getElementById("payableName").value = item?.name || "";
+  document.getElementById("payableProvider").value = item?.provider || "";
+  document.getElementById("payableOriginalAmount").value = item?.originalAmount ?? "";
+  document.getElementById("payableBalance").value = item?.balance ?? "";
+  document.getElementById("payableCurrency").value = item?.currency || "PHP";
+  document.getElementById("payableDueDate").value = item?.dueDate || "";
+  document.getElementById("payableRegularPayment").value = item?.regularPayment ?? "";
+  document.getElementById("payableFrequency").value = item?.frequency || "monthly";
+  document.getElementById("payableCreditLimit").value = item?.creditLimit ?? "";
+  document.getElementById("payableStatementBalance").value = item?.statementBalance ?? "";
+  document.getElementById("payableMinimumDue").value = item?.minimumDue ?? "";
+  document.getElementById("payableStatementDay").value = item?.statementDay ?? "";
+  document.getElementById("payableInstallmentCount").value = item?.installmentCount ?? "";
+  document.getElementById("payableInstallmentsPaid").value = item?.installmentsPaid ?? "";
+  document.getElementById("payableNotes").value = item?.notes || "";
+  updatePayableSpecialFields();
+  modal.hidden = false;
+}
+
+function closePayableEditor() {
+  const modal = document.getElementById("payableModal");
+  if (modal) modal.hidden = true;
+}
+
+async function savePayable(event) {
+  event.preventDefault();
+  const id = document.getElementById("payableId").value || generateId("payable");
+  const existing = cards.find((item) => String(item.id) === String(id));
+  const type = document.getElementById("payableType").value;
+  const record = {
+    ...(existing || {}),
+    id,
+    type,
+    name: document.getElementById("payableName").value.trim(),
+    provider: document.getElementById("payableProvider").value.trim(),
+    originalAmount: Number(document.getElementById("payableOriginalAmount").value || 0),
+    balance: Number(document.getElementById("payableBalance").value || 0),
+    currency: document.getElementById("payableCurrency").value || "PHP",
+    dueDate: document.getElementById("payableDueDate").value || "",
+    regularPayment: Number(document.getElementById("payableRegularPayment").value || 0),
+    frequency: document.getElementById("payableFrequency").value || "monthly",
+    creditLimit: type === "credit-card" ? Number(document.getElementById("payableCreditLimit").value || 0) : 0,
+    statementBalance: type === "credit-card" ? Number(document.getElementById("payableStatementBalance").value || 0) : 0,
+    minimumDue: type === "credit-card" ? Number(document.getElementById("payableMinimumDue").value || 0) : 0,
+    statementDay: type === "credit-card" ? Number(document.getElementById("payableStatementDay").value || 0) : 0,
+    installmentCount: type === "installment" ? Number(document.getElementById("payableInstallmentCount").value || 0) : 0,
+    installmentsPaid: type === "installment" ? Number(document.getElementById("payableInstallmentsPaid").value || 0) : 0,
+    notes: document.getElementById("payableNotes").value.trim(),
+    payments: getPayablePayments(existing),
+    createdAt: existing?.createdAt || new Date().toISOString(),
+    updatedAt: new Date().toISOString()
+  };
+  if (!record.name || record.balance < 0) return;
+  await putRecord(STORES.cards, record);
+  const index = cards.findIndex((item) => String(item.id) === String(id));
+  if (index >= 0) cards[index] = record;
+  else cards.push(record);
+  closePayableEditor();
+  renderPayables();
+  showToast(existing ? "Payable updated 🌸" : "Payable added 🍑");
+}
+
+function renderPayableDetail(id) {
+  const item = cards.find((entry) => String(entry.id) === String(id));
+  if (!item) return;
+  selectedPayableId = item.id;
+  const modal = document.getElementById("payableDetailModal");
+  const body = document.getElementById("payableDetailBody");
+  if (!modal || !body) return;
+  const meta = getPayableMeta(item);
+  const balance = getPayableBalance(item);
+  const payments = [...getPayablePayments(item)].sort((a, b) => String(b.date).localeCompare(String(a.date)));
+  const available = item.type === "credit-card" && Number(item.creditLimit || 0) > 0 ? Math.max(0, Number(item.creditLimit) - balance) : null;
+  document.getElementById("payableDetailKicker").textContent = `${meta.icon} ${meta.label}`;
+  document.getElementById("payableDetailTitle").textContent = item.name || meta.label;
+  body.innerHTML = `
+    <section class="payable-detail-hero ${balance <= 0 ? "is-paid" : ""}">
+      <small>${balance <= 0 ? "All paid! 🌸" : "Still to pay"}</small>
+      <strong>${formatCurrency(balance, item.currency || "PHP")}</strong>
+      <p>${escapeHTML(item.provider || "")}</p>
+    </section>
+    <div class="payable-detail-grid">
+      ${item.dueDate ? `<div><small>Next payment</small><strong>${formatDate(item.dueDate)}</strong></div>` : ""}
+      ${Number(item.regularPayment || 0) ? `<div><small>Regular payment</small><strong>${formatCurrency(item.regularPayment, item.currency || "PHP")}</strong></div>` : ""}
+      ${available !== null ? `<div><small>Available credit</small><strong>${formatCurrency(available, item.currency || "PHP")}</strong></div>` : ""}
+      ${Number(item.creditLimit || 0) ? `<div><small>Credit limit</small><strong>${formatCurrency(item.creditLimit, item.currency || "PHP")}</strong></div>` : ""}
+      ${Number(item.minimumDue || 0) ? `<div><small>Minimum due</small><strong>${formatCurrency(item.minimumDue, item.currency || "PHP")}</strong></div>` : ""}
+      ${Number(item.installmentCount || 0) ? `<div><small>Installments</small><strong>${Number(item.installmentsPaid || 0)} / ${Number(item.installmentCount)}</strong></div>` : ""}
+    </div>
+    ${item.notes ? `<p class="payable-detail-note">🌷 ${escapeHTML(item.notes)}</p>` : ""}
+    <div class="payable-detail-actions">
+      ${balance > 0 ? `<button class="primary-button" type="button" data-payable-pay="${escapeHTML(item.id)}">Record Payment</button>` : ""}
+      <button class="secondary-button" type="button" data-payable-edit="${escapeHTML(item.id)}">Edit</button>
+    </div>
+    <div class="payable-history">
+      <div class="payables-section-heading"><div><p class="section-kicker">Little wins</p><h3>Payment History</h3></div></div>
+      ${payments.length ? payments.map((payment) => `
+        <div class="payable-history-row">
+          <span>✓</span>
+          <div><strong>${formatCurrency(payment.amount, item.currency || "PHP")}</strong><small>${formatDate(payment.date)}${payment.note ? ` · ${escapeHTML(payment.note)}` : ""}</small></div>
+        </div>`).join("") : `<p class="payable-no-history">No payments recorded yet.</p>`}
+    </div>
+    <button class="text-btn payable-delete-btn" type="button" data-payable-delete="${escapeHTML(item.id)}">Remove this payable</button>`;
+  modal.hidden = false;
+}
+
+function closePayableDetail() {
+  const modal = document.getElementById("payableDetailModal");
+  if (modal) modal.hidden = true;
+}
+
+function openPayablePayment(id) {
+  const item = cards.find((entry) => String(entry.id) === String(id));
+  if (!item) return;
+  const modal = document.getElementById("payablePaymentModal");
+  if (!modal) return;
+  document.getElementById("payablePaymentId").value = item.id;
+  document.getElementById("payablePaymentTitle").textContent = `Pay ${item.name}`;
+  document.getElementById("payablePaymentAmount").value = item.regularPayment || item.minimumDue || "";
+  document.getElementById("payablePaymentAmount").max = getPayableBalance(item);
+  document.getElementById("payablePaymentDate").value = getTodayString();
+  document.getElementById("payablePaymentNote").value = "";
+  modal.hidden = false;
+}
+
+function closePayablePayment() {
+  const modal = document.getElementById("payablePaymentModal");
+  if (modal) modal.hidden = true;
+}
+
+async function recordPayablePayment(event) {
+  event.preventDefault();
+  const id = document.getElementById("payablePaymentId").value;
+  const item = cards.find((entry) => String(entry.id) === String(id));
+  if (!item) return;
+  const amount = Number(document.getElementById("payablePaymentAmount").value || 0);
+  if (!(amount > 0)) return;
+  const actualAmount = Math.min(amount, getPayableBalance(item));
+  const payment = {
+    id: generateId("payment"),
+    amount: actualAmount,
+    date: document.getElementById("payablePaymentDate").value || getTodayString(),
+    note: document.getElementById("payablePaymentNote").value.trim()
+  };
+  const nextBalance = Math.max(0, getPayableBalance(item) - actualAmount);
+  const next = {
+    ...item,
+    balance: nextBalance,
+    payments: [...getPayablePayments(item), payment],
+    installmentsPaid: item.type === "installment" && Number(item.installmentCount || 0) ? Math.min(Number(item.installmentCount), Number(item.installmentsPaid || 0) + 1) : Number(item.installmentsPaid || 0),
+    dueDate: nextBalance > 0 ? nextPayableDueDate(item.dueDate || payment.date, item.frequency || "monthly") : "",
+    updatedAt: new Date().toISOString()
+  };
+  await putRecord(STORES.cards, next);
+  cards[cards.findIndex((entry) => String(entry.id) === String(id))] = next;
+  closePayablePayment();
+  renderPayables();
+  renderPayableDetail(id);
+  showToast(nextBalance <= 0 ? "All paid! 🌸" : "Payment recorded ✨");
+}
+
+async function deletePayable(id) {
+  const item = cards.find((entry) => String(entry.id) === String(id));
+  if (!item) return;
+  if (!window.confirm(`Remove "${item.name}" from Payables? Its payment history will also be removed.`)) return;
+  await deleteRecord(STORES.cards, item.id);
+  cards = cards.filter((entry) => String(entry.id) !== String(id));
+  closePayableDetail();
+  renderPayables();
+  showToast("Payable removed.");
+}
+
+document.addEventListener("click", (event) => {
+  const add = event.target.closest("#addPayableButton, [data-payable-add]");
+  if (add) openPayableEditor();
+
+  const open = event.target.closest("[data-payable-open]");
+  if (open) renderPayableDetail(open.dataset.payableOpen);
+
+  const edit = event.target.closest("[data-payable-edit]");
+  if (edit) {
+    closePayableDetail();
+    openPayableEditor(edit.dataset.payableEdit);
+  }
+
+  const pay = event.target.closest("[data-payable-pay]");
+  if (pay) openPayablePayment(pay.dataset.payablePay);
+
+  const remove = event.target.closest("[data-payable-delete]");
+  if (remove) deletePayable(remove.dataset.payableDelete);
+});
+
+document.getElementById("payableType")?.addEventListener("change", updatePayableSpecialFields);
+document.getElementById("payableForm")?.addEventListener("submit", savePayable);
+document.getElementById("payablePaymentForm")?.addEventListener("submit", recordPayablePayment);
+document.getElementById("closePayableModal")?.addEventListener("click", closePayableEditor);
+document.getElementById("closePayableDetail")?.addEventListener("click", closePayableDetail);
+document.getElementById("closePayablePayment")?.addEventListener("click", closePayablePayment);
+
+
 // ========================================
 // RENDER EVERYTHING
 // ========================================
@@ -33394,6 +33749,11 @@ function renderAll() {
     [
       "Favorite Quick Add",
       renderFavoriteQuickAdd
+    ],
+
+    [
+      "Payables",
+      renderPayables
     ],
 
     [
