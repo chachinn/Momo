@@ -10,6 +10,7 @@ import {
   signInWithEmailAndPassword,
   sendPasswordResetEmail,
   sendEmailVerification,
+  reload,
   signOut
 } from "https://www.gstatic.com/firebasejs/12.16.0/firebase-auth.js";
 import {
@@ -179,7 +180,7 @@ async function commitOperations(operations) {
 async function uploadCloudBackup() {
   if (!currentUser || busy) return;
   const ok = window.confirm(
-    "Upload this device's current Momo data to your cloud account?\n\nReceipt photos and custom wallpaper images stay on this device and are not uploaded."
+    "Replace your existing cloud copy with the Momo data currently on this device?\n\nThis overwrites the previous cloud backup. Receipt photos and custom wallpaper images stay on this device and are not uploaded."
   );
   if (!ok) return;
 
@@ -257,7 +258,7 @@ async function restoreCloudBackup() {
   }
 
   const ok = window.confirm(
-    "Restore the cloud copy onto this device?\n\nMomo will replace its local database records with the cloud copy. Existing receipt photos on this device are preserved when their expense still exists."
+    "Replace this device's current Momo records with your cloud copy?\n\nThis overwrites the local database records on this device. Existing receipt photos are preserved when their expense still exists. If this device has newer changes, upload them first before restoring."
   );
   if (!ok) return;
 
@@ -325,15 +326,83 @@ function formatCloudDate(data) {
 
 async function refreshCloudMetadata() {
   if (!currentUser) return;
+
+  const copyStatus = byId("cloudCopyStatus");
+  const last = byId("cloudLastBackup");
+  const owner = byId("cloudBackupOwner");
+  const restoreButton = byId("restoreCloudBackup");
+
+  if (copyStatus) copyStatus.textContent = "Checking…";
+  if (last) last.textContent = "Checking…";
+  if (owner) owner.textContent = currentUser.email || currentUser.displayName || "This account";
+
   try {
     const snap = await getDoc(doc(cloudDb, "users", currentUser.uid));
     cloudMetadata = { exists: snap.exists(), data: snap.exists() ? snap.data() : null };
-    const last = byId("cloudLastBackup");
+
+    if (copyStatus) copyStatus.textContent = snap.exists() ? "Cloud copy available ✓" : "No cloud copy yet";
     if (last) last.textContent = snap.exists() ? formatCloudDate(snap.data()) : "Not backed up yet";
-    const restoreButton = byId("restoreCloudBackup");
+
+    if (owner) {
+      const data = snap.exists() ? snap.data() : null;
+      owner.textContent = data?.email || data?.displayName || currentUser.email || currentUser.displayName || "This account";
+    }
+
     if (restoreButton) restoreButton.disabled = !snap.exists();
   } catch (error) {
     console.error("Could not read cloud metadata:", error);
+    if (copyStatus) copyStatus.textContent = "Could not check cloud copy";
+    if (last) last.textContent = "Status unavailable";
+  }
+}
+
+function updateEmailVerificationUI(user) {
+  const row = byId("cloudEmailVerificationRow");
+  const status = byId("cloudEmailVerificationStatus");
+  const resend = byId("cloudResendVerification");
+
+  if (!row || !status || !resend) return;
+
+  const hasPasswordProvider = user.providerData?.some((provider) => provider.providerId === "password");
+
+  if (!hasPasswordProvider || !user.email) {
+    row.hidden = true;
+    resend.hidden = true;
+    return;
+  }
+
+  row.hidden = false;
+
+  if (user.emailVerified) {
+    status.textContent = "✓ Email verified";
+    status.dataset.tone = "success";
+    resend.hidden = true;
+  } else {
+    status.textContent = "⚠ Email not verified";
+    status.dataset.tone = "warning";
+    resend.hidden = false;
+  }
+}
+
+async function resendVerificationEmail() {
+  if (!currentUser || busy) return;
+
+  if (currentUser.emailVerified) {
+    toast("Your email is already verified.");
+    updateEmailVerificationUI(currentUser);
+    return;
+  }
+
+  setBusy(true);
+
+  try {
+    await sendEmailVerification(currentUser);
+    toast("Verification email sent. Check your inbox or spam folder.");
+  } catch (error) {
+    console.error("Verification email could not be sent:", error);
+    toast("Could not send the verification email yet.");
+  } finally {
+    setBusy(false);
   }
 }
 
@@ -344,6 +413,8 @@ function showSignedOut() {
   const drawerSubtitle = byId("drawerAccountSubtitle");
   if (drawerTitle) drawerTitle.textContent = "Account & Cloud";
   if (drawerSubtitle) drawerSubtitle.textContent = "Sign in to protect your Momo data.";
+  const verificationRow = byId("cloudEmailVerificationRow");
+  if (verificationRow) verificationRow.hidden = true;
   setStatus("Not signed in");
 }
 
@@ -359,6 +430,7 @@ function showSignedIn(user) {
   if (byId("cloudAccountEmail")) byId("cloudAccountEmail").textContent = email;
   if (byId("drawerAccountTitle")) byId("drawerAccountTitle").textContent = name;
   if (byId("drawerAccountSubtitle")) byId("drawerAccountSubtitle").textContent = "Cloud backup available";
+  updateEmailVerificationUI(user);
   setStatus("Signed in", "success");
 }
 
@@ -436,9 +508,23 @@ function bindEvents() {
   byId("emailCloudSignIn")?.addEventListener("click", () => emailSignIn("signin"));
   byId("emailCloudCreate")?.addEventListener("click", () => emailSignIn("create"));
   byId("cloudForgotPassword")?.addEventListener("click", resetPassword);
+  byId("cloudResendVerification")?.addEventListener("click", resendVerificationEmail);
   byId("uploadCloudBackup")?.addEventListener("click", uploadCloudBackup);
   byId("restoreCloudBackup")?.addEventListener("click", restoreCloudBackup);
-  byId("refreshCloudStatus")?.addEventListener("click", refreshCloudMetadata);
+  byId("refreshCloudStatus")?.addEventListener("click", async () => {
+    if (currentUser) {
+      try {
+        await reload(currentUser);
+        currentUser = auth.currentUser;
+        if (currentUser) {
+          showSignedIn(currentUser);
+        }
+      } catch (error) {
+        console.warn("Could not refresh account verification state:", error);
+      }
+    }
+    await refreshCloudMetadata();
+  });
   byId("cloudSignOut")?.addEventListener("click", async () => {
     if (window.confirm("Sign out of your Momo account? Your local Momo data will stay on this device.")) {
       await signOut(auth);

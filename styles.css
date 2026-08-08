@@ -14275,3 +14275,65 @@ body.tutorial-open {
     grid-template-columns: 1fr;
   }
 }
+
+
+/* ========================================
+   ACCOUNT & CLOUD POLISH
+======================================== */
+
+.cloud-verification-row {
+  margin-top: 7px;
+  display: flex;
+  flex-wrap: wrap;
+  align-items: center;
+  gap: 7px;
+}
+
+.cloud-verification-row[hidden] {
+  display: none;
+}
+
+.cloud-verification-badge {
+  display: inline-flex;
+  align-items: center;
+  min-height: 26px;
+  padding: 5px 9px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: var(--blush);
+  color: var(--text-soft);
+  font-size: 9px;
+  font-weight: 800;
+}
+
+.cloud-verification-badge[data-tone="success"] {
+  border-color: rgba(121, 169, 133, 0.35);
+  background: rgba(121, 169, 133, 0.10);
+  color: var(--success);
+}
+
+.cloud-verification-badge[data-tone="warning"] {
+  border-color: rgba(216, 121, 121, 0.28);
+  background: rgba(216, 121, 121, 0.08);
+  color: var(--danger);
+}
+
+.cloud-verify-btn {
+  padding: 4px 2px;
+  font-size: 9px;
+  font-weight: 700;
+}
+
+.cloud-backup-status-grid {
+  display: grid;
+  gap: 9px;
+  margin-bottom: 14px;
+}
+
+.cloud-backup-status-grid .cloud-last-backup {
+  margin: 0;
+}
+
+.cloud-backup-owner strong {
+  overflow-wrap: anywhere;
+}

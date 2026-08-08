@@ -15,7 +15,7 @@
   <meta name="apple-mobile-web-app-title" content="Momo">
 
   <title>Momo — Spending Diary</title>
-  <meta name="momo-app-version" content="20260808-7">
+  <meta name="momo-app-version" content="20260808-8">
 
   <link rel="manifest" href="manifest.json">
   <link rel="apple-touch-icon" href="icon-192.png">
@@ -2434,6 +2434,10 @@
               <small>SIGNED IN</small>
               <h2 id="cloudAccountName">Momo account</h2>
               <p id="cloudAccountEmail"></p>
+              <div id="cloudEmailVerificationRow" class="cloud-verification-row" hidden>
+                <span id="cloudEmailVerificationStatus" class="cloud-verification-badge">Checking email…</span>
+                <button id="cloudResendVerification" class="text-btn cloud-verify-btn" type="button" data-cloud-action hidden>Resend verification email</button>
+              </div>
             </div>
             <span id="cloudAccountStatus" class="cloud-status-pill">Signed in</span>
           </section>
@@ -2447,12 +2451,22 @@
               <button id="refreshCloudStatus" class="icon-btn soft" type="button" aria-label="Refresh cloud backup status">↻</button>
             </div>
 
-            <div class="cloud-last-backup">
-              <span>Last cloud backup</span>
-              <strong id="cloudLastBackup">Checking…</strong>
+            <div class="cloud-backup-status-grid">
+              <div class="cloud-last-backup">
+                <span>Cloud copy</span>
+                <strong id="cloudCopyStatus">Checking…</strong>
+              </div>
+              <div class="cloud-last-backup">
+                <span>Last cloud backup</span>
+                <strong id="cloudLastBackup">Checking…</strong>
+              </div>
+              <div class="cloud-last-backup cloud-backup-owner">
+                <span>Backup account</span>
+                <strong id="cloudBackupOwner">—</strong>
+              </div>
             </div>
 
-            <button id="uploadCloudBackup" class="primary-button cloud-full-btn" type="button" data-cloud-action>☁ Upload this Momo to Cloud</button>
+            <button id="uploadCloudBackup" class="primary-button cloud-full-btn" type="button" data-cloud-action>☁ Upload This Device to Cloud</button>
             <button id="restoreCloudBackup" class="secondary-button cloud-full-btn" type="button" data-cloud-action disabled>⇩ Restore Cloud Copy to This Device</button>
 
             <div class="cloud-safety-note">
