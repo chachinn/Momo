@@ -10,7 +10,7 @@
 
 const DB_NAME = "momo_database";
 
-const DB_VERSION = 3;
+const DB_VERSION = 4;
 
 
 const STORES = {
@@ -27,6 +27,8 @@ const STORES = {
   recurring: "recurring",
 
   planned: "planned",
+
+  favorites: "favorites",
 
   settings: "settings"
 
@@ -53,6 +55,9 @@ let recurringExpenses = [];
 
 
 let plannedExpenses = [];
+
+
+let favoriteExpenses = [];
 
 
 let plannedPendingDelete =
@@ -442,6 +447,24 @@ function openDatabase() {
           }
 
 
+          // FAVORITES / QUICK ADD
+
+          if (
+            !database.objectStoreNames.contains(
+              STORES.favorites
+            )
+          ) {
+
+            database.createObjectStore(
+              STORES.favorites,
+              {
+                keyPath: "id"
+              }
+            );
+
+          }
+
+
           // SETTINGS
 
           if (
@@ -786,7 +809,9 @@ async function loadAppData() {
 
     recurringExpenses,
 
-    plannedExpenses
+    plannedExpenses,
+
+    favoriteExpenses
 
   ] = await Promise.all([
 
@@ -812,6 +837,10 @@ async function loadAppData() {
 
     getAllRecords(
       STORES.planned
+    ),
+
+    getAllRecords(
+      STORES.favorites
     )
 
   ]);
@@ -902,6 +931,14 @@ async function loadAppData() {
   );
 
 }
+
+
+  favoriteExpenses.sort(
+    (a, b) =>
+      String(a.title || "").localeCompare(
+        String(b.title || "")
+      )
+  );
 
 
 // ========================================
@@ -1861,6 +1898,8 @@ function showScreen(
 
 
     prepareExpenseForm();
+
+    renderFavoriteQuickAdd();
 
 
     openingExpenseEditor =
@@ -3118,6 +3157,437 @@ function isExpenseInsideBudgetPeriod(
 // BUDGET CALCULATIONS
 // ========================================
 
+function getBudgetUsagePercent(
+  budget
+) {
+
+  const limit =
+    Number(
+      budget.amount ||
+      0
+    );
+
+
+  if (
+    limit <=
+    0
+  ) {
+
+    return 0;
+
+  }
+
+
+  return (
+    getBudgetSpent(
+      budget
+    ) /
+    limit
+  ) *
+  100;
+
+}
+
+
+function getBudgetAlertState(
+  budget
+) {
+
+  const spent =
+    getBudgetSpent(
+      budget
+    );
+
+
+  const limit =
+    Number(
+      budget.amount ||
+      0
+    );
+
+
+  const percent =
+    limit >
+    0
+
+      ? (
+          spent /
+          limit
+        ) *
+        100
+
+      : 0;
+
+
+  const overAmount =
+    Math.max(
+      spent -
+      limit,
+      0
+    );
+
+
+  if (
+    percent >=
+    100
+  ) {
+
+    return {
+
+      level:
+        "over",
+
+      threshold:
+        100,
+
+      percent,
+
+      icon:
+        "!",
+
+      title:
+        overAmount >
+        0
+
+          ? `${budget.name} is over budget`
+
+          : `${budget.name} reached its limit`,
+
+      message:
+        overAmount >
+        0
+
+          ? `${formatCurrency(
+              overAmount,
+              budget.currency
+            )} over the ${formatCurrency(
+              limit,
+              budget.currency
+            )} limit`
+
+          : `You've used the full ${formatCurrency(
+              limit,
+              budget.currency
+            )} budget`
+
+    };
+
+  }
+
+
+  if (
+    percent >=
+    90
+  ) {
+
+    return {
+
+      level:
+        "critical",
+
+      threshold:
+        90,
+
+      percent,
+
+      icon:
+        "!",
+
+      title:
+        `${budget.name} is almost full`,
+
+      message:
+        `${percent.toFixed(
+          0
+        )}% used · ${formatCurrency(
+          Math.max(
+            limit -
+            spent,
+            0
+          ),
+          budget.currency
+        )} left`
+
+    };
+
+  }
+
+
+  if (
+    percent >=
+    75
+  ) {
+
+    return {
+
+      level:
+        "warning",
+
+      threshold:
+        75,
+
+      percent,
+
+      icon:
+        "◔",
+
+      title:
+        `${budget.name} is getting close`,
+
+      message:
+        `${percent.toFixed(
+          0
+        )}% used · ${formatCurrency(
+          Math.max(
+            limit -
+            spent,
+            0
+          ),
+          budget.currency
+        )} left`
+
+    };
+
+  }
+
+
+  if (
+    percent >=
+    50
+  ) {
+
+    return {
+
+      level:
+        "notice",
+
+      threshold:
+        50,
+
+      percent,
+
+      icon:
+        "♡",
+
+      title:
+        `${budget.name} passed halfway`,
+
+      message:
+        `${percent.toFixed(
+          0
+        )}% of this budget has been used`
+
+    };
+
+  }
+
+
+  return null;
+
+}
+
+
+function getActiveBudgetAlerts() {
+
+  return budgets
+
+    .map(
+      (budget) => {
+
+        const alert =
+          getBudgetAlertState(
+            budget
+          );
+
+
+        if (
+          !alert
+        ) {
+
+          return null;
+
+        }
+
+
+        return {
+          budget,
+          alert
+        };
+
+      }
+    )
+
+    .filter(
+      Boolean
+    )
+
+    .sort(
+      (
+        a,
+        b
+      ) => {
+
+        const levelOrder = {
+
+          over:
+            4,
+
+          critical:
+            3,
+
+          warning:
+            2,
+
+          notice:
+            1
+
+        };
+
+
+        return (
+          (
+            levelOrder[
+              b.alert.level
+            ] ||
+            0
+          ) -
+          (
+            levelOrder[
+              a.alert.level
+            ] ||
+            0
+          ) ||
+          b.alert.percent -
+          a.alert.percent
+        );
+
+      }
+    );
+
+}
+
+
+function renderBudgetAlerts() {
+
+  const panel =
+    document.getElementById(
+      "budgetAlertsPanel"
+    );
+
+
+  const list =
+    document.getElementById(
+      "budgetAlertsList"
+    );
+
+
+  const count =
+    document.getElementById(
+      "budgetAlertsCount"
+    );
+
+
+  if (
+    !panel ||
+    !list
+  ) {
+
+    return;
+
+  }
+
+
+  const alerts =
+    getActiveBudgetAlerts();
+
+
+  if (
+    count
+  ) {
+
+    count.textContent =
+      String(
+        alerts.length
+      );
+
+  }
+
+
+  if (
+    alerts.length ===
+    0
+  ) {
+
+    panel.hidden =
+      true;
+
+
+    list.innerHTML =
+      "";
+
+
+    return;
+
+  }
+
+
+  panel.hidden =
+    false;
+
+
+  list.innerHTML =
+    alerts
+
+      .map(
+        (
+          {
+            budget,
+            alert
+          }
+        ) => `
+
+          <article
+            class="budget-alert-item ${alert.level}"
+          >
+
+            <div class="budget-alert-icon">
+              ${alert.icon}
+            </div>
+
+
+            <div class="budget-alert-copy">
+
+              <strong>
+                ${escapeHTML(
+                  alert.title
+                )}
+              </strong>
+
+              <p>
+                ${escapeHTML(
+                  alert.message
+                )}
+              </p>
+
+            </div>
+
+
+            <span class="budget-alert-percent">
+              ${Math.round(
+                alert.percent
+              )}%
+            </span>
+
+          </article>
+
+        `
+      )
+
+      .join("");
+
+}
+
+
 function getBudgetSpent(
   budget
 ) {
@@ -3125,15 +3595,37 @@ function getBudgetSpent(
   return expenses
 
     .filter(
-      (expense) =>
+      (expense) => {
 
-        expense.budgetId ===
-          budget.id &&
+        const explicitlyLinked =
+          expense.budgetId ===
+          budget.id;
 
-        isExpenseInsideBudgetPeriod(
-          expense,
-          budget
-        )
+
+        const autoMatchedByCategory =
+          !expense.budgetId &&
+          (
+            expense.category ||
+            "Other"
+          ) ===
+          (
+            budget.category ||
+            "Other"
+          );
+
+
+        return (
+          (
+            explicitlyLinked ||
+            autoMatchedByCategory
+          ) &&
+          isExpenseInsideBudgetPeriod(
+            expense,
+            budget
+          )
+        );
+
+      }
     )
 
     .reduce(
@@ -3283,38 +3775,40 @@ function createBudgetCardHTML(
 
 
   const remaining =
-    Math.max(
-      Number(
-        budget.amount
-      ) -
-      spent,
-      0
+    Number(
+      budget.amount
+    ) -
+    spent;
+
+
+  const rawPercent =
+    getBudgetUsagePercent(
+      budget
     );
 
 
   const percent =
-    Number(
-      budget.amount
-    ) >
-    0
+    Math.min(
+      rawPercent,
+      100
+    );
 
-      ? Math.min(
-          (
-            spent /
-            Number(
-              budget.amount
-            )
-          ) *
-            100,
-          100
-        )
 
-      : 0;
+  const alert =
+    getBudgetAlertState(
+      budget
+    );
 
 
   return `
 
-    <article class="budget-card">
+    <article
+      class="budget-card ${
+        alert
+          ? `budget-alert-${alert.level}`
+          : ""
+      }"
+    >
 
       <div class="budget-card-top">
 
@@ -3355,6 +3849,25 @@ function createBudgetCardHTML(
               )}
 
             </span>
+
+
+            ${
+              alert
+
+                ? `
+
+                    <span
+                      class="budget-card-alert-badge ${alert.level}"
+                    >
+                      ${escapeHTML(
+                        alert.title
+                      )}
+                    </span>
+
+                  `
+
+                : ""
+            }
 
           </div>
 
@@ -3422,13 +3935,25 @@ function createBudgetCardHTML(
         <div>
 
           <span>
-            Left
+            ${
+              remaining <
+              0
+                ? "Over"
+                : "Left"
+            }
           </span>
 
-          <strong class="positive">
+          <strong class="${
+            remaining <
+            0
+              ? "danger"
+              : "positive"
+          }">
 
             ${formatCurrency(
-              remaining,
+              Math.abs(
+                remaining
+              ),
               budget.currency
             )}
 
@@ -3442,7 +3967,11 @@ function createBudgetCardHTML(
       <div class="progress-track">
 
         <div
-          class="progress-fill"
+          class="progress-fill ${
+            alert
+              ? `budget-progress-${alert.level}`
+              : ""
+          }"
           style="width:${percent}%"
         ></div>
 
@@ -3610,6 +4139,8 @@ function renderBudgets() {
   attachBudgetActions();
 
   populateExpenseBudgetDropdown();
+
+  renderBudgetAlerts();
 
 }
 
@@ -4637,6 +5168,23 @@ function createTripCardHTML(
 
       <div class="trip-entry-body">
 
+        <button
+          class="trip-dashboard-open"
+          type="button"
+          data-trip-id="${escapeHTML(
+            trip.id
+          )}"
+        >
+          <span>
+            View Trip Dashboard
+          </span>
+
+          <span aria-hidden="true">
+            ›
+          </span>
+        </button>
+
+
         <div class="trip-info-row">
 
           <div class="trip-info-cell">
@@ -4834,6 +5382,8 @@ function renderTrips() {
 
 
   attachTripActions();
+
+  attachTripDashboardActions();
 
 }
 
@@ -5394,6 +5944,1260 @@ tripForm?.addEventListener(
 
   }
 );
+
+
+
+// ========================================
+// TRIP DASHBOARD 2.0
+// ========================================
+
+const tripDashboardModal =
+  document.getElementById(
+    "tripDashboardModal"
+  );
+
+
+const tripDashboardBody =
+  document.getElementById(
+    "tripDashboardBody"
+  );
+
+
+let activeTripDashboardId =
+  "";
+
+
+function getTripExpenses(
+  trip
+) {
+
+  return expenses.filter(
+    (expense) =>
+      expense.tripId ===
+      trip.id
+  );
+
+}
+
+
+function getTripPlannedExpenses(
+  trip
+) {
+
+  return plannedExpenses.filter(
+    (planned) =>
+      planned.tripId ===
+        trip.id &&
+      planned.status ===
+        "planned"
+  );
+
+}
+
+
+function getTripPlannedTotal(
+  trip
+) {
+
+  return getTripPlannedExpenses(
+    trip
+  ).reduce(
+    (
+      total,
+      planned
+    ) => {
+
+      return (
+        total +
+        convertCurrency(
+          planned.amount,
+          planned.currency,
+          trip.currency
+        )
+      );
+
+    },
+    0
+  );
+
+}
+
+
+function getTripTodaySpent(
+  trip
+) {
+
+  const today =
+    getTodayString();
+
+
+  return getTripExpenses(
+    trip
+  )
+
+    .filter(
+      (expense) =>
+        expense.date ===
+        today
+    )
+
+    .reduce(
+      (
+        total,
+        expense
+      ) => {
+
+        return (
+          total +
+          convertCurrency(
+            expense.amount,
+            expense.currency,
+            trip.currency
+          )
+        );
+
+      },
+      0
+    );
+
+}
+
+
+function getTripDaysRemaining(
+  trip
+) {
+
+  const today =
+    createLocalDate(
+      getTodayString()
+    );
+
+
+  const start =
+    createLocalDate(
+      trip.startDate
+    );
+
+
+  const end =
+    createLocalDate(
+      trip.endDate
+    );
+
+
+  if (
+    !today ||
+    !start ||
+    !end
+  ) {
+
+    return 0;
+
+  }
+
+
+  if (
+    today >
+    end
+  ) {
+
+    return 0;
+
+  }
+
+
+  const effectiveStart =
+    today <
+    start
+      ? start
+      : today;
+
+
+  return Math.max(
+    Math.floor(
+      (
+        end -
+        effectiveStart
+      ) /
+      86400000
+    ) +
+    1,
+    1
+  );
+
+}
+
+
+function getTripTopCategory(
+  trip
+) {
+
+  const categoryTotals =
+    new Map();
+
+
+  getTripExpenses(
+    trip
+  ).forEach(
+    (expense) => {
+
+      const category =
+        expense.category ||
+        "Other";
+
+
+      const amount =
+        convertCurrency(
+          expense.amount,
+          expense.currency,
+          trip.currency
+        );
+
+
+      categoryTotals.set(
+        category,
+        (
+          categoryTotals.get(
+            category
+          ) ||
+          0
+        ) +
+        amount
+      );
+
+    }
+  );
+
+
+  const sorted =
+    Array.from(
+      categoryTotals.entries()
+    )
+
+      .map(
+        (
+          [
+            category,
+            amount
+          ]
+        ) => ({
+          category,
+          amount
+        })
+      )
+
+      .sort(
+        (
+          a,
+          b
+        ) =>
+          b.amount -
+          a.amount
+      );
+
+
+  return (
+    sorted[
+      0
+    ] ||
+    null
+  );
+
+}
+
+
+function getTripCategoryBreakdown(
+  trip
+) {
+
+  const tripExpenses =
+    getTripExpenses(
+      trip
+    );
+
+
+  const total =
+    getTripSpent(
+      trip
+    );
+
+
+  const grouped =
+    new Map();
+
+
+  tripExpenses.forEach(
+    (expense) => {
+
+      const category =
+        expense.category ||
+        "Other";
+
+
+      const amount =
+        convertCurrency(
+          expense.amount,
+          expense.currency,
+          trip.currency
+        );
+
+
+      grouped.set(
+        category,
+        (
+          grouped.get(
+            category
+          ) ||
+          0
+        ) +
+        amount
+      );
+
+    }
+  );
+
+
+  return Array.from(
+    grouped.entries()
+  )
+
+    .map(
+      (
+        [
+          category,
+          amount
+        ]
+      ) => ({
+        category,
+        amount,
+        percent:
+          total >
+          0
+            ? (
+                amount /
+                total
+              ) *
+              100
+            : 0
+      })
+    )
+
+    .sort(
+      (
+        a,
+        b
+      ) =>
+        b.amount -
+        a.amount
+    );
+
+}
+
+
+function renderTripDashboard(
+  trip
+) {
+
+  if (
+    !tripDashboardBody ||
+    !tripDashboardModal
+  ) {
+
+    return;
+
+  }
+
+
+  activeTripDashboardId =
+    trip.id;
+
+
+  const title =
+    document.getElementById(
+      "tripDashboardTitle"
+    );
+
+
+  if (
+    title
+  ) {
+
+    title.textContent =
+      trip.name;
+
+  }
+
+
+  const spent =
+    getTripSpent(
+      trip
+    );
+
+
+  const planned =
+    getTripPlannedTotal(
+      trip
+    );
+
+
+  const budget =
+    Number(
+      trip.budget ||
+      0
+    );
+
+
+  const projectedTotal =
+    spent +
+    planned;
+
+
+  const projectedRemaining =
+    budget -
+    projectedTotal;
+
+
+  const actualRemaining =
+    budget -
+    spent;
+
+
+  const daysRemaining =
+    getTripDaysRemaining(
+      trip
+    );
+
+
+  const dailyAllowance =
+    daysRemaining >
+    0
+
+      ? Math.max(
+          projectedRemaining,
+          0
+        ) /
+        daysRemaining
+
+      : 0;
+
+
+  const todaySpent =
+    getTripTodaySpent(
+      trip
+    );
+
+
+  const topCategory =
+    getTripTopCategory(
+      trip
+    );
+
+
+  const tripExpenses =
+    getTripExpenses(
+      trip
+    );
+
+
+  const plannedItems =
+    getTripPlannedExpenses(
+      trip
+    );
+
+
+  const categoryBreakdown =
+    getTripCategoryBreakdown(
+      trip
+    );
+
+
+  const budgetPercent =
+    budget >
+    0
+
+      ? Math.min(
+          (
+            spent /
+            budget
+          ) *
+          100,
+          100
+        )
+
+      : 0;
+
+
+  const projectedPercent =
+    budget >
+    0
+
+      ? Math.min(
+          (
+            projectedTotal /
+            budget
+          ) *
+          100,
+          100
+        )
+
+      : 0;
+
+
+  tripDashboardBody.innerHTML = `
+
+    <section class="trip-dashboard-hero">
+
+      <div class="trip-dashboard-hero-copy">
+
+        <span class="trip-dashboard-status">
+          ${escapeHTML(
+            getTripStatus(
+              trip
+            )
+          )}
+        </span>
+
+        <p>
+          ${escapeHTML(
+            trip.destination
+          )}
+        </p>
+
+        <h3>
+          ${escapeHTML(
+            trip.name
+          )}
+        </h3>
+
+        <small>
+          ${formatDate(
+            trip.startDate
+          )}
+          –
+          ${formatDate(
+            trip.endDate
+          )}
+          ·
+          ${getTripDuration(
+            trip
+          )}
+          ${
+            getTripDuration(
+              trip
+            ) ===
+            1
+              ? "day"
+              : "days"
+          }
+        </small>
+
+      </div>
+
+      <div class="trip-dashboard-hero-mark">
+        旅
+      </div>
+
+    </section>
+
+
+    <section class="trip-dashboard-budget-card">
+
+      <div class="trip-dashboard-budget-top">
+
+        <div>
+
+          <span>
+            Trip Budget
+          </span>
+
+          <strong>
+            ${formatCurrency(
+              budget,
+              trip.currency
+            )}
+          </strong>
+
+        </div>
+
+
+        <div class="trip-dashboard-budget-left">
+
+          <span>
+            Actual Left
+          </span>
+
+          <strong class="${
+            actualRemaining >=
+            0
+              ? "positive"
+              : "danger"
+          }">
+            ${formatCurrency(
+              actualRemaining,
+              trip.currency
+            )}
+          </strong>
+
+        </div>
+
+      </div>
+
+
+      <div class="trip-dashboard-progress">
+
+        <div
+          class="trip-dashboard-progress-spent"
+          style="width:${budgetPercent}%"
+        ></div>
+
+        <div
+          class="trip-dashboard-progress-planned"
+          style="width:${Math.max(
+            projectedPercent -
+            budgetPercent,
+            0
+          )}%"
+        ></div>
+
+      </div>
+
+
+      <div class="trip-dashboard-progress-legend">
+
+        <span>
+          <i class="spent"></i>
+          Spent
+          ${formatCurrency(
+            spent,
+            trip.currency
+          )}
+        </span>
+
+        <span>
+          <i class="planned"></i>
+          Planned
+          ${formatCurrency(
+            planned,
+            trip.currency
+          )}
+        </span>
+
+      </div>
+
+    </section>
+
+
+    <section class="trip-dashboard-metrics">
+
+      <article>
+
+        <span>
+          Spent
+        </span>
+
+        <strong>
+          ${formatCurrency(
+            spent,
+            trip.currency
+          )}
+        </strong>
+
+        <small>
+          ${tripExpenses.length}
+          ${
+            tripExpenses.length ===
+            1
+              ? "expense"
+              : "expenses"
+          }
+        </small>
+
+      </article>
+
+
+      <article>
+
+        <span>
+          Planned
+        </span>
+
+        <strong>
+          ${formatCurrency(
+            planned,
+            trip.currency
+          )}
+        </strong>
+
+        <small>
+          ${plannedItems.length}
+          ${
+            plannedItems.length ===
+            1
+              ? "item"
+              : "items"
+          }
+        </small>
+
+      </article>
+
+
+      <article>
+
+        <span>
+          Projected Left
+        </span>
+
+        <strong class="${
+          projectedRemaining >=
+          0
+            ? "positive"
+            : "danger"
+        }">
+          ${formatCurrency(
+            projectedRemaining,
+            trip.currency
+          )}
+        </strong>
+
+        <small>
+          after planned spending
+        </small>
+
+      </article>
+
+
+      <article>
+
+        <span>
+          Daily Allowance
+        </span>
+
+        <strong>
+          ${
+            daysRemaining >
+            0
+              ? formatCurrency(
+                  dailyAllowance,
+                  trip.currency
+                )
+              : "—"
+          }
+        </strong>
+
+        <small>
+          ${
+            daysRemaining >
+            0
+              ? `${daysRemaining} ${
+                  daysRemaining ===
+                  1
+                    ? "day"
+                    : "days"
+                } left`
+              : "trip ended"
+          }
+        </small>
+
+      </article>
+
+
+      <article>
+
+        <span>
+          Today
+        </span>
+
+        <strong>
+          ${formatCurrency(
+            todaySpent,
+            trip.currency
+          )}
+        </strong>
+
+        <small>
+          today's spending
+        </small>
+
+      </article>
+
+
+      <article>
+
+        <span>
+          Top Category
+        </span>
+
+        <strong>
+          ${
+            topCategory
+              ? `${getCategoryEmoji(
+                  topCategory.category
+                )} ${escapeHTML(
+                  topCategory.category
+                )}`
+              : "—"
+          }
+        </strong>
+
+        <small>
+          ${
+            topCategory
+              ? formatCurrency(
+                  topCategory.amount,
+                  trip.currency
+                )
+              : "no spending yet"
+          }
+        </small>
+
+      </article>
+
+    </section>
+
+
+    <section class="trip-dashboard-section">
+
+      <div class="trip-dashboard-section-heading">
+
+        <div>
+
+          <p class="eyebrow">
+            Spending
+          </p>
+
+          <h3>
+            Categories
+          </h3>
+
+        </div>
+
+      </div>
+
+
+      ${
+        categoryBreakdown.length
+
+          ? `
+
+              <div class="trip-dashboard-category-list">
+
+                ${categoryBreakdown
+
+                  .map(
+                    (
+                      item
+                    ) => `
+
+                      <div class="trip-dashboard-category">
+
+                        <div class="trip-dashboard-category-top">
+
+                          <span>
+                            ${getCategoryEmoji(
+                              item.category
+                            )}
+                            ${escapeHTML(
+                              item.category
+                            )}
+                          </span>
+
+                          <strong>
+                            ${formatCurrency(
+                              item.amount,
+                              trip.currency
+                            )}
+                          </strong>
+
+                        </div>
+
+
+                        <div class="trip-dashboard-category-track">
+
+                          <div
+                            style="width:${Math.min(
+                              item.percent,
+                              100
+                            )}%"
+                          ></div>
+
+                        </div>
+
+                      </div>
+
+                    `
+                  )
+
+                  .join("")}
+
+              </div>
+
+            `
+
+          : `
+
+              <div class="trip-dashboard-mini-empty">
+                Add a trip expense to see category spending.
+              </div>
+
+            `
+      }
+
+    </section>
+
+
+    <section class="trip-dashboard-section">
+
+      <div class="trip-dashboard-section-heading">
+
+        <div>
+
+          <p class="eyebrow">
+            Wishlist
+          </p>
+
+          <h3>
+            Planned Spending
+          </h3>
+
+        </div>
+
+
+        <button
+          class="text-btn trip-dashboard-open-planned"
+          type="button"
+        >
+          View all
+        </button>
+
+      </div>
+
+
+      ${
+        plannedItems.length
+
+          ? `
+
+              <div class="trip-dashboard-planned-list">
+
+                ${plannedItems
+
+                  .slice(
+                    0,
+                    4
+                  )
+
+                  .map(
+                    (plannedItem) => `
+
+                      <div class="trip-dashboard-planned-row">
+
+                        <div>
+
+                          <strong>
+                            ${escapeHTML(
+                              plannedItem.title
+                            )}
+                          </strong>
+
+                          <span>
+                            ${escapeHTML(
+                              plannedItem.category
+                            )}
+                          </span>
+
+                        </div>
+
+
+                        <strong>
+                          ${formatCurrency(
+                            convertCurrency(
+                              plannedItem.amount,
+                              plannedItem.currency,
+                              trip.currency
+                            ),
+                            trip.currency
+                          )}
+                        </strong>
+
+                      </div>
+
+                    `
+                  )
+
+                  .join("")}
+
+              </div>
+
+            `
+
+          : `
+
+              <div class="trip-dashboard-mini-empty">
+                No planned purchases are linked to this trip yet.
+              </div>
+
+            `
+      }
+
+    </section>
+
+
+    <section class="trip-dashboard-section">
+
+      <div class="trip-dashboard-section-heading">
+
+        <div>
+
+          <p class="eyebrow">
+            Recent
+          </p>
+
+          <h3>
+            Trip Expenses
+          </h3>
+
+        </div>
+
+      </div>
+
+
+      ${
+        tripExpenses.length
+
+          ? `
+
+              <div class="trip-dashboard-expense-list">
+
+                ${tripExpenses
+
+                  .slice(
+                    0,
+                    5
+                  )
+
+                  .map(
+                    (expense) =>
+                      renderTransaction(
+                        expense,
+                        false
+                      )
+                  )
+
+                  .join("")}
+
+              </div>
+
+            `
+
+          : `
+
+              <div class="trip-dashboard-mini-empty">
+                No expenses have been logged for this trip yet.
+              </div>
+
+            `
+      }
+
+    </section>
+
+
+    <div class="trip-dashboard-bottom-actions">
+
+      <button
+        class="secondary-btn trip-dashboard-edit-trip"
+        type="button"
+      >
+        ✎ Edit Trip
+      </button>
+
+      <button
+        class="primary-btn trip-dashboard-add-expense"
+        type="button"
+      >
+        ＋ Add Trip Expense
+      </button>
+
+    </div>
+
+  `;
+
+
+  attachExpenseDetailActions();
+
+
+  tripDashboardBody
+    .querySelector(
+      ".trip-dashboard-edit-trip"
+    )
+    ?.addEventListener(
+      "click",
+      () => {
+
+        closeTripDashboard();
+
+
+        openTripModal(
+          trip
+        );
+
+      }
+    );
+
+
+  tripDashboardBody
+    .querySelector(
+      ".trip-dashboard-add-expense"
+    )
+    ?.addEventListener(
+      "click",
+      () => {
+
+        closeTripDashboard();
+
+
+        openingExpenseEditor =
+          true;
+
+
+        showScreen(
+          "add"
+        );
+
+
+        resetExpenseForm();
+
+
+        if (
+          expenseTrip
+        ) {
+
+          expenseTrip.value =
+            trip.id;
+
+        }
+
+
+        expenseDate.value =
+          getTodayString();
+
+
+        showToast(
+          `${trip.name} selected ✈️`
+        );
+
+      }
+    );
+
+
+  tripDashboardBody
+    .querySelector(
+      ".trip-dashboard-open-planned"
+    )
+    ?.addEventListener(
+      "click",
+      () => {
+
+        closeTripDashboard();
+
+
+        showScreen(
+          "planned"
+        );
+
+      }
+    );
+
+
+  tripDashboardModal.hidden =
+    false;
+
+}
+
+
+function closeTripDashboard() {
+
+  if (
+    tripDashboardModal
+  ) {
+
+    tripDashboardModal.hidden =
+      true;
+
+  }
+
+
+  activeTripDashboardId =
+    "";
+
+}
+
+
+document
+  .getElementById(
+    "closeTripDashboard"
+  )
+  ?.addEventListener(
+    "click",
+    closeTripDashboard
+  );
+
+
+tripDashboardModal?.addEventListener(
+  "click",
+  (event) => {
+
+    if (
+      event.target ===
+      tripDashboardModal
+    ) {
+
+      closeTripDashboard();
+
+    }
+
+  }
+);
+
+
+function attachTripDashboardActions() {
+
+  document
+    .querySelectorAll(
+      ".trip-dashboard-open"
+    )
+    .forEach(
+      (button) => {
+
+        button.addEventListener(
+          "click",
+          () => {
+
+            const trip =
+              trips.find(
+                (item) =>
+                  item.id ===
+                  button.dataset
+                    .tripId
+              );
+
+
+            if (
+              trip
+            ) {
+
+              renderTripDashboard(
+                trip
+              );
+
+            }
+
+          }
+        );
+
+      }
+    );
+
+}
 
 
 // ========================================
@@ -5974,6 +7778,18 @@ const expenseForm =
   );
 
 
+const expenseTags =
+  document.getElementById(
+    "expenseTags"
+  );
+
+
+const expenseTagSuggestions =
+  document.getElementById(
+    "expenseTagSuggestions"
+  );
+
+
 const expenseIdInput =
   document.getElementById(
     "expenseId"
@@ -6006,6 +7822,301 @@ function setExpenseFormMode(
         : "Add Expense";
 
   }
+
+}
+
+
+function normalizeExpenseTags(
+  value
+) {
+
+  const raw =
+    Array.isArray(
+      value
+    )
+      ? value
+      : String(
+          value ||
+          ""
+        ).split(
+          ","
+        );
+
+
+  const seen =
+    new Set();
+
+
+  return raw
+    .map(
+      (tag) =>
+        String(
+          tag
+        )
+          .trim()
+          .replace(
+            /\s+/g,
+            " "
+          )
+    )
+    .filter(
+      (tag) => {
+
+        if (
+          !tag
+        ) {
+
+          return false;
+
+        }
+
+
+        const key =
+          tag.toLowerCase();
+
+
+        if (
+          seen.has(
+            key
+          )
+        ) {
+
+          return false;
+
+        }
+
+
+        seen.add(
+          key
+        );
+
+
+        return true;
+
+      }
+    )
+    .slice(
+      0,
+      12
+    );
+
+}
+
+
+function getAllExpenseTags() {
+
+  const unique =
+    new Map();
+
+
+  expenses.forEach(
+    (expense) => {
+
+      normalizeExpenseTags(
+        expense.tags
+      ).forEach(
+        (tag) => {
+
+          const key =
+            tag.toLowerCase();
+
+
+          if (
+            !unique.has(
+              key
+            )
+          ) {
+
+            unique.set(
+              key,
+              tag
+            );
+
+          }
+
+        }
+      );
+
+    }
+  );
+
+
+  return Array.from(
+    unique.values()
+  ).sort(
+    (
+      a,
+      b
+    ) =>
+      a.localeCompare(
+        b
+      )
+  );
+
+}
+
+
+function renderExpenseTagSuggestions() {
+
+  if (
+    !expenseTagSuggestions
+  ) {
+
+    return;
+
+  }
+
+
+  const tags =
+    getAllExpenseTags();
+
+
+  expenseTagSuggestions.hidden =
+    tags.length ===
+    0;
+
+
+  expenseTagSuggestions.innerHTML =
+    tags.length
+
+      ? `
+
+          <span class="tag-suggestion-label">
+            Used before
+          </span>
+
+          <div class="tag-suggestion-list">
+
+            ${tags
+              .slice(
+                0,
+                10
+              )
+              .map(
+                (tag) => `
+
+                  <button
+                    class="tag-suggestion-chip"
+                    type="button"
+                    data-tag="${escapeHTML(
+                      tag
+                    )}"
+                  >
+                    #${escapeHTML(
+                      tag
+                    )}
+                  </button>
+
+                `
+              )
+              .join("")}
+
+          </div>
+
+        `
+
+      : "";
+
+
+  expenseTagSuggestions
+    .querySelectorAll(
+      ".tag-suggestion-chip"
+    )
+    .forEach(
+      (button) => {
+
+        button.addEventListener(
+          "click",
+          () => {
+
+            const current =
+              normalizeExpenseTags(
+                expenseTags?.value
+              );
+
+
+            const selected =
+              button.dataset.tag ||
+              "";
+
+
+            if (
+              selected &&
+              !current.some(
+                (tag) =>
+                  tag.toLowerCase() ===
+                  selected.toLowerCase()
+              )
+            ) {
+
+              current.push(
+                selected
+              );
+
+            }
+
+
+            if (
+              expenseTags
+            ) {
+
+              expenseTags.value =
+                current.join(
+                  ", "
+                );
+
+            }
+
+          }
+        );
+
+      }
+    );
+
+}
+
+
+function renderExpenseTagChips(
+  expense
+) {
+
+  const tags =
+    normalizeExpenseTags(
+      expense.tags
+    );
+
+
+  if (
+    tags.length ===
+    0
+  ) {
+
+    return "";
+
+  }
+
+
+  return `
+
+    <div class="expense-tag-chips">
+
+      ${tags
+        .map(
+          (tag) => `
+
+            <span class="expense-tag-chip">
+              #${escapeHTML(
+                tag
+              )}
+            </span>
+
+          `
+        )
+        .join("")}
+
+    </div>
+
+  `;
 
 }
 
@@ -6085,7 +8196,19 @@ function resetExpenseForm() {
   }
 
 
+  if (
+    expenseCategory
+  ) {
+
+    expenseCategory.value =
+      "Other";
+
+  }
+
+
   updateExpenseConversion();
+
+  renderExpenseTagSuggestions();
 
 }
 
@@ -6223,6 +8346,23 @@ function openExpenseEditor(
     "";
 
 
+  if (
+    expenseTags
+  ) {
+
+    expenseTags.value =
+      normalizeExpenseTags(
+        expense.tags
+      ).join(
+        ", "
+      );
+
+  }
+
+
+  renderExpenseTagSuggestions();
+
+
   currentPhotoData =
     expense.photo ||
     "";
@@ -6236,6 +8376,636 @@ function openExpenseEditor(
   updateExpenseConversion();
 
 }
+
+
+// ========================================
+// FAVORITES / QUICK ADD
+// ========================================
+
+const favoriteQuickAddSection =
+  document.getElementById(
+    "favoriteQuickAddSection"
+  );
+
+
+const favoriteQuickAddList =
+  document.getElementById(
+    "favoriteQuickAddList"
+  );
+
+
+const saveFavoriteButton =
+  document.getElementById(
+    "saveFavoriteButton"
+  );
+
+
+function getExpenseFavoriteFormData() {
+
+  return {
+
+    title:
+      document
+        .getElementById(
+          "expenseTitle"
+        )
+        ?.value
+        .trim() ||
+      "",
+
+    amount:
+      amountInput?.value === ""
+        ? ""
+        : Number(
+            amountInput.value
+          ),
+
+    currency:
+      currencySelect?.value ||
+      "PHP",
+
+    category:
+      expenseCategory?.value ||
+      "Other",
+
+    budgetId:
+      expenseBudget?.value ||
+      "",
+
+    tripId:
+      expenseTrip?.value ||
+      "",
+
+    paymentMethod:
+      document
+        .getElementById(
+          "paymentMethod"
+        )
+        ?.value ||
+      "Cash",
+
+    location:
+      document
+        .getElementById(
+          "expenseLocation"
+        )
+        ?.value
+        .trim() ||
+      "",
+
+    notes:
+      document
+        .getElementById(
+          "expenseNotes"
+        )
+        ?.value
+        .trim() ||
+      "",
+
+    tags:
+      normalizeExpenseTags(
+        expenseTags?.value
+      )
+
+  };
+
+}
+
+
+function getFavoriteMetaText(
+  favorite
+) {
+
+  const parts = [
+    favorite.category ||
+      "Other"
+  ];
+
+
+  if (
+    favorite.amount !== "" &&
+    favorite.amount !== null &&
+    favorite.amount !== undefined &&
+    Number.isFinite(
+      Number(
+        favorite.amount
+      )
+    )
+  ) {
+
+    parts.unshift(
+      formatCurrency(
+        Number(
+          favorite.amount
+        ),
+        favorite.currency ||
+          "PHP"
+      )
+    );
+
+  }
+
+
+  return parts.join(
+    " · "
+  );
+
+}
+
+
+function renderFavoriteQuickAdd() {
+
+  if (
+    !favoriteQuickAddSection ||
+    !favoriteQuickAddList
+  ) {
+
+    return;
+
+  }
+
+
+  favoriteQuickAddSection.hidden =
+    favoriteExpenses.length ===
+    0;
+
+
+  if (
+    favoriteExpenses.length ===
+    0
+  ) {
+
+    favoriteQuickAddList.innerHTML =
+      "";
+
+
+    return;
+
+  }
+
+
+  favoriteQuickAddList.innerHTML =
+    favoriteExpenses
+      .slice(
+        0,
+        20
+      )
+      .map(
+        (favorite) => `
+
+          <div class="favorite-quick-item">
+
+            <button
+              class="favorite-quick-use"
+              type="button"
+              data-favorite-use="${escapeHTML(
+                favorite.id
+              )}"
+            >
+              <span class="favorite-quick-icon">★</span>
+              <span class="favorite-quick-copy">
+                <strong>${escapeHTML(
+                  favorite.title ||
+                  "Favorite"
+                )}</strong>
+                <small>${escapeHTML(
+                  getFavoriteMetaText(
+                    favorite
+                  )
+                )}</small>
+              </span>
+            </button>
+
+            <button
+              class="favorite-quick-remove"
+              type="button"
+              data-favorite-remove="${escapeHTML(
+                favorite.id
+              )}"
+              aria-label="Remove ${escapeHTML(
+                favorite.title ||
+                "favorite"
+              )} from favorites"
+            >
+              ×
+            </button>
+
+          </div>
+
+        `
+      )
+      .join(
+        ""
+      );
+
+}
+
+
+function applyFavoriteToExpenseForm(
+  favorite
+) {
+
+  if (
+    !favorite
+  ) {
+
+    return;
+
+  }
+
+
+  resetExpenseForm();
+
+  prepareExpenseForm();
+
+
+  const titleInput =
+    document.getElementById(
+      "expenseTitle"
+    );
+
+
+  if (
+    titleInput
+  ) {
+
+    titleInput.value =
+      favorite.title ||
+      "";
+
+  }
+
+
+  if (
+    amountInput
+  ) {
+
+    amountInput.value =
+      favorite.amount === "" ||
+      favorite.amount === null ||
+      favorite.amount === undefined
+        ? ""
+        : favorite.amount;
+
+  }
+
+
+  if (
+    currencySelect
+  ) {
+
+    currencySelect.value =
+      favorite.currency ||
+      "PHP";
+
+  }
+
+
+  if (
+    expenseCategory
+  ) {
+
+    expenseCategory.value =
+      favorite.category ||
+      "Other";
+
+  }
+
+
+  if (
+    expenseBudget
+  ) {
+
+    expenseBudget.value =
+      budgets.some(
+        (budget) =>
+          budget.id ===
+          favorite.budgetId
+      )
+        ? favorite.budgetId
+        : "";
+
+  }
+
+
+  if (
+    expenseTrip
+  ) {
+
+    expenseTrip.value =
+      trips.some(
+        (trip) =>
+          trip.id ===
+          favorite.tripId
+      )
+        ? favorite.tripId
+        : "";
+
+  }
+
+
+  const paymentMethod =
+    document.getElementById(
+      "paymentMethod"
+    );
+
+
+  if (
+    paymentMethod
+  ) {
+
+    paymentMethod.value =
+      favorite.paymentMethod ||
+      "Cash";
+
+  }
+
+
+  const locationInput =
+    document.getElementById(
+      "expenseLocation"
+    );
+
+
+  if (
+    locationInput
+  ) {
+
+    locationInput.value =
+      favorite.location ||
+      "";
+
+  }
+
+
+  const notesInput =
+    document.getElementById(
+      "expenseNotes"
+    );
+
+
+  if (
+    notesInput
+  ) {
+
+    notesInput.value =
+      favorite.notes ||
+      "";
+
+  }
+
+
+  if (
+    expenseTags
+  ) {
+
+    expenseTags.value =
+      normalizeExpenseTags(
+        favorite.tags
+      ).join(
+        ", "
+      );
+
+  }
+
+
+  if (
+    expenseDate
+  ) {
+
+    expenseDate.value =
+      getTodayString();
+
+  }
+
+
+  updateExpenseConversion();
+
+  renderExpenseTagSuggestions();
+
+
+  showToast(
+    "Favorite loaded ★"
+  );
+
+}
+
+
+favoriteQuickAddList?.addEventListener(
+  "click",
+  async (
+    event
+  ) => {
+
+    const useButton =
+      event.target.closest(
+        "[data-favorite-use]"
+      );
+
+
+    if (
+      useButton
+    ) {
+
+      const favorite =
+        favoriteExpenses.find(
+          (item) =>
+            item.id ===
+            useButton.dataset
+              .favoriteUse
+        );
+
+
+      applyFavoriteToExpenseForm(
+        favorite
+      );
+
+
+      return;
+
+    }
+
+
+    const removeButton =
+      event.target.closest(
+        "[data-favorite-remove]"
+      );
+
+
+    if (
+      !removeButton
+    ) {
+
+      return;
+
+    }
+
+
+    const favorite =
+      favoriteExpenses.find(
+        (item) =>
+          item.id ===
+          removeButton.dataset
+            .favoriteRemove
+      );
+
+
+    if (
+      !favorite
+    ) {
+
+      return;
+
+    }
+
+
+    const shouldRemove =
+      window.confirm(
+        `Remove “${favorite.title || "Favorite"}” from Quick Add?`
+      );
+
+
+    if (
+      !shouldRemove
+    ) {
+
+      return;
+
+    }
+
+
+    await deleteRecord(
+      STORES.favorites,
+      favorite.id
+    );
+
+
+    await loadAppData();
+
+    renderFavoriteQuickAdd();
+
+    renderBackupStatus();
+
+
+    showToast(
+      "Favorite removed."
+    );
+
+  }
+);
+
+
+saveFavoriteButton?.addEventListener(
+  "click",
+  async () => {
+
+    const template =
+      getExpenseFavoriteFormData();
+
+
+    if (
+      !template.title
+    ) {
+
+      showToast(
+        "Add a title before saving a favorite."
+      );
+
+
+      document
+        .getElementById(
+          "expenseTitle"
+        )
+        ?.focus();
+
+
+      return;
+
+    }
+
+
+    if (
+      favoriteExpenses.length >=
+      20
+    ) {
+
+      showToast(
+        "Quick Add can keep up to 20 favorites."
+      );
+
+
+      return;
+
+    }
+
+
+    const duplicate =
+      favoriteExpenses.find(
+        (favorite) =>
+          String(
+            favorite.title ||
+            ""
+          )
+            .trim()
+            .toLowerCase() ===
+          template.title
+            .toLowerCase()
+      );
+
+
+    if (
+      duplicate
+    ) {
+
+      showToast(
+        "A favorite with that title already exists."
+      );
+
+
+      return;
+
+    }
+
+
+    const favorite = {
+
+      id:
+        generateId(
+          "favorite"
+        ),
+
+      ...template,
+
+      createdAt:
+        new Date()
+          .toISOString(),
+
+      updatedAt:
+        new Date()
+          .toISOString()
+
+    };
+
+
+    await putRecord(
+      STORES.favorites,
+      favorite
+    );
+
+
+    await loadAppData();
+
+    renderFavoriteQuickAdd();
+
+    renderBackupStatus();
+
+
+    showToast(
+      "Saved to Quick Add ★"
+    );
+
+  }
+);
 
 
 // ========================================
@@ -6330,7 +9100,8 @@ expenseForm?.addEventListener(
         currencySelect.value,
 
       category:
-        expenseCategory.value,
+        expenseCategory.value ||
+        "Other",
 
       budgetId:
         selectedBudget?.id ||
@@ -6365,6 +9136,11 @@ expenseForm?.addEventListener(
           )
           .value
           .trim(),
+
+      tags:
+        normalizeExpenseTags(
+          expenseTags?.value
+        ),
 
       photo:
         currentPhotoData,
@@ -6581,6 +9357,11 @@ function renderTransaction(
         </span>
 
 
+        ${renderExpenseTagChips(
+          expense
+        )}
+
+
         ${
           showActions
 
@@ -6662,28 +9443,75 @@ function renderTransaction(
 // ========================================
 
 const activitySearch =
-  document.getElementById("activitySearch");
+  document.getElementById(
+    "activitySearch"
+  );
 
 const activityCategoryFilter =
-  document.getElementById("activityCategoryFilter");
+  document.getElementById(
+    "activityCategoryFilter"
+  );
 
 const activityTripFilter =
-  document.getElementById("activityTripFilter");
+  document.getElementById(
+    "activityTripFilter"
+  );
 
 const activityPaymentFilter =
-  document.getElementById("activityPaymentFilter");
+  document.getElementById(
+    "activityPaymentFilter"
+  );
+
+const activityCurrencyFilter =
+  document.getElementById(
+    "activityCurrencyFilter"
+  );
+
+
+const activityTagFilter =
+  document.getElementById(
+    "activityTagFilter"
+  );
+
+const activitySortFilter =
+  document.getElementById(
+    "activitySortFilter"
+  );
+
+const activityPhotoFilter =
+  document.getElementById(
+    "activityPhotoFilter"
+  );
+
+const activityMinAmount =
+  document.getElementById(
+    "activityMinAmount"
+  );
+
+const activityMaxAmount =
+  document.getElementById(
+    "activityMaxAmount"
+  );
 
 const activityDateFrom =
-  document.getElementById("activityDateFrom");
+  document.getElementById(
+    "activityDateFrom"
+  );
 
 const activityDateTo =
-  document.getElementById("activityDateTo");
+  document.getElementById(
+    "activityDateTo"
+  );
 
 const activityFilteredTotal =
-  document.getElementById("activityFilteredTotal");
+  document.getElementById(
+    "activityFilteredTotal"
+  );
 
 const activityResultCount =
-  document.getElementById("activityResultCount");
+  document.getElementById(
+    "activityResultCount"
+  );
 
 
 function populateActivityFilters() {
@@ -6695,42 +9523,71 @@ function populateActivityFilters() {
       firstLabel
     ) => {
 
-      if (!select) return;
+      if (
+        !select
+      ) {
+
+        return;
+
+      }
+
 
       const current =
         select.value;
+
 
       select.innerHTML =
         `<option value="">${firstLabel}</option>` +
         options.join("");
 
+
       const exists =
-        Array.from(select.options)
+        Array.from(
+          select.options
+        )
           .some(
             (option) =>
-              option.value === current
+              option.value ===
+              current
           );
 
-      if (exists) {
-        select.value = current;
+
+      if (
+        exists
+      ) {
+
+        select.value =
+          current;
+
       }
 
     };
 
 
   const categories =
-    [...new Set(
-      expenses
-        .map((expense) => expense.category)
-        .filter(Boolean)
-    )].sort();
+    [
+      ...new Set(
+        expenses
+          .map(
+            (expense) =>
+              expense.category
+          )
+          .filter(
+            Boolean
+          )
+      )
+    ].sort();
 
 
   preserveSelect(
     activityCategoryFilter,
     categories.map(
       (category) =>
-        `<option value="${escapeHTML(category)}">${escapeHTML(category)}</option>`
+        `<option value="${escapeHTML(
+          category
+        )}">${escapeHTML(
+          category
+        )}</option>`
     ),
     "All categories"
   );
@@ -6742,7 +9599,11 @@ function populateActivityFilters() {
       `<option value="__personal__">Personal / No Trip</option>`,
       ...trips.map(
         (trip) =>
-          `<option value="${escapeHTML(trip.id)}">${escapeHTML(trip.name)}</option>`
+          `<option value="${escapeHTML(
+            trip.id
+          )}">${escapeHTML(
+            trip.name
+          )}</option>`
       )
     ],
     "All trips"
@@ -6750,20 +9611,78 @@ function populateActivityFilters() {
 
 
   const methods =
-    [...new Set(
-      expenses
-        .map((expense) => expense.paymentMethod)
-        .filter(Boolean)
-    )].sort();
+    [
+      ...new Set(
+        expenses
+          .map(
+            (expense) =>
+              expense.paymentMethod
+          )
+          .filter(
+            Boolean
+          )
+      )
+    ].sort();
 
 
   preserveSelect(
     activityPaymentFilter,
     methods.map(
       (method) =>
-        `<option value="${escapeHTML(method)}">${escapeHTML(method)}</option>`
+        `<option value="${escapeHTML(
+          method
+        )}">${escapeHTML(
+          method
+        )}</option>`
     ),
     "All payment methods"
+  );
+
+
+  const currencies =
+    [
+      ...new Set(
+        expenses
+          .map(
+            (expense) =>
+              expense.currency
+          )
+          .filter(
+            Boolean
+          )
+      )
+    ].sort();
+
+
+  preserveSelect(
+    activityCurrencyFilter,
+    currencies.map(
+      (currency) =>
+        `<option value="${escapeHTML(
+          currency
+        )}">${escapeHTML(
+          currency
+        )}</option>`
+    ),
+    "All currencies"
+  );
+
+
+  const tags =
+    getAllExpenseTags();
+
+
+  preserveSelect(
+    activityTagFilter,
+    tags.map(
+      (tag) =>
+        `<option value="${escapeHTML(
+          tag
+        )}">#${escapeHTML(
+          tag
+        )}</option>`
+    ),
+    "All tags"
   );
 
 }
@@ -6774,104 +9693,367 @@ function getFilteredActivityExpenses() {
   const search =
     activitySearch?.value
       .trim()
-      .toLowerCase() || "";
+      .toLowerCase() ||
+    "";
 
   const category =
-    activityCategoryFilter?.value || "";
+    activityCategoryFilter?.value ||
+    "";
 
   const tripId =
-    activityTripFilter?.value || "";
+    activityTripFilter?.value ||
+    "";
 
   const paymentMethod =
-    activityPaymentFilter?.value || "";
+    activityPaymentFilter?.value ||
+    "";
+
+  const currency =
+    activityCurrencyFilter?.value ||
+    "";
+
+  const tag =
+    activityTagFilter?.value ||
+    "";
+
+  const photo =
+    activityPhotoFilter?.value ||
+    "";
+
+  const sort =
+    activitySortFilter?.value ||
+    "newest";
+
+  const minAmount =
+    Number(
+      activityMinAmount?.value ||
+      0
+    );
+
+  const maxAmount =
+    activityMaxAmount?.value
+      ? Number(
+          activityMaxAmount.value
+        )
+      : null;
 
   const dateFrom =
-    activityDateFrom?.value || "";
+    activityDateFrom?.value ||
+    "";
 
   const dateTo =
-    activityDateTo?.value || "";
+    activityDateTo?.value ||
+    "";
 
 
-  return expenses.filter(
-    (expense) => {
-
-      if (search) {
-
-        const searchable =
-          [
-            expense.title,
-            expense.location,
-            expense.notes,
-            expense.category,
-            expense.paymentMethod,
-            expense.currency
-          ]
-            .filter(Boolean)
-            .join(" ")
-            .toLowerCase();
-
-        if (!searchable.includes(search)) {
-          return false;
-        }
-
-      }
-
-
-      if (
-        category &&
-        expense.category !== category
-      ) {
-        return false;
-      }
-
-
-      if (tripId) {
+  const filtered =
+    expenses.filter(
+      (expense) => {
 
         if (
-          tripId === "__personal__"
+          search
         ) {
 
-          if (expense.tripId) {
+          const searchable =
+            [
+              expense.title,
+              expense.location,
+              expense.notes,
+              expense.category,
+              expense.paymentMethod,
+              expense.currency,
+              normalizeExpenseTags(
+                expense.tags
+              ).join(
+                " "
+              )
+            ]
+              .filter(
+                Boolean
+              )
+              .join(
+                " "
+              )
+              .toLowerCase();
+
+
+          if (
+            !searchable.includes(
+              search
+            )
+          ) {
+
             return false;
+
           }
 
-        } else if (
-          expense.tripId !== tripId
-        ) {
-          return false;
         }
 
+
+        if (
+          category &&
+          expense.category !==
+            category
+        ) {
+
+          return false;
+
+        }
+
+
+        if (
+          tripId
+        ) {
+
+          if (
+            tripId ===
+            "__personal__"
+          ) {
+
+            if (
+              expense.tripId
+            ) {
+
+              return false;
+
+            }
+
+          } else if (
+            expense.tripId !==
+            tripId
+          ) {
+
+            return false;
+
+          }
+
+        }
+
+
+        if (
+          paymentMethod &&
+          expense.paymentMethod !==
+            paymentMethod
+        ) {
+
+          return false;
+
+        }
+
+
+        if (
+          currency &&
+          expense.currency !==
+            currency
+        ) {
+
+          return false;
+
+        }
+
+
+        if (
+          tag &&
+          !normalizeExpenseTags(
+            expense.tags
+          ).some(
+            (expenseTag) =>
+              expenseTag.toLowerCase() ===
+              tag.toLowerCase()
+          )
+        ) {
+
+          return false;
+
+        }
+
+
+        if (
+          photo ===
+            "with" &&
+          !expense.photo
+        ) {
+
+          return false;
+
+        }
+
+
+        if (
+          photo ===
+            "without" &&
+          expense.photo
+        ) {
+
+          return false;
+
+        }
+
+
+        if (
+          dateFrom &&
+          expense.date <
+            dateFrom
+        ) {
+
+          return false;
+
+        }
+
+
+        if (
+          dateTo &&
+          expense.date >
+            dateTo
+        ) {
+
+          return false;
+
+        }
+
+
+        const amountPHP =
+          convertCurrency(
+            expense.amount,
+            expense.currency,
+            "PHP"
+          );
+
+
+        if (
+          minAmount >
+            0 &&
+          amountPHP <
+            minAmount
+        ) {
+
+          return false;
+
+        }
+
+
+        if (
+          maxAmount !==
+            null &&
+          amountPHP >
+            maxAmount
+        ) {
+
+          return false;
+
+        }
+
+
+        return true;
+
       }
+    );
 
 
-      if (
-        paymentMethod &&
-        expense.paymentMethod !== paymentMethod
-      ) {
-        return false;
-      }
+  const amountPHP =
+    (expense) =>
+      convertCurrency(
+        expense.amount,
+        expense.currency,
+        "PHP"
+      );
 
 
-      if (
-        dateFrom &&
-        expense.date < dateFrom
-      ) {
-        return false;
-      }
+  switch (
+    sort
+  ) {
+
+    case "oldest":
+
+      filtered.sort(
+        (
+          a,
+          b
+        ) =>
+          String(
+            a.date ||
+            ""
+          ).localeCompare(
+            String(
+              b.date ||
+              ""
+            )
+          )
+      );
+
+      break;
 
 
-      if (
-        dateTo &&
-        expense.date > dateTo
-      ) {
-        return false;
-      }
+    case "highest":
+
+      filtered.sort(
+        (
+          a,
+          b
+        ) =>
+          amountPHP(
+            b
+          ) -
+          amountPHP(
+            a
+          )
+      );
+
+      break;
 
 
-      return true;
+    case "lowest":
 
-    }
-  );
+      filtered.sort(
+        (
+          a,
+          b
+        ) =>
+          amountPHP(
+            a
+          ) -
+          amountPHP(
+            b
+          )
+      );
+
+      break;
+
+
+    case "newest":
+    default:
+
+      filtered.sort(
+        (
+          a,
+          b
+        ) =>
+          String(
+            b.date ||
+            ""
+          ).localeCompare(
+            String(
+              a.date ||
+              ""
+            )
+          ) ||
+          String(
+            b.createdAt ||
+            ""
+          ).localeCompare(
+            String(
+              a.createdAt ||
+              ""
+            )
+          )
+      );
+
+      break;
+
+  }
+
+
+  return filtered;
 
 }
 
@@ -6880,11 +10062,14 @@ function updateActivityFilteredSummary(
   filteredExpenses
 ) {
 
-  if (activityResultCount) {
+  if (
+    activityResultCount
+  ) {
 
     activityResultCount.textContent =
       `${filteredExpenses.length} ${
-        filteredExpenses.length === 1
+        filteredExpenses.length ===
+        1
           ? "expense"
           : "expenses"
       }`;
@@ -6892,11 +10077,16 @@ function updateActivityFilteredSummary(
   }
 
 
-  if (activityFilteredTotal) {
+  if (
+    activityFilteredTotal
+  ) {
 
     const total =
       filteredExpenses.reduce(
-        (sum, expense) =>
+        (
+          sum,
+          expense
+        ) =>
           sum +
           convertToPHP(
             expense.amount,
@@ -6905,8 +10095,11 @@ function updateActivityFilteredSummary(
         0
       );
 
+
     activityFilteredTotal.textContent =
-      formatPHP(total);
+      formatPHP(
+        total
+      );
 
   }
 
@@ -6916,12 +10109,24 @@ function updateActivityFilteredSummary(
 function renderActivityTransactions() {
 
   const activity =
-    document.getElementById("activityList");
+    document.getElementById(
+      "activityList"
+    );
 
   const empty =
-    document.getElementById("activityEmpty");
+    document.getElementById(
+      "activityEmpty"
+    );
 
-  if (!activity || !empty) return;
+
+  if (
+    !activity ||
+    !empty
+  ) {
+
+    return;
+
+  }
 
 
   populateActivityFilters();
@@ -6936,38 +10141,61 @@ function renderActivityTransactions() {
   );
 
 
-  if (filtered.length === 0) {
+  if (
+    filtered.length ===
+    0
+  ) {
 
-    activity.innerHTML = "";
+    activity.innerHTML =
+      "";
 
-    empty.hidden = false;
+
+    empty.hidden =
+      false;
+
 
     const title =
-      empty.querySelector("h3");
+      empty.querySelector(
+        "h3"
+      );
 
     const copy =
-      empty.querySelector("p");
+      empty.querySelector(
+        "p"
+      );
 
-    if (title) {
+
+    if (
+      title
+    ) {
+
       title.textContent =
         expenses.length
           ? "No matching expenses"
           : "No expenses yet";
+
     }
 
-    if (copy) {
+
+    if (
+      copy
+    ) {
+
       copy.textContent =
         expenses.length
           ? "Try changing or clearing your filters."
           : "Add your first expense and it will appear here.";
+
     }
+
 
     return;
 
   }
 
 
-  empty.hidden = true;
+  empty.hidden =
+    true;
 
 
   activity.innerHTML =
@@ -6984,6 +10212,8 @@ function renderActivityTransactions() {
 
   attachExpenseActions();
 
+  attachExpenseDetailActions();
+
 }
 
 
@@ -6992,17 +10222,36 @@ function renderActivityTransactions() {
   activityCategoryFilter,
   activityTripFilter,
   activityPaymentFilter,
+  activityCurrencyFilter,
+  activityTagFilter,
+  activitySortFilter,
+  activityPhotoFilter,
+  activityMinAmount,
+  activityMaxAmount,
   activityDateFrom,
   activityDateTo
 ]
-  .filter(Boolean)
+  .filter(
+    Boolean
+  )
   .forEach(
     (control) => {
 
-      control.addEventListener(
-        control === activitySearch
+      const eventName =
+        (
+          control ===
+            activitySearch ||
+          control ===
+            activityMinAmount ||
+          control ===
+            activityMaxAmount
+        )
           ? "input"
-          : "change",
+          : "change";
+
+
+      control.addEventListener(
+        eventName,
         renderActivityTransactions
       );
 
@@ -7011,7 +10260,9 @@ function renderActivityTransactions() {
 
 
 document
-  .getElementById("clearActivityFilters")
+  .getElementById(
+    "clearActivityFilters"
+  )
   ?.addEventListener(
     "click",
     () => {
@@ -7021,15 +10272,35 @@ document
         activityCategoryFilter,
         activityTripFilter,
         activityPaymentFilter,
+        activityCurrencyFilter,
+        activityTagFilter,
+        activityPhotoFilter,
+        activityMinAmount,
+        activityMaxAmount,
         activityDateFrom,
         activityDateTo
       ]
-        .filter(Boolean)
+        .filter(
+          Boolean
+        )
         .forEach(
           (control) => {
-            control.value = "";
+
+            control.value =
+              "";
+
           }
         );
+
+
+      if (
+        activitySortFilter
+      ) {
+
+        activitySortFilter.value =
+          "newest";
+
+      }
 
 
       renderActivityTransactions();
@@ -7445,6 +10716,31 @@ function openExpenseDetail(
       )}
 
     </div>
+
+
+    ${
+      normalizeExpenseTags(
+        expense.tags
+      ).length
+
+        ? `
+
+            <div class="expense-detail-notes expense-detail-tags">
+
+              <span>
+                Tags
+              </span>
+
+              ${renderExpenseTagChips(
+                expense
+              )}
+
+            </div>
+
+          `
+
+        : ""
+    }
 
 
     ${
@@ -7990,6 +11286,376 @@ function getCurrentMonthlyBudgetTotal() {
 
 
 // ========================================
+// HOME DAILY + CATEGORY SPENDING
+// ========================================
+
+function getTodayExpenses() {
+
+  const today =
+    getTodayString();
+
+
+  return expenses.filter(
+    (expense) =>
+      (
+        expense.date ||
+        (
+          expense.createdAt
+            ? expense.createdAt.slice(
+                0,
+                10
+              )
+            : ""
+        )
+      ) ===
+      today
+  );
+
+}
+
+
+function getTodaySpentPHP() {
+
+  return getTodayExpenses()
+    .reduce(
+      (
+        total,
+        expense
+      ) => {
+
+        return (
+          total +
+          convertCurrency(
+            expense.amount,
+            expense.currency,
+            "PHP"
+          )
+        );
+
+      },
+      0
+    );
+
+}
+
+
+function getCurrentMonthExpenses() {
+
+  const now =
+    new Date();
+
+
+  const key =
+    `${now.getFullYear()}-${String(
+      now.getMonth() + 1
+    ).padStart(
+      2,
+      "0"
+    )}`;
+
+
+  return expenses.filter(
+    (expense) => {
+
+      const date =
+        expense.date ||
+        (
+          expense.createdAt
+            ? expense.createdAt.slice(
+                0,
+                10
+              )
+            : ""
+        );
+
+
+      return date.startsWith(
+        key
+      );
+
+    }
+  );
+
+}
+
+
+function getHomeCategoryBreakdown() {
+
+  const totals =
+    new Map();
+
+
+  getCurrentMonthExpenses()
+    .forEach(
+      (expense) => {
+
+        const category =
+          expense.category ||
+          "Other";
+
+
+        const amount =
+          convertCurrency(
+            expense.amount,
+            expense.currency,
+            "PHP"
+          );
+
+
+        totals.set(
+          category,
+          (
+            totals.get(
+              category
+            ) ||
+            0
+          ) +
+          amount
+        );
+
+      }
+    );
+
+
+  return Array.from(
+    totals.entries()
+  )
+
+    .map(
+      (
+        [
+          category,
+          amount
+        ]
+      ) => ({
+        category,
+        amount
+      })
+    )
+
+    .sort(
+      (
+        a,
+        b
+      ) =>
+        b.amount -
+        a.amount
+    );
+
+}
+
+
+function renderHomeSpendingOverview() {
+
+  const todayExpenses =
+    getTodayExpenses();
+
+
+  const todaySpent =
+    getTodaySpentPHP();
+
+
+  const monthExpenses =
+    getCurrentMonthExpenses();
+
+
+  const monthTotal =
+    monthExpenses.reduce(
+      (
+        total,
+        expense
+      ) =>
+        total +
+        convertCurrency(
+          expense.amount,
+          expense.currency,
+          "PHP"
+        ),
+      0
+    );
+
+
+  const todaySpentElement =
+    document.getElementById(
+      "homeTodaySpent"
+    );
+
+
+  const todayCountElement =
+    document.getElementById(
+      "homeTodayExpenseCount"
+    );
+
+
+  const categoryTotalElement =
+    document.getElementById(
+      "homeCategoryTotal"
+    );
+
+
+  const categoryContainer =
+    document.getElementById(
+      "homeCategoryBreakdown"
+    );
+
+
+  if (
+    todaySpentElement
+  ) {
+
+    todaySpentElement.textContent =
+      formatPHP(
+        todaySpent
+      );
+
+  }
+
+
+  if (
+    todayCountElement
+  ) {
+
+    todayCountElement.textContent =
+      `${todayExpenses.length} ${
+        todayExpenses.length ===
+        1
+          ? "expense"
+          : "expenses"
+      }`;
+
+  }
+
+
+  if (
+    categoryTotalElement
+  ) {
+
+    categoryTotalElement.textContent =
+      formatPHP(
+        monthTotal
+      );
+
+  }
+
+
+  if (
+    !categoryContainer
+  ) {
+
+    return;
+
+  }
+
+
+  const categories =
+    getHomeCategoryBreakdown();
+
+
+  if (
+    categories.length ===
+    0
+  ) {
+
+    categoryContainer.innerHTML = `
+
+      <div class="home-category-empty">
+        No spending recorded this month yet.
+      </div>
+
+    `;
+
+
+    return;
+
+  }
+
+
+  const maximum =
+    categories[
+      0
+    ].amount ||
+    1;
+
+
+  categoryContainer.innerHTML =
+    categories
+
+      .slice(
+        0,
+        6
+      )
+
+      .map(
+        (
+          item
+        ) => {
+
+          const width =
+            Math.max(
+              (
+                item.amount /
+                maximum
+              ) *
+              100,
+              5
+            );
+
+
+          return `
+
+            <div class="home-category-row">
+
+              <div class="home-category-label">
+
+                <span>
+                  ${getCategoryEmoji(
+                    item.category
+                  )}
+                </span>
+
+                <strong>
+                  ${escapeHTML(
+                    item.category ===
+                    "Other"
+                      ? "General / Other"
+                      : item.category
+                  )}
+                </strong>
+
+              </div>
+
+
+              <div class="home-category-value">
+
+                <strong>
+                  ${formatPHP(
+                    item.amount
+                  )}
+                </strong>
+
+                <div class="home-category-track">
+
+                  <div
+                    style="width:${width}%"
+                  ></div>
+
+                </div>
+
+              </div>
+
+            </div>
+
+          `;
+
+        }
+      )
+
+      .join("");
+
+}
+
+
+// ========================================
 // HOME SUMMARY
 // ========================================
 
@@ -8060,7 +11726,7 @@ function renderHomeSummary() {
 
 
   setText(
-    "homeSpent",
+    "homeMonthSpent",
     formatPHP(
       spent
     )
@@ -8080,7 +11746,7 @@ function renderHomeSummary() {
   ) {
 
     setText(
-      "homeBudget",
+      "homeMonthBudget",
       formatPHP(
         monthlyBudget
       )
@@ -8088,7 +11754,7 @@ function renderHomeSummary() {
 
 
     setText(
-      "homeRemaining",
+      "homeMonthRemaining",
       formatPHP(
         remaining
       )
@@ -8121,13 +11787,13 @@ function renderHomeSummary() {
   } else {
 
     setText(
-      "homeBudget",
+      "homeMonthBudget",
       "Not set"
     );
 
 
     setText(
-      "homeRemaining",
+      "homeMonthRemaining",
       "—"
     );
 
@@ -8178,6 +11844,26 @@ function renderHomeSummary() {
     ring
   ) {
 
+    const ringText =
+      ring.querySelector(
+        "span"
+      );
+
+
+    if (
+      ringText
+    ) {
+
+      ringText.textContent =
+        hasBudget
+          ? `${Math.round(
+              percent
+            )}%`
+          : "—";
+
+    }
+
+
     ring.style.background = `
 
       radial-gradient(
@@ -8196,6 +11882,9 @@ function renderHomeSummary() {
     `;
 
   }
+
+
+  renderHomeSpendingOverview();
 
 }
 
@@ -9090,6 +12779,868 @@ function renderReportTrend() {
           `;
 
         }
+      )
+
+      .join("");
+
+}
+
+
+
+function getExpenseDateKey(
+  expense
+) {
+
+  return (
+    expense.date ||
+    (
+      expense.createdAt
+        ? expense.createdAt.slice(
+            0,
+            10
+          )
+        : ""
+    )
+  );
+
+}
+
+
+function getPreviousReportRange(
+  range
+) {
+
+  if (
+    !range.start ||
+    !range.end
+  ) {
+
+    return null;
+
+  }
+
+
+  const start =
+    createLocalDate(
+      range.start
+    );
+
+
+  const end =
+    createLocalDate(
+      range.end
+    );
+
+
+  if (
+    !start ||
+    !end ||
+    end <
+      start
+  ) {
+
+    return null;
+
+  }
+
+
+  const days =
+    Math.floor(
+      (
+        end -
+        start
+      ) /
+      86400000
+    ) +
+    1;
+
+
+  const previousEnd =
+    new Date(
+      start
+    );
+
+
+  previousEnd.setDate(
+    previousEnd.getDate() -
+    1
+  );
+
+
+  const previousStart =
+    new Date(
+      previousEnd
+    );
+
+
+  previousStart.setDate(
+    previousStart.getDate() -
+    (
+      days -
+      1
+    )
+  );
+
+
+  return {
+    start:
+      dateToKey(
+        previousStart
+      ),
+
+    end:
+      dateToKey(
+        previousEnd
+      )
+  };
+
+}
+
+
+function getReportExpensesForRange(
+  range
+) {
+
+  if (
+    !range ||
+    !range.start ||
+    !range.end
+  ) {
+
+    return [];
+
+  }
+
+
+  const selectedTripId =
+    reportTripPicker?.value ||
+    "";
+
+
+  return expenses.filter(
+    (expense) => {
+
+      const date =
+        getExpenseDateKey(
+          expense
+        );
+
+
+      if (
+        !date ||
+        date <
+          range.start ||
+        date >
+          range.end
+      ) {
+
+        return false;
+
+      }
+
+
+      if (
+        reportScope ===
+        "personal"
+      ) {
+
+        return !expense.tripId;
+
+      }
+
+
+      if (
+        reportScope ===
+        "trip"
+      ) {
+
+        return (
+          Boolean(
+            selectedTripId
+          ) &&
+          expense.tripId ===
+            selectedTripId
+        );
+
+      }
+
+
+      return true;
+
+    }
+  );
+
+}
+
+
+function getMostFrequentGroup(
+  items,
+  keyGetter
+) {
+
+  const counts =
+    new Map();
+
+
+  items.forEach(
+    (expense) => {
+
+      const key =
+        keyGetter(
+          expense
+        ) ||
+        "Other";
+
+
+      counts.set(
+        key,
+        (
+          counts.get(
+            key
+          ) ||
+          0
+        ) +
+        1
+      );
+
+    }
+  );
+
+
+  return Array.from(
+    counts.entries()
+  )
+
+    .map(
+      (
+        [
+          label,
+          count
+        ]
+      ) => ({
+        label,
+        count
+      })
+    )
+
+    .sort(
+      (
+        a,
+        b
+      ) =>
+        b.count -
+        a.count
+    )[
+      0
+    ] ||
+    null;
+
+}
+
+
+function getMostExpensiveDay(
+  items
+) {
+
+  const days =
+    new Map();
+
+
+  items.forEach(
+    (expense) => {
+
+      const date =
+        getExpenseDateKey(
+          expense
+        );
+
+
+      if (
+        !date
+      ) {
+
+        return;
+
+      }
+
+
+      const amount =
+        convertCurrency(
+          expense.amount,
+          expense.currency,
+          "PHP"
+        );
+
+
+      const current =
+        days.get(
+          date
+        ) ||
+        {
+          total: 0,
+          count: 0
+        };
+
+
+      current.total +=
+        amount;
+
+
+      current.count +=
+        1;
+
+
+      days.set(
+        date,
+        current
+      );
+
+    }
+  );
+
+
+  return Array.from(
+    days.entries()
+  )
+
+    .map(
+      (
+        [
+          date,
+          data
+        ]
+      ) => ({
+        date,
+        ...data
+      })
+    )
+
+    .sort(
+      (
+        a,
+        b
+      ) =>
+        b.total -
+        a.total
+    )[
+      0
+    ] ||
+    null;
+
+}
+
+
+function getTripVsPersonalTotals(
+  items
+) {
+
+  return items.reduce(
+    (
+      totals,
+      expense
+    ) => {
+
+      const amount =
+        convertCurrency(
+          expense.amount,
+          expense.currency,
+          "PHP"
+        );
+
+
+      if (
+        expense.tripId
+      ) {
+
+        totals.trip +=
+          amount;
+
+      } else {
+
+        totals.personal +=
+          amount;
+
+      }
+
+
+      return totals;
+
+    },
+    {
+      personal: 0,
+      trip: 0
+    }
+  );
+
+}
+
+
+function buildSpendingInsights(
+  reportExpenses,
+  range
+) {
+
+  if (
+    reportExpenses.length ===
+    0
+  ) {
+
+    return [];
+
+  }
+
+
+  const insights =
+    [];
+
+
+  const total =
+    sumExpensesPHP(
+      reportExpenses
+    );
+
+
+  renderSpendingInsights(
+    reportExpenses,
+    range
+  );
+
+
+  const categoryGroups =
+    groupReportExpenses(
+      reportExpenses,
+      (expense) =>
+        expense.category ||
+        "Other"
+    );
+
+
+  const topCategory =
+    categoryGroups[
+      0
+    ];
+
+
+  if (
+    topCategory
+  ) {
+
+    const share =
+      total >
+      0
+
+        ? (
+            topCategory.amount /
+            total
+          ) *
+          100
+
+        : 0;
+
+
+    insights.push({
+      icon:
+        getCategoryEmoji(
+          topCategory.label
+        ),
+
+      title:
+        `${topCategory.label} is your biggest category`,
+
+      detail:
+        `${formatPHP(
+          topCategory.amount
+        )} · ${share.toFixed(
+          0
+        )}% of spending`
+    });
+
+  }
+
+
+  const previousRange =
+    getPreviousReportRange(
+      range
+    );
+
+
+  const previousExpenses =
+    getReportExpensesForRange(
+      previousRange
+    );
+
+
+  const previousTotal =
+    sumExpensesPHP(
+      previousExpenses
+    );
+
+
+  if (
+    previousTotal >
+    0
+  ) {
+
+    const change =
+      (
+        (
+          total -
+          previousTotal
+        ) /
+        previousTotal
+      ) *
+      100;
+
+
+    const rounded =
+      Math.abs(
+        change
+      ).toFixed(
+        0
+      );
+
+
+    insights.push({
+      icon:
+        change >
+        0
+          ? "↗"
+          : change <
+            0
+            ? "↘"
+            : "→",
+
+      title:
+        change >
+        0
+          ? `Spending is ${rounded}% higher`
+          : change <
+            0
+            ? `Spending is ${rounded}% lower`
+            : "Spending is unchanged",
+
+      detail:
+        `Compared with the previous ${getReportRangeDayCount(
+          range
+        )}-day period`
+    });
+
+  }
+
+
+  const frequentCategory =
+    getMostFrequentGroup(
+      reportExpenses,
+      (expense) =>
+        expense.category ||
+        "Other"
+    );
+
+
+  if (
+    frequentCategory
+  ) {
+
+    insights.push({
+      icon:
+        "♡",
+
+      title:
+        `${frequentCategory.label} appears most often`,
+
+      detail:
+        `${frequentCategory.count} ${
+          frequentCategory.count ===
+          1
+            ? "purchase"
+            : "purchases"
+        } in this view`
+    });
+
+  }
+
+
+  const expensiveDay =
+    getMostExpensiveDay(
+      reportExpenses
+    );
+
+
+  if (
+    expensiveDay
+  ) {
+
+    insights.push({
+      icon:
+        "☀",
+
+      title:
+        `${formatShortDate(
+          expensiveDay.date
+        )} was your biggest spending day`,
+
+      detail:
+        `${formatPHP(
+          expensiveDay.total
+        )} across ${expensiveDay.count} ${
+          expensiveDay.count ===
+          1
+            ? "expense"
+            : "expenses"
+        }`
+    });
+
+  }
+
+
+  const biggest =
+    reportExpenses
+
+      .map(
+        (expense) => ({
+          expense,
+
+          amount:
+            convertCurrency(
+              expense.amount,
+              expense.currency,
+              "PHP"
+            )
+        })
+      )
+
+      .sort(
+        (
+          a,
+          b
+        ) =>
+          b.amount -
+          a.amount
+      )[
+        0
+      ];
+
+
+  if (
+    biggest
+  ) {
+
+    insights.push({
+      icon:
+        "✦",
+
+      title:
+        `${biggest.expense.title ||
+          "Expense"} was your largest purchase`,
+
+      detail:
+        `${formatPHP(
+          biggest.amount
+        )} · ${escapeHTML(
+          biggest.expense.category ||
+          "Other"
+        )}`
+    });
+
+  }
+
+
+  const average =
+    total /
+    reportExpenses.length;
+
+
+  insights.push({
+    icon:
+      "≈",
+
+    title:
+      `${formatPHP(
+        average
+      )} average per transaction`,
+
+    detail:
+      `Based on ${reportExpenses.length} ${
+        reportExpenses.length ===
+        1
+          ? "expense"
+          : "expenses"
+      }`
+  });
+
+
+  if (
+    reportScope ===
+    "all"
+  ) {
+
+    const split =
+      getTripVsPersonalTotals(
+        reportExpenses
+      );
+
+
+    if (
+      split.trip >
+        0 &&
+      split.personal >
+        0
+    ) {
+
+      const tripShare =
+        (
+          split.trip /
+          total
+        ) *
+        100;
+
+
+      insights.push({
+        icon:
+          "✈",
+
+        title:
+          `${tripShare.toFixed(
+            0
+          )}% of spending is trip-related`,
+
+        detail:
+          `${formatPHP(
+            split.trip
+          )} trips · ${formatPHP(
+            split.personal
+          )} personal`
+      });
+
+    }
+
+  }
+
+
+  return insights.slice(
+    0,
+    6
+  );
+
+}
+
+
+function renderSpendingInsights(
+  reportExpenses,
+  range
+) {
+
+  const container =
+    document.getElementById(
+      "spendingInsightsList"
+    );
+
+
+  const meta =
+    document.getElementById(
+      "spendingInsightsMeta"
+    );
+
+
+  if (
+    !container
+  ) {
+
+    return;
+
+  }
+
+
+  if (
+    meta
+  ) {
+
+    meta.textContent =
+      range.label ||
+      "This view";
+
+  }
+
+
+  const insights =
+    buildSpendingInsights(
+      reportExpenses,
+      range
+    );
+
+
+  if (
+    insights.length ===
+    0
+  ) {
+
+    container.innerHTML = `
+
+      <div class="spending-insights-empty">
+
+        <span>✦</span>
+
+        <div>
+
+          <strong>
+            Nothing to analyze yet
+          </strong>
+
+          <p>
+            Add expenses in this period and Momo will spot patterns here.
+          </p>
+
+        </div>
+
+      </div>
+
+    `;
+
+
+    return;
+
+  }
+
+
+  container.innerHTML =
+    insights
+
+      .map(
+        (
+          insight,
+          index
+        ) => `
+
+          <article class="spending-insight-item">
+
+            <div class="spending-insight-icon">
+              ${insight.icon}
+            </div>
+
+            <div class="spending-insight-copy">
+
+              <strong>
+                ${insight.title}
+              </strong>
+
+              <p>
+                ${insight.detail}
+              </p>
+
+            </div>
+
+            <span class="spending-insight-number">
+              ${String(
+                index + 1
+              ).padStart(
+                2,
+                "0"
+              )}
+            </span>
+
+          </article>
+
+        `
       )
 
       .join("");
@@ -12878,6 +17429,9 @@ async function buildMomoBackup() {
       plannedExpenses:
         plannedExpenses,
 
+      favoriteExpenses:
+        favoriteExpenses,
+
       settings:
         settings
 
@@ -13413,6 +17967,15 @@ function getBackupRestoreSummaryHTML(
         <span>Planned</span>
       </div>
 
+      <div>
+        <strong>
+          ${Array.isArray(data.favoriteExpenses)
+            ? data.favoriteExpenses.length
+            : 0}
+        </strong>
+        <span>Favorites</span>
+      </div>
+
     </div>
 
   `;
@@ -13615,6 +18178,16 @@ async function restoreMomoBackup(
     STORES.planned,
     data.plannedExpenses ||
       []
+  );
+
+
+  await restoreRecords(
+    STORES.favorites,
+    Array.isArray(
+      data.favoriteExpenses
+    )
+      ? data.favoriteExpenses
+      : []
   );
 
 
@@ -13853,6 +18426,11 @@ function renderBackupStatus() {
     [
       "backupPlannedCount",
       plannedExpenses.length
+    ],
+
+    [
+      "backupFavoriteCount",
+      favoriteExpenses.length
     ]
 
   ];
@@ -13906,6 +18484,8 @@ function renderAll() {
   renderRecurringExpenses();
 
   renderPlannedExpenses();
+
+  renderFavoriteQuickAdd();
 
   renderBackupStatus();
 
@@ -13990,6 +18570,8 @@ document.addEventListener(
 
 
     closeExpenseDetail();
+
+    closeTripDashboard();
 
 
     const deleteExpenseModal =

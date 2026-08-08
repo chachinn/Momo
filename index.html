@@ -600,6 +600,25 @@
           </button>
         </div>
 
+        <section
+          id="favoriteQuickAddSection"
+          class="favorite-quick-section"
+          hidden
+        >
+          <div class="section-title-row favorite-quick-heading">
+            <div>
+              <p class="eyebrow">Favorites</p>
+              <h2>Quick Add</h2>
+            </div>
+            <span class="favorite-quick-hint">Tap to prefill</span>
+          </div>
+
+          <div
+            id="favoriteQuickAddList"
+            class="favorite-quick-list"
+          ></div>
+        </section>
+
         <form id="expenseForm">
           <input id="expenseId" type="hidden">
 
@@ -755,12 +774,22 @@
             </label>
           </section>
 
-          <button
-            class="primary-btn"
-            type="submit"
-          >
-            Save Expense
-          </button>
+          <div class="expense-form-actions">
+            <button
+              class="primary-btn"
+              type="submit"
+            >
+              Save Expense
+            </button>
+
+            <button
+              id="saveFavoriteButton"
+              class="secondary-btn favorite-save-btn"
+              type="button"
+            >
+              ★ Save as Favorite
+            </button>
+          </div>
         </form>
       </section>
 
@@ -1271,7 +1300,7 @@
             <h2>Protect your Momo data</h2>
             <p>
               Creates one Momo backup file containing your expenses, budgets, trips,
-              recurring expenses, settings, links, and attached photos.
+              recurring expenses, planned expenses, favorites, settings, links, and attached photos.
             </p>
           </div>
 
@@ -1374,6 +1403,11 @@
             <div>
               <strong id="backupPlannedCount">0</strong>
               <small>Planned</small>
+            </div>
+
+            <div>
+              <strong id="backupFavoriteCount">0</strong>
+              <small>Favorites</small>
             </div>
           </div>
         </section>
