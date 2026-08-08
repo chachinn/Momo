@@ -1927,6 +1927,7 @@ const useWallpaperCropButton =
 
 const THEME_LABELS = {
   peach: "Peach Pink",
+  sakura: "Sakura Pink",
   lavender: "Lavender Purple",
   sky: "Sky Blue",
   mint: "Mint Green",

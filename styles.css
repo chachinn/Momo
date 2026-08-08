@@ -6103,6 +6103,18 @@ body:not([data-theme]) {
   --text-soft: #8a7777;
 }
 
+body[data-theme="sakura"] {
+  --bg: #fff9fc;
+  --surface: #ffffff;
+  --blush: #fff0f6;
+  --peach: #f8d6e5;
+  --pink: #f4bfd5;
+  --rose: #d98aaa;
+  --border: #f1d9e4;
+  --text: #493d43;
+  --text-soft: #8b7781;
+}
+
 body[data-theme="lavender"] {
   --bg: #fbf8ff;
   --surface: #ffffff;
@@ -6321,6 +6333,7 @@ body.wallpaper-enabled .bottom-nav {
 }
 
 .theme-swatch-peach { background: #efa9b5; }
+.theme-swatch-sakura { background: #f4bfd5; }
 .theme-swatch-lavender { background: #a987d7; }
 .theme-swatch-sky { background: #75b7e2; }
 .theme-swatch-mint { background: #78c9ad; }
