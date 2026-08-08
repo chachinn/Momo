@@ -60,6 +60,32 @@ let plannedExpenses = [];
 let favoriteExpenses = [];
 
 
+const SAVINGS_GOALS_SETTING_KEY =
+  "savings_goals";
+
+
+let savingsGoals = [];
+
+
+let selectedSavingsGoalId =
+  "";
+
+
+const TRAVEL_SETTLEMENT_SETTING_KEY =
+  "travel_settlements";
+
+
+let travelSettlements = [];
+
+
+let activeSettlementTripId =
+  "";
+
+
+let editingSharedExpenseId =
+  "";
+
+
 let plannedPendingDelete =
   null;
 
@@ -855,6 +881,38 @@ async function loadAppData() {
         : {}
     )
   };
+
+
+  const savingsGoalsSetting =
+    settingsRecords.find(
+      (item) =>
+        item?.key ===
+        SAVINGS_GOALS_SETTING_KEY
+    );
+
+
+  savingsGoals =
+    Array.isArray(
+      savingsGoalsSetting?.value
+    )
+      ? savingsGoalsSetting.value
+      : [];
+
+
+  const travelSettlementSetting =
+    settingsRecords.find(
+      (item) =>
+        item?.key ===
+        TRAVEL_SETTLEMENT_SETTING_KEY
+    );
+
+
+  travelSettlements =
+    Array.isArray(
+      travelSettlementSetting?.value
+    )
+      ? travelSettlementSetting.value
+      : [];
 
 
   expenses.sort(
@@ -3745,6 +3803,16 @@ function showScreen(
   ) {
 
     renderPlannedExpenses();
+
+  }
+
+
+  if (
+    name ===
+    "settlement"
+  ) {
+
+    renderTravelSettlement();
 
   }
 
@@ -20271,6 +20339,5569 @@ function renderBackupStatus() {
 }
 
 
+
+
+
+// ========================================
+// TRAVEL SETTLEMENT
+// ========================================
+
+const settlementTripSelect =
+  document.getElementById(
+    "settlementTripSelect"
+  );
+
+
+const settlementPersonModal =
+  document.getElementById(
+    "settlementPersonModal"
+  );
+
+
+const settlementPersonForm =
+  document.getElementById(
+    "settlementPersonForm"
+  );
+
+
+const sharedExpenseModal =
+  document.getElementById(
+    "sharedExpenseModal"
+  );
+
+
+const sharedExpenseForm =
+  document.getElementById(
+    "sharedExpenseForm"
+  );
+
+
+const settlementPaymentModal =
+  document.getElementById(
+    "settlementPaymentModal"
+  );
+
+
+const settlementPaymentForm =
+  document.getElementById(
+    "settlementPaymentForm"
+  );
+
+
+function createEmptyTravelSettlement(
+  tripId
+) {
+
+  return {
+    tripId:
+      tripId,
+    people: [
+      {
+        id:
+          generateId(
+            "person"
+          ),
+        name:
+          "You",
+        isYou:
+          true,
+        createdAt:
+          new Date()
+            .toISOString()
+      }
+    ],
+    expenses: [],
+    payments: [],
+    createdAt:
+      new Date()
+        .toISOString(),
+    updatedAt:
+      new Date()
+        .toISOString()
+  };
+
+}
+
+
+function getSettlementForTrip(
+  tripId,
+  createIfMissing =
+    false
+) {
+
+  let settlement =
+    travelSettlements.find(
+      (
+        item
+      ) =>
+        item.tripId ===
+        tripId
+    );
+
+
+  if (
+    !settlement &&
+    createIfMissing &&
+    tripId
+  ) {
+
+    settlement =
+      createEmptyTravelSettlement(
+        tripId
+      );
+
+
+    travelSettlements.push(
+      settlement
+    );
+
+  }
+
+
+  return settlement ||
+    null;
+
+}
+
+
+function getActiveSettlementTrip() {
+
+  return trips.find(
+    (
+      trip
+    ) =>
+      trip.id ===
+      activeSettlementTripId
+  ) ||
+    null;
+
+}
+
+
+function getActiveTravelSettlement(
+  createIfMissing =
+    false
+) {
+
+  return getSettlementForTrip(
+    activeSettlementTripId,
+    createIfMissing
+  );
+
+}
+
+
+function getSettlementPerson(
+  settlement,
+  personId
+) {
+
+  return settlement?.people?.find(
+    (
+      person
+    ) =>
+      person.id ===
+      personId
+  ) ||
+    null;
+
+}
+
+
+async function saveTravelSettlements() {
+
+  await putRecord(
+    STORES.settings,
+    {
+      key:
+        TRAVEL_SETTLEMENT_SETTING_KEY,
+      value:
+        travelSettlements,
+      updatedAt:
+        new Date()
+          .toISOString()
+    }
+  );
+
+}
+
+
+function formatSettlementAmount(
+  amount,
+  currency
+) {
+
+  return formatCurrency(
+    Number(
+      amount ||
+      0
+    ),
+    currency ||
+      "PHP"
+  );
+
+}
+
+
+function normalizeSharedExpenseShares(
+  expense
+) {
+
+  const shares =
+    Array.isArray(
+      expense?.shares
+    )
+      ? expense.shares
+      : [];
+
+
+  return shares.filter(
+    (
+      share
+    ) =>
+      share &&
+      share.personId &&
+      Number(
+        share.amount
+      ) >=
+      0
+  );
+
+}
+
+
+function calculateSettlementBalances(
+  settlement
+) {
+
+  const balances =
+    {};
+
+
+  (
+    settlement?.people ||
+    []
+  ).forEach(
+    (
+      person
+    ) => {
+
+      balances[
+        person.id
+      ] =
+        0;
+
+    }
+  );
+
+
+  (
+    settlement?.expenses ||
+    []
+  ).forEach(
+    (
+      expense
+    ) => {
+
+      const amount =
+        Number(
+          expense.amount ||
+          0
+        );
+
+
+      if (
+        amount <=
+        0 ||
+        !balances.hasOwnProperty(
+          expense.payerId
+        )
+      ) {
+
+        return;
+
+      }
+
+
+      balances[
+        expense.payerId
+      ] +=
+        amount;
+
+
+      normalizeSharedExpenseShares(
+        expense
+      ).forEach(
+        (
+          share
+        ) => {
+
+          if (
+            balances.hasOwnProperty(
+              share.personId
+            )
+          ) {
+
+            balances[
+              share.personId
+            ] -=
+              Number(
+                share.amount ||
+                0
+              );
+
+          }
+
+        }
+      );
+
+    }
+  );
+
+
+  (
+    settlement?.payments ||
+    []
+  ).forEach(
+    (
+      payment
+    ) => {
+
+      const amount =
+        Number(
+          payment.amount ||
+          0
+        );
+
+
+      if (
+        amount <=
+        0
+      ) {
+
+        return;
+
+      }
+
+
+      if (
+        balances.hasOwnProperty(
+          payment.fromId
+        )
+      ) {
+
+        balances[
+          payment.fromId
+        ] +=
+          amount;
+
+      }
+
+
+      if (
+        balances.hasOwnProperty(
+          payment.toId
+        )
+      ) {
+
+        balances[
+          payment.toId
+        ] -=
+          amount;
+
+      }
+
+    }
+  );
+
+
+  return balances;
+
+}
+
+
+function calculateSettlementTransfers(
+  settlement
+) {
+
+  const balances =
+    calculateSettlementBalances(
+      settlement
+    );
+
+
+  const epsilon =
+    0.005;
+
+
+  const creditors =
+    Object.entries(
+      balances
+    )
+      .filter(
+        (
+          [
+            ,
+            amount
+          ]
+        ) =>
+          amount >
+          epsilon
+      )
+      .map(
+        (
+          [
+            personId,
+            amount
+          ]
+        ) => ({
+          personId,
+          amount
+        })
+      )
+      .sort(
+        (
+          a,
+          b
+        ) =>
+          b.amount -
+          a.amount
+      );
+
+
+  const debtors =
+    Object.entries(
+      balances
+    )
+      .filter(
+        (
+          [
+            ,
+            amount
+          ]
+        ) =>
+          amount <
+          -epsilon
+      )
+      .map(
+        (
+          [
+            personId,
+            amount
+          ]
+        ) => ({
+          personId,
+          amount:
+            Math.abs(
+              amount
+            )
+        })
+      )
+      .sort(
+        (
+          a,
+          b
+        ) =>
+          b.amount -
+          a.amount
+      );
+
+
+  const transfers =
+    [];
+
+
+  let debtorIndex =
+    0;
+
+
+  let creditorIndex =
+    0;
+
+
+  while (
+    debtorIndex <
+      debtors.length &&
+    creditorIndex <
+      creditors.length
+  ) {
+
+    const debtor =
+      debtors[
+        debtorIndex
+      ];
+
+
+    const creditor =
+      creditors[
+        creditorIndex
+      ];
+
+
+    const amount =
+      Math.min(
+        debtor.amount,
+        creditor.amount
+      );
+
+
+    if (
+      amount >
+      epsilon
+    ) {
+
+      transfers.push(
+        {
+          fromId:
+            debtor.personId,
+          toId:
+            creditor.personId,
+          amount:
+            amount
+        }
+      );
+
+    }
+
+
+    debtor.amount -=
+      amount;
+
+
+    creditor.amount -=
+      amount;
+
+
+    if (
+      debtor.amount <=
+      epsilon
+    ) {
+
+      debtorIndex++;
+
+    }
+
+
+    if (
+      creditor.amount <=
+      epsilon
+    ) {
+
+      creditorIndex++;
+
+    }
+
+  }
+
+
+  return transfers;
+
+}
+
+
+function getSettlementTripCurrency() {
+
+  return (
+    getActiveSettlementTrip()
+      ?.currency ||
+    "PHP"
+  );
+
+}
+
+
+function renderSettlementTripOptions() {
+
+  if (
+    !settlementTripSelect
+  ) {
+
+    return;
+
+  }
+
+
+  const previous =
+    activeSettlementTripId ||
+    settlementTripSelect.value;
+
+
+  settlementTripSelect.innerHTML =
+    `
+      <option value="">
+        Choose a trip
+      </option>
+    ` +
+    trips
+      .map(
+        (
+          trip
+        ) =>
+          `
+            <option value="${escapeHTML(
+              trip.id
+            )}">
+              ${escapeHTML(
+                trip.name
+              )}
+            </option>
+          `
+      )
+      .join("");
+
+
+  if (
+    trips.some(
+      (
+        trip
+      ) =>
+        trip.id ===
+        previous
+    )
+  ) {
+
+    settlementTripSelect.value =
+      previous;
+
+
+    activeSettlementTripId =
+      previous;
+
+  } else if (
+    trips.length ===
+    1
+  ) {
+
+    activeSettlementTripId =
+      trips[
+        0
+      ].id;
+
+
+    settlementTripSelect.value =
+      activeSettlementTripId;
+
+  }
+
+}
+
+
+function renderSettlementPeople(
+  settlement
+) {
+
+  const container =
+    document.getElementById(
+      "settlementPeopleList"
+    );
+
+
+  if (
+    !container
+  ) {
+
+    return;
+
+  }
+
+
+  container.innerHTML =
+    (
+      settlement.people ||
+      []
+    )
+      .map(
+        (
+          person
+        ) =>
+          `
+
+            <div class="settlement-person-chip">
+
+              <span class="settlement-person-avatar">
+                ${escapeHTML(
+                  (
+                    person.name ||
+                    "?"
+                  )
+                    .slice(
+                      0,
+                      1
+                    )
+                    .toUpperCase()
+                )}
+              </span>
+
+              <span class="settlement-person-name">
+                ${escapeHTML(
+                  person.name
+                )}
+                ${
+                  person.isYou
+                    ? `<small>You</small>`
+                    : ""
+                }
+              </span>
+
+              <button
+                type="button"
+                data-edit-settlement-person="${escapeHTML(
+                  person.id
+                )}"
+                aria-label="Edit ${escapeHTML(
+                  person.name
+                )}"
+              >
+                ✎
+              </button>
+
+              ${
+                person.isYou
+                  ? ""
+                  : `
+                      <button
+                        type="button"
+                        class="settlement-person-remove"
+                        data-remove-settlement-person="${escapeHTML(
+                          person.id
+                        )}"
+                        aria-label="Remove ${escapeHTML(
+                          person.name
+                        )}"
+                      >
+                        ×
+                      </button>
+                    `
+              }
+
+            </div>
+
+          `
+      )
+      .join("");
+
+
+  container
+    .querySelectorAll(
+      "[data-edit-settlement-person]"
+    )
+    .forEach(
+      (
+        button
+      ) => {
+
+        button.addEventListener(
+          "click",
+          () => {
+
+            const person =
+              getSettlementPerson(
+                settlement,
+                button.dataset
+                  .editSettlementPerson
+              );
+
+
+            if (
+              person
+            ) {
+
+              openSettlementPersonModal(
+                person
+              );
+
+            }
+
+          }
+        );
+
+      }
+    );
+
+
+  container
+    .querySelectorAll(
+      "[data-remove-settlement-person]"
+    )
+    .forEach(
+      (
+        button
+      ) => {
+
+        button.addEventListener(
+          "click",
+          async () => {
+
+            const personId =
+              button.dataset
+                .removeSettlementPerson;
+
+
+            const isUsed =
+              (
+                settlement.expenses ||
+                []
+              ).some(
+                (
+                  expense
+                ) =>
+                  expense.payerId ===
+                    personId ||
+                  normalizeSharedExpenseShares(
+                    expense
+                  ).some(
+                    (
+                      share
+                    ) =>
+                      share.personId ===
+                      personId
+                  )
+              ) ||
+              (
+                settlement.payments ||
+                []
+              ).some(
+                (
+                  payment
+                ) =>
+                  payment.fromId ===
+                    personId ||
+                  payment.toId ===
+                    personId
+              );
+
+
+            if (
+              isUsed
+            ) {
+
+              showToast(
+                "This person is already used in settlement history."
+              );
+
+
+              return;
+
+            }
+
+
+            settlement.people =
+              settlement.people.filter(
+                (
+                  person
+                ) =>
+                  person.id !==
+                  personId
+              );
+
+
+            settlement.updatedAt =
+              new Date()
+                .toISOString();
+
+
+            await saveTravelSettlements();
+
+
+            renderTravelSettlement();
+
+          }
+        );
+
+      }
+    );
+
+}
+
+
+function renderSettlementBalances(
+  settlement,
+  currency
+) {
+
+  const container =
+    document.getElementById(
+      "settlementBalanceList"
+    );
+
+
+  if (
+    !container
+  ) {
+
+    return;
+
+  }
+
+
+  const transfers =
+    calculateSettlementTransfers(
+      settlement
+    );
+
+
+  if (
+    transfers.length ===
+    0
+  ) {
+
+    container.innerHTML =
+      `
+        <div class="settlement-balanced-card">
+          <span>✨</span>
+          <div>
+            <strong>Everyone is settled up</strong>
+            <small>No one owes anyone right now.</small>
+          </div>
+        </div>
+      `;
+
+
+    return;
+
+  }
+
+
+  container.innerHTML =
+    transfers
+      .map(
+        (
+          transfer
+        ) => {
+
+          const from =
+            getSettlementPerson(
+              settlement,
+              transfer.fromId
+            );
+
+
+          const to =
+            getSettlementPerson(
+              settlement,
+              transfer.toId
+            );
+
+
+          return `
+            <div class="settlement-balance-card">
+              <div>
+                <strong>
+                  ${escapeHTML(
+                    from?.name ||
+                    "Someone"
+                  )}
+                </strong>
+                <span>pays</span>
+                <strong>
+                  ${escapeHTML(
+                    to?.name ||
+                    "Someone"
+                  )}
+                </strong>
+              </div>
+
+              <b>
+                ${formatSettlementAmount(
+                  transfer.amount,
+                  currency
+                )}
+              </b>
+
+              <button
+                type="button"
+                data-quick-settle-from="${escapeHTML(
+                  transfer.fromId
+                )}"
+                data-quick-settle-to="${escapeHTML(
+                  transfer.toId
+                )}"
+                data-quick-settle-amount="${transfer.amount}"
+              >
+                Settle
+              </button>
+            </div>
+          `;
+
+        }
+      )
+      .join("");
+
+
+  container
+    .querySelectorAll(
+      "[data-quick-settle-from]"
+    )
+    .forEach(
+      (
+        button
+      ) => {
+
+        button.addEventListener(
+          "click",
+          () => {
+
+            openSettlementPaymentModal(
+              {
+                fromId:
+                  button.dataset
+                    .quickSettleFrom,
+                toId:
+                  button.dataset
+                    .quickSettleTo,
+                amount:
+                  Number(
+                    button.dataset
+                      .quickSettleAmount
+                  )
+              }
+            );
+
+          }
+        );
+
+      }
+    );
+
+}
+
+
+function renderSettlementExpenses(
+  settlement,
+  currency
+) {
+
+  const list =
+    document.getElementById(
+      "settlementExpenseList"
+    );
+
+
+  const empty =
+    document.getElementById(
+      "settlementExpenseEmpty"
+    );
+
+
+  const count =
+    document.getElementById(
+      "settlementExpenseCount"
+    );
+
+
+  if (
+    !list ||
+    !empty
+  ) {
+
+    return;
+
+  }
+
+
+  const expensesList =
+    (
+      settlement.expenses ||
+      []
+    )
+      .slice()
+      .sort(
+        (
+          a,
+          b
+        ) =>
+          String(
+            b.date ||
+            ""
+          ).localeCompare(
+            String(
+              a.date ||
+              ""
+            )
+          )
+      );
+
+
+  if (
+    count
+  ) {
+
+    count.textContent =
+      String(
+        expensesList.length
+      );
+
+  }
+
+
+  empty.hidden =
+    expensesList.length >
+    0;
+
+
+  list.innerHTML =
+    expensesList
+      .map(
+        (
+          expense
+        ) => {
+
+          const payer =
+            getSettlementPerson(
+              settlement,
+              expense.payerId
+            );
+
+
+          const shares =
+            normalizeSharedExpenseShares(
+              expense
+            );
+
+
+          return `
+            <article class="settlement-history-card">
+
+              <div class="settlement-history-main">
+
+                <div class="settlement-history-icon">
+                  🍽️
+                </div>
+
+                <div>
+                  <strong>
+                    ${escapeHTML(
+                      expense.title
+                    )}
+                  </strong>
+
+                  <span>
+                    ${escapeHTML(
+                      formatDate(
+                        expense.date
+                      )
+                    )}
+                    ·
+                    Paid by
+                    ${escapeHTML(
+                      payer?.name ||
+                      "Unknown"
+                    )}
+                  </span>
+
+                  <small>
+                    Split between
+                    ${shares
+                      .map(
+                        (
+                          share
+                        ) =>
+                          escapeHTML(
+                            getSettlementPerson(
+                              settlement,
+                              share.personId
+                            )?.name ||
+                            "Unknown"
+                          )
+                      )
+                      .join(", ")}
+                  </small>
+                </div>
+
+                <b>
+                  ${formatSettlementAmount(
+                    expense.amount,
+                    currency
+                  )}
+                </b>
+
+              </div>
+
+              <div class="settlement-history-actions">
+
+                <button
+                  type="button"
+                  data-edit-shared-expense="${escapeHTML(
+                    expense.id
+                  )}"
+                >
+                  Edit
+                </button>
+
+                <button
+                  type="button"
+                  class="danger"
+                  data-delete-shared-expense="${escapeHTML(
+                    expense.id
+                  )}"
+                >
+                  Delete
+                </button>
+
+              </div>
+
+            </article>
+          `;
+
+        }
+      )
+      .join("");
+
+
+  list
+    .querySelectorAll(
+      "[data-edit-shared-expense]"
+    )
+    .forEach(
+      (
+        button
+      ) => {
+
+        button.addEventListener(
+          "click",
+          () => {
+
+            const expense =
+              settlement.expenses.find(
+                (
+                  item
+                ) =>
+                  item.id ===
+                  button.dataset
+                    .editSharedExpense
+              );
+
+
+            if (
+              expense
+            ) {
+
+              openSharedExpenseModal(
+                expense
+              );
+
+            }
+
+          }
+        );
+
+      }
+    );
+
+
+  list
+    .querySelectorAll(
+      "[data-delete-shared-expense]"
+    )
+    .forEach(
+      (
+        button
+      ) => {
+
+        button.addEventListener(
+          "click",
+          async () => {
+
+            const confirmed =
+              window.confirm(
+                "Delete this shared expense from the settlement?"
+              );
+
+
+            if (
+              !confirmed
+            ) {
+
+              return;
+
+            }
+
+
+            settlement.expenses =
+              settlement.expenses.filter(
+                (
+                  expense
+                ) =>
+                  expense.id !==
+                  button.dataset
+                    .deleteSharedExpense
+              );
+
+
+            settlement.updatedAt =
+              new Date()
+                .toISOString();
+
+
+            await saveTravelSettlements();
+
+
+            renderTravelSettlement();
+
+
+            showToast(
+              "Shared expense deleted"
+            );
+
+          }
+        );
+
+      }
+    );
+
+}
+
+
+function renderSettlementPayments(
+  settlement,
+  currency
+) {
+
+  const list =
+    document.getElementById(
+      "settlementPaymentList"
+    );
+
+
+  const empty =
+    document.getElementById(
+      "settlementPaymentEmpty"
+    );
+
+
+  if (
+    !list ||
+    !empty
+  ) {
+
+    return;
+
+  }
+
+
+  const payments =
+    (
+      settlement.payments ||
+      []
+    )
+      .slice()
+      .sort(
+        (
+          a,
+          b
+        ) =>
+          String(
+            b.date ||
+            ""
+          ).localeCompare(
+            String(
+              a.date ||
+              ""
+            )
+          )
+      );
+
+
+  empty.hidden =
+    payments.length >
+    0;
+
+
+  list.innerHTML =
+    payments
+      .map(
+        (
+          payment
+        ) => {
+
+          const from =
+            getSettlementPerson(
+              settlement,
+              payment.fromId
+            );
+
+
+          const to =
+            getSettlementPerson(
+              settlement,
+              payment.toId
+            );
+
+
+          return `
+            <div class="settlement-payment-card">
+
+              <div>
+                <strong>
+                  ${escapeHTML(
+                    from?.name ||
+                    "Someone"
+                  )}
+                  → 
+                  ${escapeHTML(
+                    to?.name ||
+                    "Someone"
+                  )}
+                </strong>
+
+                <span>
+                  ${escapeHTML(
+                    formatDate(
+                      payment.date
+                    )
+                  )}
+                  ${
+                    payment.note
+                      ? `· ${escapeHTML(
+                          payment.note
+                        )}`
+                      : ""
+                  }
+                </span>
+              </div>
+
+              <b>
+                ${formatSettlementAmount(
+                  payment.amount,
+                  currency
+                )}
+              </b>
+
+              <button
+                type="button"
+                data-delete-settlement-payment="${escapeHTML(
+                  payment.id
+                )}"
+                aria-label="Delete payment"
+              >
+                ×
+              </button>
+
+            </div>
+          `;
+
+        }
+      )
+      .join("");
+
+
+  list
+    .querySelectorAll(
+      "[data-delete-settlement-payment]"
+    )
+    .forEach(
+      (
+        button
+      ) => {
+
+        button.addEventListener(
+          "click",
+          async () => {
+
+            settlement.payments =
+              settlement.payments.filter(
+                (
+                  payment
+                ) =>
+                  payment.id !==
+                  button.dataset
+                    .deleteSettlementPayment
+              );
+
+
+            settlement.updatedAt =
+              new Date()
+                .toISOString();
+
+
+            await saveTravelSettlements();
+
+
+            renderTravelSettlement();
+
+
+            showToast(
+              "Settlement payment removed"
+            );
+
+          }
+        );
+
+      }
+    );
+
+}
+
+
+function renderTravelSettlement() {
+
+  renderSettlementTripOptions();
+
+
+  const workspace =
+    document.getElementById(
+      "settlementWorkspace"
+    );
+
+
+  const noTrips =
+    document.getElementById(
+      "settlementNoTrips"
+    );
+
+
+  const hint =
+    document.getElementById(
+      "settlementTripHint"
+    );
+
+
+  if (
+    trips.length ===
+    0
+  ) {
+
+    if (
+      workspace
+    ) {
+
+      workspace.hidden =
+        true;
+
+    }
+
+
+    if (
+      noTrips
+    ) {
+
+      noTrips.hidden =
+        false;
+
+    }
+
+
+    if (
+      settlementTripSelect
+    ) {
+
+      settlementTripSelect.disabled =
+        true;
+
+    }
+
+
+    return;
+
+  }
+
+
+  if (
+    noTrips
+  ) {
+
+    noTrips.hidden =
+      true;
+
+  }
+
+
+  if (
+    settlementTripSelect
+  ) {
+
+    settlementTripSelect.disabled =
+      false;
+
+  }
+
+
+  if (
+    !activeSettlementTripId
+  ) {
+
+    if (
+      workspace
+    ) {
+
+      workspace.hidden =
+        true;
+
+    }
+
+
+    if (
+      hint
+    ) {
+
+      hint.textContent =
+        "Choose a trip to start splitting expenses.";
+
+    }
+
+
+    return;
+
+  }
+
+
+  const trip =
+    getActiveSettlementTrip();
+
+
+  if (
+    !trip
+  ) {
+
+    activeSettlementTripId =
+      "";
+
+
+    renderTravelSettlement();
+
+
+    return;
+
+  }
+
+
+  const settlement =
+    getActiveTravelSettlement(
+      true
+    );
+
+
+  const currency =
+    trip.currency ||
+    "PHP";
+
+
+  if (
+    workspace
+  ) {
+
+    workspace.hidden =
+      false;
+
+  }
+
+
+  if (
+    hint
+  ) {
+
+    hint.textContent =
+      `${trip.destination || trip.name} · ${currency} · Settlement entries do not add to Momo spending totals.`;
+
+  }
+
+
+  const totalShared =
+    (
+      settlement.expenses ||
+      []
+    ).reduce(
+      (
+        total,
+        expense
+      ) =>
+        total +
+        Number(
+          expense.amount ||
+          0
+        ),
+      0
+    );
+
+
+  const transfers =
+    calculateSettlementTransfers(
+      settlement
+    );
+
+
+  document.getElementById(
+    "settlementSharedTotal"
+  ).textContent =
+    formatSettlementAmount(
+      totalShared,
+      currency
+    );
+
+
+  document.getElementById(
+    "settlementPeopleCount"
+  ).textContent =
+    String(
+      settlement.people.length
+    );
+
+
+  document.getElementById(
+    "settlementUnsettledCount"
+  ).textContent =
+    String(
+      transfers.length
+    );
+
+
+  renderSettlementPeople(
+    settlement
+  );
+
+
+  renderSettlementBalances(
+    settlement,
+    currency
+  );
+
+
+  renderSettlementExpenses(
+    settlement,
+    currency
+  );
+
+
+  renderSettlementPayments(
+    settlement,
+    currency
+  );
+
+}
+
+
+function populateSettlementPersonSelects() {
+
+  const settlement =
+    getActiveTravelSettlement(
+      true
+    );
+
+
+  if (
+    !settlement
+  ) {
+
+    return;
+
+  }
+
+
+  const options =
+    settlement.people
+      .map(
+        (
+          person
+        ) =>
+          `
+            <option value="${escapeHTML(
+              person.id
+            )}">
+              ${escapeHTML(
+                person.name
+              )}
+            </option>
+          `
+      )
+      .join("");
+
+
+  [
+    "sharedExpensePayer",
+    "settlementPaymentFrom",
+    "settlementPaymentTo"
+  ].forEach(
+    (
+      id
+    ) => {
+
+      const select =
+        document.getElementById(
+          id
+        );
+
+
+      if (
+        select
+      ) {
+
+        select.innerHTML =
+          options;
+
+      }
+
+    }
+  );
+
+}
+
+
+function openSettlementPersonModal(
+  person =
+    null
+) {
+
+  if (
+    !settlementPersonModal
+  ) {
+
+    return;
+
+  }
+
+
+  document.getElementById(
+    "settlementPersonTitle"
+  ).textContent =
+    person
+      ? "Edit Person"
+      : "Add Person";
+
+
+  document.getElementById(
+    "settlementPersonId"
+  ).value =
+    person?.id ||
+    "";
+
+
+  document.getElementById(
+    "settlementPersonName"
+  ).value =
+    person?.name ||
+    "";
+
+
+  settlementPersonModal.hidden =
+    false;
+
+
+  document.body.classList.add(
+    "drawer-open"
+  );
+
+
+  requestAnimationFrame(
+    () =>
+      document.getElementById(
+        "settlementPersonName"
+      )?.focus()
+  );
+
+}
+
+
+function closeSettlementPersonModal() {
+
+  if (
+    settlementPersonModal
+  ) {
+
+    settlementPersonModal.hidden =
+      true;
+
+  }
+
+
+  document.body.classList.remove(
+    "drawer-open"
+  );
+
+}
+
+
+function renderSharedExpenseParticipants(
+  expense =
+    null
+) {
+
+  const settlement =
+    getActiveTravelSettlement(
+      true
+    );
+
+
+  const container =
+    document.getElementById(
+      "sharedExpenseParticipants"
+    );
+
+
+  const splitMode =
+    document.getElementById(
+      "sharedExpenseSplitMode"
+    )?.value ||
+    "equal";
+
+
+  if (
+    !settlement ||
+    !container
+  ) {
+
+    return;
+
+  }
+
+
+  const existingShares =
+    new Map(
+      normalizeSharedExpenseShares(
+        expense
+      ).map(
+        (
+          share
+        ) => [
+          share.personId,
+          Number(
+            share.amount ||
+            0
+          )
+        ]
+      )
+    );
+
+
+  container.innerHTML =
+    settlement.people
+      .map(
+        (
+          person
+        ) => {
+
+          const isSelected =
+            expense
+              ? existingShares.has(
+                  person.id
+                )
+              : true;
+
+
+          return `
+            <label class="shared-participant-row">
+
+              <input
+                type="checkbox"
+                data-shared-person="${escapeHTML(
+                  person.id
+                )}"
+                ${
+                  isSelected
+                    ? "checked"
+                    : ""
+                }
+              >
+
+              <span class="shared-participant-avatar">
+                ${escapeHTML(
+                  person.name
+                    .slice(
+                      0,
+                      1
+                    )
+                    .toUpperCase()
+                )}
+              </span>
+
+              <strong>
+                ${escapeHTML(
+                  person.name
+                )}
+              </strong>
+
+              ${
+                splitMode ===
+                "exact"
+                  ? `
+                      <input
+                        class="shared-exact-amount"
+                        type="number"
+                        inputmode="decimal"
+                        min="0"
+                        step="0.01"
+                        data-shared-exact="${escapeHTML(
+                          person.id
+                        )}"
+                        value="${
+                          existingShares.has(
+                            person.id
+                          )
+                            ? existingShares.get(
+                                person.id
+                              )
+                            : ""
+                        }"
+                        placeholder="0"
+                      >
+                    `
+                  : `
+                      <span class="shared-equal-label">
+                        Equal
+                      </span>
+                    `
+              }
+
+            </label>
+          `;
+
+        }
+      )
+      .join("");
+
+}
+
+
+function updateSharedExpenseValidation() {
+
+  const validation =
+    document.getElementById(
+      "sharedExpenseValidation"
+    );
+
+
+  const splitMode =
+    document.getElementById(
+      "sharedExpenseSplitMode"
+    )?.value ||
+    "equal";
+
+
+  const amount =
+    Number(
+      document.getElementById(
+        "sharedExpenseAmount"
+      )?.value ||
+      0
+    );
+
+
+  if (
+    !validation
+  ) {
+
+    return;
+
+  }
+
+
+  if (
+    splitMode ===
+    "equal"
+  ) {
+
+    const checked =
+      document.querySelectorAll(
+        "#sharedExpenseParticipants [data-shared-person]:checked"
+      ).length;
+
+
+    validation.textContent =
+      checked
+        ? `${checked} ${
+            checked ===
+            1
+              ? "person"
+              : "people"
+          } sharing this expense equally.`
+        : "Choose at least one person.";
+
+
+    validation.classList.toggle(
+      "error",
+      checked ===
+      0
+    );
+
+
+    return;
+
+  }
+
+
+  const exactTotal =
+    Array.from(
+      document.querySelectorAll(
+        "#sharedExpenseParticipants [data-shared-exact]"
+      )
+    ).reduce(
+      (
+        total,
+        input
+      ) => {
+
+        const checkbox =
+          document.querySelector(
+            `[data-shared-person="${CSS.escape(
+              input.dataset
+                .sharedExact
+            )}"]`
+          );
+
+
+        return total +
+          (
+            checkbox?.checked
+              ? Number(
+                  input.value ||
+                  0
+                )
+              : 0
+          );
+
+      },
+      0
+    );
+
+
+  const difference =
+    Math.abs(
+      amount -
+      exactTotal
+    );
+
+
+  validation.textContent =
+    amount > 0
+      ? `Assigned ${formatSettlementAmount(
+          exactTotal,
+          getSettlementTripCurrency()
+        )} of ${formatSettlementAmount(
+          amount,
+          getSettlementTripCurrency()
+        )}.`
+      : "Enter the expense amount first.";
+
+
+  validation.classList.toggle(
+    "error",
+    amount >
+      0 &&
+    difference >
+      0.01
+  );
+
+}
+
+
+function openSharedExpenseModal(
+  expense =
+    null
+) {
+
+  const settlement =
+    getActiveTravelSettlement(
+      true
+    );
+
+
+  const trip =
+    getActiveSettlementTrip();
+
+
+  if (
+    !settlement ||
+    !trip ||
+    settlement.people.length ===
+    0 ||
+    !sharedExpenseModal
+  ) {
+
+    return;
+
+  }
+
+
+  editingSharedExpenseId =
+    expense?.id ||
+    "";
+
+
+  populateSettlementPersonSelects();
+
+
+  document.getElementById(
+    "sharedExpenseModalTitle"
+  ).textContent =
+    expense
+      ? "Edit Shared Expense"
+      : "Add Shared Expense";
+
+
+  document.getElementById(
+    "sharedExpenseId"
+  ).value =
+    expense?.id ||
+    "";
+
+
+  document.getElementById(
+    "sharedExpenseTitle"
+  ).value =
+    expense?.title ||
+    "";
+
+
+  document.getElementById(
+    "sharedExpenseAmount"
+  ).value =
+    expense?.amount ||
+    "";
+
+
+  document.getElementById(
+    "sharedExpenseCurrency"
+  ).value =
+    trip.currency ||
+    "PHP";
+
+
+  document.getElementById(
+    "sharedExpenseCurrency"
+  ).disabled =
+    true;
+
+
+  document.getElementById(
+    "sharedExpenseDate"
+  ).value =
+    expense?.date ||
+    getTodayString();
+
+
+  document.getElementById(
+    "sharedExpensePayer"
+  ).value =
+    expense?.payerId ||
+    settlement.people[
+      0
+    ].id;
+
+
+  document.getElementById(
+    "sharedExpenseSplitMode"
+  ).value =
+    expense?.splitMode ||
+    "equal";
+
+
+  document.getElementById(
+    "sharedExpenseNotes"
+  ).value =
+    expense?.notes ||
+    "";
+
+
+  renderSharedExpenseParticipants(
+    expense
+  );
+
+
+  updateSharedExpenseValidation();
+
+
+  sharedExpenseModal.hidden =
+    false;
+
+
+  document.body.classList.add(
+    "drawer-open"
+  );
+
+}
+
+
+function closeSharedExpenseModal() {
+
+  if (
+    sharedExpenseModal
+  ) {
+
+    sharedExpenseModal.hidden =
+      true;
+
+  }
+
+
+  editingSharedExpenseId =
+    "";
+
+
+  document.body.classList.remove(
+    "drawer-open"
+  );
+
+}
+
+
+function openSettlementPaymentModal(
+  preset =
+    null
+) {
+
+  const settlement =
+    getActiveTravelSettlement(
+      true
+    );
+
+
+  if (
+    !settlement ||
+    settlement.people.length <
+      2 ||
+    !settlementPaymentModal
+  ) {
+
+    showToast(
+      "Add at least two people first."
+    );
+
+
+    return;
+
+  }
+
+
+  populateSettlementPersonSelects();
+
+
+  document.getElementById(
+    "settlementPaymentFrom"
+  ).value =
+    preset?.fromId ||
+    settlement.people[
+      0
+    ].id;
+
+
+  document.getElementById(
+    "settlementPaymentTo"
+  ).value =
+    preset?.toId ||
+    settlement.people[
+      1
+    ].id;
+
+
+  document.getElementById(
+    "settlementPaymentAmount"
+  ).value =
+    preset?.amount
+      ? Number(
+          preset.amount
+        ).toFixed(
+          2
+        )
+      : "";
+
+
+  document.getElementById(
+    "settlementPaymentDate"
+  ).value =
+    getTodayString();
+
+
+  document.getElementById(
+    "settlementPaymentNote"
+  ).value =
+    "";
+
+
+  settlementPaymentModal.hidden =
+    false;
+
+
+  document.body.classList.add(
+    "drawer-open"
+  );
+
+}
+
+
+function closeSettlementPaymentModal() {
+
+  if (
+    settlementPaymentModal
+  ) {
+
+    settlementPaymentModal.hidden =
+      true;
+
+  }
+
+
+  document.body.classList.remove(
+    "drawer-open"
+  );
+
+}
+
+
+settlementTripSelect
+  ?.addEventListener(
+    "change",
+    async () => {
+
+      activeSettlementTripId =
+        settlementTripSelect.value;
+
+
+      if (
+        activeSettlementTripId
+      ) {
+
+        getActiveTravelSettlement(
+          true
+        );
+
+
+        await saveTravelSettlements();
+
+      }
+
+
+      renderTravelSettlement();
+
+    }
+  );
+
+
+document
+  .getElementById(
+    "addSettlementPersonButton"
+  )
+  ?.addEventListener(
+    "click",
+    () =>
+      openSettlementPersonModal()
+  );
+
+
+document
+  .getElementById(
+    "addSharedExpenseButton"
+  )
+  ?.addEventListener(
+    "click",
+    () => {
+
+      const settlement =
+        getActiveTravelSettlement(
+          true
+        );
+
+
+      if (
+        !settlement ||
+        settlement.people.length <
+          1
+      ) {
+
+        showToast(
+          "Add a traveler first."
+        );
+
+
+        return;
+
+      }
+
+
+      openSharedExpenseModal();
+
+    }
+  );
+
+
+document
+  .getElementById(
+    "recordSettlementPaymentButton"
+  )
+  ?.addEventListener(
+    "click",
+    () =>
+      openSettlementPaymentModal()
+  );
+
+
+document
+  .getElementById(
+    "closeSettlementPerson"
+  )
+  ?.addEventListener(
+    "click",
+    closeSettlementPersonModal
+  );
+
+
+document
+  .getElementById(
+    "closeSharedExpense"
+  )
+  ?.addEventListener(
+    "click",
+    closeSharedExpenseModal
+  );
+
+
+document
+  .getElementById(
+    "closeSettlementPayment"
+  )
+  ?.addEventListener(
+    "click",
+    closeSettlementPaymentModal
+  );
+
+
+[
+  settlementPersonModal,
+  sharedExpenseModal,
+  settlementPaymentModal
+].forEach(
+  (
+    modal
+  ) => {
+
+    modal?.addEventListener(
+      "click",
+      (
+        event
+      ) => {
+
+        if (
+          event.target !==
+          modal
+        ) {
+
+          return;
+
+        }
+
+
+        if (
+          modal ===
+          settlementPersonModal
+        ) {
+
+          closeSettlementPersonModal();
+
+        } else if (
+          modal ===
+          sharedExpenseModal
+        ) {
+
+          closeSharedExpenseModal();
+
+        } else {
+
+          closeSettlementPaymentModal();
+
+        }
+
+      }
+    );
+
+  }
+);
+
+
+settlementPersonForm
+  ?.addEventListener(
+    "submit",
+    async (
+      event
+    ) => {
+
+      event.preventDefault();
+
+
+      const settlement =
+        getActiveTravelSettlement(
+          true
+        );
+
+
+      if (
+        !settlement
+      ) {
+
+        return;
+
+      }
+
+
+      const id =
+        document.getElementById(
+          "settlementPersonId"
+        ).value;
+
+
+      const name =
+        document.getElementById(
+          "settlementPersonName"
+        ).value
+          .trim();
+
+
+      if (
+        !name
+      ) {
+
+        return;
+
+      }
+
+
+      const duplicate =
+        settlement.people.some(
+          (
+            person
+          ) =>
+            person.id !==
+              id &&
+            person.name
+              .trim()
+              .toLowerCase() ===
+            name.toLowerCase()
+        );
+
+
+      if (
+        duplicate
+      ) {
+
+        showToast(
+          "That person is already in this trip."
+        );
+
+
+        return;
+
+      }
+
+
+      const existing =
+        settlement.people.find(
+          (
+            person
+          ) =>
+            person.id ===
+            id
+        );
+
+
+      if (
+        existing
+      ) {
+
+        existing.name =
+          name;
+
+      } else {
+
+        settlement.people.push(
+          {
+            id:
+              generateId(
+                "person"
+              ),
+            name:
+              name,
+            isYou:
+              false,
+            createdAt:
+              new Date()
+                .toISOString()
+          }
+        );
+
+      }
+
+
+      settlement.updatedAt =
+        new Date()
+          .toISOString();
+
+
+      await saveTravelSettlements();
+
+
+      closeSettlementPersonModal();
+
+
+      renderTravelSettlement();
+
+
+      showToast(
+        existing
+          ? "Person updated"
+          : "Person added"
+      );
+
+    }
+  );
+
+
+document
+  .getElementById(
+    "sharedExpenseSplitMode"
+  )
+  ?.addEventListener(
+    "change",
+    () => {
+
+      const settlement =
+        getActiveTravelSettlement(
+          true
+        );
+
+
+      const expense =
+        settlement?.expenses?.find(
+          (
+            item
+          ) =>
+            item.id ===
+            editingSharedExpenseId
+        );
+
+
+      renderSharedExpenseParticipants(
+        expense
+      );
+
+
+      updateSharedExpenseValidation();
+
+    }
+  );
+
+
+document
+  .getElementById(
+    "sharedExpenseAmount"
+  )
+  ?.addEventListener(
+    "input",
+    updateSharedExpenseValidation
+  );
+
+
+document
+  .getElementById(
+    "sharedExpenseParticipants"
+  )
+  ?.addEventListener(
+    "input",
+    updateSharedExpenseValidation
+  );
+
+
+document
+  .getElementById(
+    "sharedExpenseParticipants"
+  )
+  ?.addEventListener(
+    "change",
+    updateSharedExpenseValidation
+  );
+
+
+sharedExpenseForm
+  ?.addEventListener(
+    "submit",
+    async (
+      event
+    ) => {
+
+      event.preventDefault();
+
+
+      const settlement =
+        getActiveTravelSettlement(
+          true
+        );
+
+
+      const trip =
+        getActiveSettlementTrip();
+
+
+      if (
+        !settlement ||
+        !trip
+      ) {
+
+        return;
+
+      }
+
+
+      const amount =
+        Number(
+          document.getElementById(
+            "sharedExpenseAmount"
+          ).value
+        );
+
+
+      const splitMode =
+        document.getElementById(
+          "sharedExpenseSplitMode"
+        ).value;
+
+
+      const checkedIds =
+        Array.from(
+          document.querySelectorAll(
+            "#sharedExpenseParticipants [data-shared-person]:checked"
+          )
+        ).map(
+          (
+            input
+          ) =>
+            input.dataset
+              .sharedPerson
+        );
+
+
+      if (
+        checkedIds.length ===
+        0
+      ) {
+
+        showToast(
+          "Choose at least one person to split with."
+        );
+
+
+        return;
+
+      }
+
+
+      let shares =
+        [];
+
+
+      if (
+        splitMode ===
+        "equal"
+      ) {
+
+        const baseShare =
+          amount /
+          checkedIds.length;
+
+
+        let assigned =
+          0;
+
+
+        shares =
+          checkedIds.map(
+            (
+              personId,
+              index
+            ) => {
+
+              const shareAmount =
+                index ===
+                  checkedIds.length -
+                  1
+                  ? amount -
+                    assigned
+                  : Math.round(
+                      baseShare *
+                      100
+                    ) /
+                    100;
+
+
+              assigned +=
+                shareAmount;
+
+
+              return {
+                personId:
+                  personId,
+                amount:
+                  shareAmount
+              };
+
+            }
+          );
+
+      } else {
+
+        shares =
+          checkedIds.map(
+            (
+              personId
+            ) => {
+
+              const input =
+                document.querySelector(
+                  `[data-shared-exact="${CSS.escape(
+                    personId
+                  )}"]`
+                );
+
+
+              return {
+                personId:
+                  personId,
+                amount:
+                  Number(
+                    input?.value ||
+                    0
+                  )
+              };
+
+            }
+          );
+
+
+        const exactTotal =
+          shares.reduce(
+            (
+              total,
+              share
+            ) =>
+              total +
+              share.amount,
+            0
+          );
+
+
+        if (
+          Math.abs(
+            exactTotal -
+            amount
+          ) >
+          0.01
+        ) {
+
+          showToast(
+            "Exact shares need to add up to the expense amount."
+          );
+
+
+          updateSharedExpenseValidation();
+
+
+          return;
+
+        }
+
+      }
+
+
+      const id =
+        document.getElementById(
+          "sharedExpenseId"
+        ).value;
+
+
+      const previous =
+        settlement.expenses.find(
+          (
+            expense
+          ) =>
+            expense.id ===
+            id
+        );
+
+
+      const sharedExpense = {
+        id:
+          previous?.id ||
+          generateId(
+            "shared"
+          ),
+        title:
+          document.getElementById(
+            "sharedExpenseTitle"
+          ).value
+            .trim(),
+        amount:
+          amount,
+        currency:
+          trip.currency ||
+          "PHP",
+        date:
+          document.getElementById(
+            "sharedExpenseDate"
+          ).value,
+        payerId:
+          document.getElementById(
+            "sharedExpensePayer"
+          ).value,
+        splitMode:
+          splitMode,
+        shares:
+          shares,
+        notes:
+          document.getElementById(
+            "sharedExpenseNotes"
+          ).value
+            .trim(),
+        createdAt:
+          previous?.createdAt ||
+          new Date()
+            .toISOString(),
+        updatedAt:
+          new Date()
+            .toISOString()
+      };
+
+
+      if (
+        previous
+      ) {
+
+        settlement.expenses =
+          settlement.expenses.map(
+            (
+              expense
+            ) =>
+              expense.id ===
+                previous.id
+                ? sharedExpense
+                : expense
+          );
+
+      } else {
+
+        settlement.expenses.push(
+          sharedExpense
+        );
+
+      }
+
+
+      settlement.updatedAt =
+        new Date()
+          .toISOString();
+
+
+      await saveTravelSettlements();
+
+
+      closeSharedExpenseModal();
+
+
+      renderTravelSettlement();
+
+
+      showToast(
+        previous
+          ? "Shared expense updated"
+          : "Shared expense added 🤝"
+      );
+
+    }
+  );
+
+
+settlementPaymentForm
+  ?.addEventListener(
+    "submit",
+    async (
+      event
+    ) => {
+
+      event.preventDefault();
+
+
+      const settlement =
+        getActiveTravelSettlement(
+          true
+        );
+
+
+      if (
+        !settlement
+      ) {
+
+        return;
+
+      }
+
+
+      const fromId =
+        document.getElementById(
+          "settlementPaymentFrom"
+        ).value;
+
+
+      const toId =
+        document.getElementById(
+          "settlementPaymentTo"
+        ).value;
+
+
+      const amount =
+        Number(
+          document.getElementById(
+            "settlementPaymentAmount"
+          ).value
+        );
+
+
+      if (
+        fromId ===
+        toId
+      ) {
+
+        showToast(
+          "Choose two different people."
+        );
+
+
+        return;
+
+      }
+
+
+      if (
+        !Number.isFinite(
+          amount
+        ) ||
+        amount <=
+        0
+      ) {
+
+        showToast(
+          "Enter a valid payment amount."
+        );
+
+
+        return;
+
+      }
+
+
+      settlement.payments.push(
+        {
+          id:
+            generateId(
+              "settle"
+            ),
+          fromId:
+            fromId,
+          toId:
+            toId,
+          amount:
+            amount,
+          date:
+            document.getElementById(
+              "settlementPaymentDate"
+            ).value ||
+            getTodayString(),
+          note:
+            document.getElementById(
+              "settlementPaymentNote"
+            ).value
+              .trim(),
+          createdAt:
+            new Date()
+              .toISOString()
+        }
+      );
+
+
+      settlement.updatedAt =
+        new Date()
+          .toISOString();
+
+
+      await saveTravelSettlements();
+
+
+      closeSettlementPaymentModal();
+
+
+      renderTravelSettlement();
+
+
+      showToast(
+        "Payment recorded ✓"
+      );
+
+    }
+  );
+
+
+// ========================================
+// SAVINGS GOALS
+// ========================================
+
+const savingsGoalModal =
+  document.getElementById(
+    "savingsGoalModal"
+  );
+
+
+const savingsGoalForm =
+  document.getElementById(
+    "savingsGoalForm"
+  );
+
+
+const savingsGoalDetailModal =
+  document.getElementById(
+    "savingsGoalDetailModal"
+  );
+
+
+const savingsContributionModal =
+  document.getElementById(
+    "savingsContributionModal"
+  );
+
+
+const savingsContributionForm =
+  document.getElementById(
+    "savingsContributionForm"
+  );
+
+
+function getSavingsGoalSaved(
+  goal
+) {
+
+  return (
+    Array.isArray(
+      goal?.contributions
+    )
+      ? goal.contributions
+      : []
+  ).reduce(
+    (
+      total,
+      contribution
+    ) =>
+      total +
+      Number(
+        contribution.amount ||
+        0
+      ),
+    0
+  );
+
+}
+
+
+function getSavingsGoalProgress(
+  goal
+) {
+
+  const target =
+    Number(
+      goal?.targetAmount ||
+      0
+    );
+
+
+  if (
+    target <=
+    0
+  ) {
+
+    return 0;
+
+  }
+
+
+  return Math.max(
+    0,
+    Math.min(
+      100,
+      (
+        getSavingsGoalSaved(
+          goal
+        ) /
+        target
+      ) *
+      100
+    )
+  );
+
+}
+
+
+async function saveSavingsGoals() {
+
+  await putRecord(
+    STORES.settings,
+    {
+      key:
+        SAVINGS_GOALS_SETTING_KEY,
+      value:
+        savingsGoals,
+      updatedAt:
+        new Date()
+          .toISOString()
+    }
+  );
+
+}
+
+
+function openSavingsGoalModal(
+  goal =
+    null
+) {
+
+  if (
+    !savingsGoalModal
+  ) {
+
+    return;
+
+  }
+
+
+  document.getElementById(
+    "savingsGoalModalTitle"
+  ).textContent =
+    goal
+      ? "Edit Goal"
+      : "New Goal";
+
+
+  document.getElementById(
+    "savingsGoalId"
+  ).value =
+    goal?.id ||
+    "";
+
+
+  document.getElementById(
+    "savingsGoalEmoji"
+  ).value =
+    goal?.emoji ||
+    "🌱";
+
+
+  document.getElementById(
+    "savingsGoalName"
+  ).value =
+    goal?.name ||
+    "";
+
+
+  document.getElementById(
+    "savingsGoalTarget"
+  ).value =
+    goal?.targetAmount ||
+    "";
+
+
+  document.getElementById(
+    "savingsGoalCurrency"
+  ).value =
+    goal?.currency ||
+    "PHP";
+
+
+  document.getElementById(
+    "savingsGoalTargetDate"
+  ).value =
+    goal?.targetDate ||
+    "";
+
+
+  document.getElementById(
+    "savingsGoalNotes"
+  ).value =
+    goal?.notes ||
+    "";
+
+
+  savingsGoalModal.hidden =
+    false;
+
+
+  document.body.classList.add(
+    "drawer-open"
+  );
+
+
+  requestAnimationFrame(
+    () =>
+      document.getElementById(
+        "savingsGoalName"
+      )?.focus()
+  );
+
+}
+
+
+function closeSavingsGoalModal() {
+
+  if (
+    savingsGoalModal
+  ) {
+
+    savingsGoalModal.hidden =
+      true;
+
+  }
+
+
+  document.body.classList.remove(
+    "drawer-open"
+  );
+
+}
+
+
+function closeSavingsGoalDetail() {
+
+  if (
+    savingsGoalDetailModal
+  ) {
+
+    savingsGoalDetailModal.hidden =
+      true;
+
+  }
+
+
+  selectedSavingsGoalId =
+    "";
+
+
+  document.body.classList.remove(
+    "drawer-open"
+  );
+
+}
+
+
+function closeSavingsContributionModal() {
+
+  if (
+    savingsContributionModal
+  ) {
+
+    savingsContributionModal.hidden =
+      true;
+
+  }
+
+}
+
+
+function openSavingsContributionModal(
+  goal
+) {
+
+  if (
+    !goal ||
+    !savingsContributionModal
+  ) {
+
+    return;
+
+  }
+
+
+  document.getElementById(
+    "savingsContributionTitle"
+  ).textContent =
+    `Add to ${goal.name}`;
+
+
+  document.getElementById(
+    "savingsContributionGoalId"
+  ).value =
+    goal.id;
+
+
+  document.getElementById(
+    "savingsContributionAmount"
+  ).value =
+    "";
+
+
+  document.getElementById(
+    "savingsContributionDate"
+  ).value =
+    getTodayString();
+
+
+  document.getElementById(
+    "savingsContributionNote"
+  ).value =
+    "";
+
+
+  savingsContributionModal.hidden =
+    false;
+
+
+  requestAnimationFrame(
+    () =>
+      document.getElementById(
+        "savingsContributionAmount"
+      )?.focus()
+  );
+
+}
+
+
+function renderSavingsGoals() {
+
+  const list =
+    document.getElementById(
+      "savingsGoalList"
+    );
+
+
+  const empty =
+    document.getElementById(
+      "savingsGoalEmpty"
+    );
+
+
+  const totalSaved =
+    document.getElementById(
+      "savingsTotalSaved"
+    );
+
+
+  const goalCount =
+    document.getElementById(
+      "savingsGoalCount"
+    );
+
+
+  if (
+    !list ||
+    !empty
+  ) {
+
+    return;
+
+  }
+
+
+  const sorted =
+    [
+      ...savingsGoals
+    ].sort(
+      (
+        a,
+        b
+      ) => {
+
+        const completeA =
+          getSavingsGoalProgress(
+            a
+          ) >=
+          100;
+
+
+        const completeB =
+          getSavingsGoalProgress(
+            b
+          ) >=
+          100;
+
+
+        if (
+          completeA !==
+          completeB
+        ) {
+
+          return completeA
+            ? 1
+            : -1;
+
+        }
+
+
+        return String(
+          a.targetDate ||
+          "9999-12-31"
+        ).localeCompare(
+          String(
+            b.targetDate ||
+            "9999-12-31"
+          )
+        );
+
+      }
+    );
+
+
+  if (
+    goalCount
+  ) {
+
+    goalCount.textContent =
+      String(
+        savingsGoals.length
+      );
+
+  }
+
+
+  if (
+    totalSaved
+  ) {
+
+    const phpTotal =
+      savingsGoals.reduce(
+        (
+          total,
+          goal
+        ) =>
+          total +
+          convertCurrency(
+            getSavingsGoalSaved(
+              goal
+            ),
+            goal.currency ||
+              "PHP",
+            "PHP"
+          ),
+        0
+      );
+
+
+    totalSaved.textContent =
+      formatCurrency(
+        phpTotal,
+        "PHP"
+      );
+
+  }
+
+
+  if (
+    sorted.length ===
+    0
+  ) {
+
+    list.innerHTML =
+      "";
+
+
+    empty.hidden =
+      false;
+
+
+    return;
+
+  }
+
+
+  empty.hidden =
+    true;
+
+
+  list.innerHTML =
+    sorted
+      .map(
+        (
+          goal
+        ) => {
+
+          const saved =
+            getSavingsGoalSaved(
+              goal
+            );
+
+
+          const target =
+            Number(
+              goal.targetAmount ||
+              0
+            );
+
+
+          const remaining =
+            Math.max(
+              0,
+              target -
+              saved
+            );
+
+
+          const progress =
+            getSavingsGoalProgress(
+              goal
+            );
+
+
+          const complete =
+            progress >=
+            100;
+
+
+          return `
+
+            <article
+              class="savings-goal-card ${
+                complete
+                  ? "complete"
+                  : ""
+              }"
+              data-savings-goal-id="${escapeHTML(
+                goal.id
+              )}"
+            >
+
+              <button
+                class="savings-goal-main"
+                type="button"
+                data-open-savings-goal="${escapeHTML(
+                  goal.id
+                )}"
+              >
+
+                <div class="savings-goal-top">
+
+                  <span class="savings-goal-emoji">
+                    ${escapeHTML(
+                      goal.emoji ||
+                      "🌱"
+                    )}
+                  </span>
+
+                  <div class="savings-goal-title">
+
+                    <strong>
+                      ${escapeHTML(
+                        goal.name
+                      )}
+                    </strong>
+
+                    <span>
+                      ${
+                        complete
+                          ? "Goal reached ✨"
+                          : goal.targetDate
+                            ? `Target ${escapeHTML(
+                                formatShortDate(
+                                  goal.targetDate
+                                )
+                              )}`
+                            : "No target date"
+                      }
+                    </span>
+
+                  </div>
+
+                  <strong class="savings-goal-percent">
+                    ${Math.round(
+                      progress
+                    )}%
+                  </strong>
+
+                </div>
+
+
+                <div class="savings-progress-track">
+
+                  <div
+                    class="savings-progress-fill"
+                    style="width:${progress}%"
+                  ></div>
+
+                </div>
+
+
+                <div class="savings-goal-numbers">
+
+                  <div>
+                    <span>Saved</span>
+                    <strong>
+                      ${formatCurrency(
+                        saved,
+                        goal.currency ||
+                        "PHP"
+                      )}
+                    </strong>
+                  </div>
+
+                  <div>
+                    <span>Remaining</span>
+                    <strong>
+                      ${formatCurrency(
+                        remaining,
+                        goal.currency ||
+                        "PHP"
+                      )}
+                    </strong>
+                  </div>
+
+                  <div>
+                    <span>Target</span>
+                    <strong>
+                      ${formatCurrency(
+                        target,
+                        goal.currency ||
+                        "PHP"
+                      )}
+                    </strong>
+                  </div>
+
+                </div>
+
+              </button>
+
+
+              <button
+                class="savings-contribute-btn"
+                type="button"
+                data-add-savings-contribution="${escapeHTML(
+                  goal.id
+                )}"
+              >
+                ＋ Add Money
+              </button>
+
+            </article>
+
+          `;
+
+        }
+      )
+      .join("");
+
+
+  list
+    .querySelectorAll(
+      "[data-open-savings-goal]"
+    )
+    .forEach(
+      (
+        button
+      ) => {
+
+        button.addEventListener(
+          "click",
+          () => {
+
+            const goal =
+              savingsGoals.find(
+                (
+                  item
+                ) =>
+                  item.id ===
+                  button.dataset
+                    .openSavingsGoal
+              );
+
+
+            if (
+              goal
+            ) {
+
+              openSavingsGoalDetail(
+                goal
+              );
+
+            }
+
+          }
+        );
+
+      }
+    );
+
+
+  list
+    .querySelectorAll(
+      "[data-add-savings-contribution]"
+    )
+    .forEach(
+      (
+        button
+      ) => {
+
+        button.addEventListener(
+          "click",
+          () => {
+
+            const goal =
+              savingsGoals.find(
+                (
+                  item
+                ) =>
+                  item.id ===
+                  button.dataset
+                    .addSavingsContribution
+              );
+
+
+            if (
+              goal
+            ) {
+
+              openSavingsContributionModal(
+                goal
+              );
+
+            }
+
+          }
+        );
+
+      }
+    );
+
+}
+
+
+function openSavingsGoalDetail(
+  goal
+) {
+
+  if (
+    !goal ||
+    !savingsGoalDetailModal
+  ) {
+
+    return;
+
+  }
+
+
+  selectedSavingsGoalId =
+    goal.id;
+
+
+  const title =
+    document.getElementById(
+      "savingsGoalDetailTitle"
+    );
+
+
+  const body =
+    document.getElementById(
+      "savingsGoalDetailBody"
+    );
+
+
+  if (
+    title
+  ) {
+
+    title.textContent =
+      `${goal.emoji || "🌱"} ${goal.name}`;
+
+  }
+
+
+  if (
+    !body
+  ) {
+
+    return;
+
+  }
+
+
+  const saved =
+    getSavingsGoalSaved(
+      goal
+    );
+
+
+  const target =
+    Number(
+      goal.targetAmount ||
+      0
+    );
+
+
+  const remaining =
+    Math.max(
+      0,
+      target -
+      saved
+    );
+
+
+  const progress =
+    getSavingsGoalProgress(
+      goal
+    );
+
+
+  const contributions =
+    (
+      Array.isArray(
+        goal.contributions
+      )
+        ? goal.contributions
+        : []
+    )
+      .slice()
+      .sort(
+        (
+          a,
+          b
+        ) =>
+          String(
+            b.date ||
+            ""
+          ).localeCompare(
+            String(
+              a.date ||
+              ""
+            )
+          )
+      );
+
+
+  body.innerHTML =
+    `
+
+      <section class="savings-detail-hero">
+
+        <div class="savings-detail-progress-copy">
+
+          <strong>
+            ${formatCurrency(
+              saved,
+              goal.currency ||
+              "PHP"
+            )}
+          </strong>
+
+          <span>
+            of
+            ${formatCurrency(
+              target,
+              goal.currency ||
+              "PHP"
+            )}
+          </span>
+
+        </div>
+
+        <div class="savings-progress-track large">
+          <div
+            class="savings-progress-fill"
+            style="width:${progress}%"
+          ></div>
+        </div>
+
+        <div class="savings-detail-stats">
+          <span>
+            ${Math.round(
+              progress
+            )}% complete
+          </span>
+          <span>
+            ${formatCurrency(
+              remaining,
+              goal.currency ||
+              "PHP"
+            )} left
+          </span>
+        </div>
+
+        ${
+          goal.targetDate
+            ? `
+                <p class="savings-detail-date">
+                  🎯 Target:
+                  ${escapeHTML(
+                    formatDate(
+                      goal.targetDate
+                    )
+                  )}
+                </p>
+              `
+            : ""
+        }
+
+        ${
+          goal.notes
+            ? `
+                <p class="savings-detail-notes">
+                  ${escapeHTML(
+                    goal.notes
+                  )}
+                </p>
+              `
+            : ""
+        }
+
+      </section>
+
+
+      <div class="savings-detail-actions">
+
+        <button
+          type="button"
+          class="primary-button"
+          data-detail-add-contribution="${escapeHTML(
+            goal.id
+          )}"
+        >
+          ＋ Add Money
+        </button>
+
+        <button
+          type="button"
+          class="secondary-btn"
+          data-edit-savings-goal="${escapeHTML(
+            goal.id
+          )}"
+        >
+          ✎ Edit Goal
+        </button>
+
+      </div>
+
+
+      <section class="savings-history-section">
+
+        <div class="section-title-row">
+          <h3>Contribution History</h3>
+          <span>
+            ${contributions.length}
+          </span>
+        </div>
+
+        ${
+          contributions.length
+            ? `
+                <div class="savings-history-list">
+
+                  ${contributions
+                    .map(
+                      (
+                        contribution
+                      ) =>
+                        `
+                          <div class="savings-history-item">
+
+                            <div>
+                              <strong>
+                                +${formatCurrency(
+                                  contribution.amount,
+                                  goal.currency ||
+                                  "PHP"
+                                )}
+                              </strong>
+
+                              <span>
+                                ${escapeHTML(
+                                  formatDate(
+                                    contribution.date
+                                  )
+                                )}
+                              </span>
+
+                              ${
+                                contribution.note
+                                  ? `
+                                      <small>
+                                        ${escapeHTML(
+                                          contribution.note
+                                        )}
+                                      </small>
+                                    `
+                                  : ""
+                              }
+                            </div>
+
+                            <button
+                              type="button"
+                              class="savings-history-delete"
+                              data-delete-savings-contribution="${escapeHTML(
+                                contribution.id
+                              )}"
+                              aria-label="Delete contribution"
+                            >
+                              ×
+                            </button>
+
+                          </div>
+                        `
+                    )
+                    .join("")}
+
+                </div>
+              `
+            : `
+                <div class="savings-history-empty">
+                  No contributions yet.
+                </div>
+              `
+        }
+
+      </section>
+
+
+      <button
+        type="button"
+        class="danger-btn savings-delete-goal-btn"
+        data-delete-savings-goal="${escapeHTML(
+          goal.id
+        )}"
+      >
+        Delete Goal
+      </button>
+
+    `;
+
+
+  body
+    .querySelector(
+      "[data-detail-add-contribution]"
+    )
+    ?.addEventListener(
+      "click",
+      () =>
+        openSavingsContributionModal(
+          goal
+        )
+    );
+
+
+  body
+    .querySelector(
+      "[data-edit-savings-goal]"
+    )
+    ?.addEventListener(
+      "click",
+      () => {
+
+        closeSavingsGoalDetail();
+
+
+        openSavingsGoalModal(
+          goal
+        );
+
+      }
+    );
+
+
+  body
+    .querySelectorAll(
+      "[data-delete-savings-contribution]"
+    )
+    .forEach(
+      (
+        button
+      ) => {
+
+        button.addEventListener(
+          "click",
+          async () => {
+
+            const contributionId =
+              button.dataset
+                .deleteSavingsContribution;
+
+
+            const currentGoal =
+              savingsGoals.find(
+                (
+                  item
+                ) =>
+                  item.id ===
+                  goal.id
+              );
+
+
+            if (
+              !currentGoal
+            ) {
+
+              return;
+
+            }
+
+
+            currentGoal.contributions =
+              (
+                Array.isArray(
+                  currentGoal.contributions
+                )
+                  ? currentGoal.contributions
+                  : []
+              ).filter(
+                (
+                  contribution
+                ) =>
+                  contribution.id !==
+                  contributionId
+              );
+
+
+            currentGoal.updatedAt =
+              new Date()
+                .toISOString();
+
+
+            try {
+
+              await saveSavingsGoals();
+
+
+              renderSavingsGoals();
+
+
+              openSavingsGoalDetail(
+                currentGoal
+              );
+
+
+              showToast(
+                "Contribution removed"
+              );
+
+            } catch (
+              error
+            ) {
+
+              console.error(
+                "Could not remove contribution:",
+                error
+              );
+
+
+              showToast(
+                "Could not remove contribution."
+              );
+
+            }
+
+          }
+        );
+
+      }
+    );
+
+
+  body
+    .querySelector(
+      "[data-delete-savings-goal]"
+    )
+    ?.addEventListener(
+      "click",
+      async () => {
+
+        const confirmed =
+          window.confirm(
+            `Delete "${goal.name}" and its contribution history?`
+          );
+
+
+        if (
+          !confirmed
+        ) {
+
+          return;
+
+        }
+
+
+        savingsGoals =
+          savingsGoals.filter(
+            (
+              item
+            ) =>
+              item.id !==
+              goal.id
+          );
+
+
+        try {
+
+          await saveSavingsGoals();
+
+
+          closeSavingsGoalDetail();
+
+
+          renderSavingsGoals();
+
+
+          showToast(
+            "Savings goal deleted"
+          );
+
+        } catch (
+          error
+        ) {
+
+          console.error(
+            "Could not delete savings goal:",
+            error
+          );
+
+
+          showToast(
+            "Could not delete goal."
+          );
+
+        }
+
+      }
+    );
+
+
+  savingsGoalDetailModal.hidden =
+    false;
+
+
+  document.body.classList.add(
+    "drawer-open"
+  );
+
+}
+
+
+document
+  .getElementById(
+    "addSavingsGoalButton"
+  )
+  ?.addEventListener(
+    "click",
+    () =>
+      openSavingsGoalModal()
+  );
+
+
+document
+  .getElementById(
+    "closeSavingsGoalModal"
+  )
+  ?.addEventListener(
+    "click",
+    closeSavingsGoalModal
+  );
+
+
+document
+  .getElementById(
+    "closeSavingsGoalDetail"
+  )
+  ?.addEventListener(
+    "click",
+    closeSavingsGoalDetail
+  );
+
+
+document
+  .getElementById(
+    "closeSavingsContribution"
+  )
+  ?.addEventListener(
+    "click",
+    closeSavingsContributionModal
+  );
+
+
+savingsGoalModal
+  ?.addEventListener(
+    "click",
+    (
+      event
+    ) => {
+
+      if (
+        event.target ===
+        savingsGoalModal
+      ) {
+
+        closeSettlementPersonModal();
+
+    closeSharedExpenseModal();
+
+    closeSettlementPaymentModal();
+
+
+    closeSavingsGoalModal();
+
+      }
+
+    }
+  );
+
+
+savingsGoalDetailModal
+  ?.addEventListener(
+    "click",
+    (
+      event
+    ) => {
+
+      if (
+        event.target ===
+        savingsGoalDetailModal
+      ) {
+
+        closeSavingsGoalDetail();
+
+      }
+
+    }
+  );
+
+
+savingsContributionModal
+  ?.addEventListener(
+    "click",
+    (
+      event
+    ) => {
+
+      if (
+        event.target ===
+        savingsContributionModal
+      ) {
+
+        closeSavingsContributionModal();
+
+      }
+
+    }
+  );
+
+
+savingsGoalForm
+  ?.addEventListener(
+    "submit",
+    async (
+      event
+    ) => {
+
+      event.preventDefault();
+
+
+      const id =
+        document.getElementById(
+          "savingsGoalId"
+        ).value;
+
+
+      const name =
+        document.getElementById(
+          "savingsGoalName"
+        ).value
+          .trim();
+
+
+      const targetAmount =
+        Number(
+          document.getElementById(
+            "savingsGoalTarget"
+          ).value
+        );
+
+
+      if (
+        !name ||
+        !Number.isFinite(
+          targetAmount
+        ) ||
+        targetAmount <=
+        0
+      ) {
+
+        showToast(
+          "Enter a goal name and target amount."
+        );
+
+
+        return;
+
+      }
+
+
+      const existing =
+        savingsGoals.find(
+          (
+            goal
+          ) =>
+            goal.id ===
+            id
+        );
+
+
+      const now =
+        new Date()
+          .toISOString();
+
+
+      const goal = {
+        id:
+          existing?.id ||
+          generateId(
+            "saving"
+          ),
+        emoji:
+          document.getElementById(
+            "savingsGoalEmoji"
+          ).value
+            .trim() ||
+          "🌱",
+        name:
+          name,
+        targetAmount:
+          targetAmount,
+        currency:
+          document.getElementById(
+            "savingsGoalCurrency"
+          ).value ||
+          "PHP",
+        targetDate:
+          document.getElementById(
+            "savingsGoalTargetDate"
+          ).value ||
+          "",
+        notes:
+          document.getElementById(
+            "savingsGoalNotes"
+          ).value
+            .trim(),
+        contributions:
+          Array.isArray(
+            existing?.contributions
+          )
+            ? existing.contributions
+            : [],
+        createdAt:
+          existing?.createdAt ||
+          now,
+        updatedAt:
+          now
+      };
+
+
+      if (
+        existing
+      ) {
+
+        savingsGoals =
+          savingsGoals.map(
+            (
+              item
+            ) =>
+              item.id ===
+                existing.id
+                ? goal
+                : item
+          );
+
+      } else {
+
+        savingsGoals.push(
+          goal
+        );
+
+      }
+
+
+      try {
+
+        await saveSavingsGoals();
+
+
+        closeSavingsGoalModal();
+
+
+        renderSavingsGoals();
+
+
+        showToast(
+          existing
+            ? "Savings goal updated"
+            : "Savings goal created 🌱"
+        );
+
+      } catch (
+        error
+      ) {
+
+        console.error(
+          "Could not save savings goal:",
+          error
+        );
+
+
+        showToast(
+          "Could not save goal."
+        );
+
+      }
+
+    }
+  );
+
+
+savingsContributionForm
+  ?.addEventListener(
+    "submit",
+    async (
+      event
+    ) => {
+
+      event.preventDefault();
+
+
+      const goalId =
+        document.getElementById(
+          "savingsContributionGoalId"
+        ).value;
+
+
+      const goal =
+        savingsGoals.find(
+          (
+            item
+          ) =>
+            item.id ===
+            goalId
+        );
+
+
+      if (
+        !goal
+      ) {
+
+        return;
+
+      }
+
+
+      const amount =
+        Number(
+          document.getElementById(
+            "savingsContributionAmount"
+          ).value
+        );
+
+
+      const date =
+        document.getElementById(
+          "savingsContributionDate"
+        ).value;
+
+
+      if (
+        !Number.isFinite(
+          amount
+        ) ||
+        amount <=
+          0 ||
+        !date
+      ) {
+
+        showToast(
+          "Enter a valid contribution amount."
+        );
+
+
+        return;
+
+      }
+
+
+      if (
+        !Array.isArray(
+          goal.contributions
+        )
+      ) {
+
+        goal.contributions =
+          [];
+
+      }
+
+
+      goal.contributions.push(
+        {
+          id:
+            generateId(
+              "contribution"
+            ),
+          amount:
+            amount,
+          date:
+            date,
+          note:
+            document.getElementById(
+              "savingsContributionNote"
+            ).value
+              .trim(),
+          createdAt:
+            new Date()
+              .toISOString()
+        }
+      );
+
+
+      goal.updatedAt =
+        new Date()
+          .toISOString();
+
+
+      try {
+
+        await saveSavingsGoals();
+
+
+        closeSavingsContributionModal();
+
+
+        renderSavingsGoals();
+
+
+        if (
+          !savingsGoalDetailModal
+            ?.hidden &&
+          selectedSavingsGoalId ===
+            goal.id
+        ) {
+
+          openSavingsGoalDetail(
+            goal
+          );
+
+        }
+
+
+        showToast(
+          "Contribution added ✨"
+        );
+
+      } catch (
+        error
+      ) {
+
+        console.error(
+          "Could not add contribution:",
+          error
+        );
+
+
+        showToast(
+          "Could not add contribution."
+        );
+
+      }
+
+    }
+  );
+
+
+// ========================================
+// RECEIPT GALLERY
+// ========================================
+
+const receiptSearch =
+  document.getElementById(
+    "receiptSearch"
+  );
+
+
+const receiptCategoryFilter =
+  document.getElementById(
+    "receiptCategoryFilter"
+  );
+
+
+const receiptTripFilter =
+  document.getElementById(
+    "receiptTripFilter"
+  );
+
+
+const receiptDateFrom =
+  document.getElementById(
+    "receiptDateFrom"
+  );
+
+
+const receiptDateTo =
+  document.getElementById(
+    "receiptDateTo"
+  );
+
+
+function getReceiptExpenses() {
+
+  return expenses.filter(
+    (expense) =>
+      Boolean(
+        expense.photo
+      )
+  );
+
+}
+
+
+function populateReceiptFilters() {
+
+  if (
+    receiptCategoryFilter
+  ) {
+
+    const current =
+      receiptCategoryFilter.value;
+
+
+    const categories =
+      Array.from(
+        new Set(
+          getReceiptExpenses()
+            .map(
+              (expense) =>
+                expense.category ||
+                "Other"
+            )
+        )
+      )
+        .sort(
+          (a, b) =>
+            a.localeCompare(
+              b
+            )
+        );
+
+
+    receiptCategoryFilter.innerHTML =
+      `
+        <option value="">
+          All categories
+        </option>
+      ` +
+      categories
+        .map(
+          (category) =>
+            `
+              <option value="${escapeHTML(
+                category
+              )}">
+                ${escapeHTML(
+                  category
+                )}
+              </option>
+            `
+        )
+        .join("");
+
+
+    if (
+      categories.includes(
+        current
+      )
+    ) {
+
+      receiptCategoryFilter.value =
+        current;
+
+    }
+
+  }
+
+
+  if (
+    receiptTripFilter
+  ) {
+
+    const current =
+      receiptTripFilter.value;
+
+
+    const tripIds =
+      new Set(
+        getReceiptExpenses()
+          .map(
+            (expense) =>
+              expense.tripId
+          )
+          .filter(
+            Boolean
+          )
+      );
+
+
+    const receiptTrips =
+      trips.filter(
+        (trip) =>
+          tripIds.has(
+            trip.id
+          )
+      );
+
+
+    receiptTripFilter.innerHTML =
+      `
+        <option value="">
+          All trips
+        </option>
+        <option value="__personal__">
+          Personal / No Trip
+        </option>
+      ` +
+      receiptTrips
+        .map(
+          (trip) =>
+            `
+              <option value="${escapeHTML(
+                trip.id
+              )}">
+                ${escapeHTML(
+                  trip.name
+                )}
+              </option>
+            `
+        )
+        .join("");
+
+
+    if (
+      current ===
+        "__personal__" ||
+      receiptTrips.some(
+        (trip) =>
+          trip.id ===
+          current
+      )
+    ) {
+
+      receiptTripFilter.value =
+        current;
+
+    }
+
+  }
+
+}
+
+
+function getFilteredReceiptExpenses() {
+
+  const search =
+    String(
+      receiptSearch?.value ||
+      ""
+    )
+      .trim()
+      .toLowerCase();
+
+
+  const category =
+    receiptCategoryFilter?.value ||
+    "";
+
+
+  const trip =
+    receiptTripFilter?.value ||
+    "";
+
+
+  const from =
+    receiptDateFrom?.value ||
+    "";
+
+
+  const to =
+    receiptDateTo?.value ||
+    "";
+
+
+  return getReceiptExpenses()
+    .filter(
+      (expense) => {
+
+        if (
+          category &&
+          (
+            expense.category ||
+            "Other"
+          ) !==
+            category
+        ) {
+
+          return false;
+
+        }
+
+
+        if (
+          trip ===
+            "__personal__" &&
+          expense.tripId
+        ) {
+
+          return false;
+
+        }
+
+
+        if (
+          trip &&
+          trip !==
+            "__personal__" &&
+          expense.tripId !==
+            trip
+        ) {
+
+          return false;
+
+        }
+
+
+        if (
+          from &&
+          String(
+            expense.date ||
+            ""
+          ) <
+            from
+        ) {
+
+          return false;
+
+        }
+
+
+        if (
+          to &&
+          String(
+            expense.date ||
+            ""
+          ) >
+            to
+        ) {
+
+          return false;
+
+        }
+
+
+        if (
+          search
+        ) {
+
+          const haystack =
+            [
+              expense.title,
+              expense.category,
+              expense.location,
+              expense.notes,
+              expense.paymentMethod,
+              getExpenseTripName(
+                expense
+              ),
+              ...normalizeExpenseTags(
+                expense.tags
+              )
+            ]
+              .filter(
+                Boolean
+              )
+              .join(" ")
+              .toLowerCase();
+
+
+          if (
+            !haystack.includes(
+              search
+            )
+          ) {
+
+            return false;
+
+          }
+
+        }
+
+
+        return true;
+
+      }
+    )
+    .sort(
+      (a, b) =>
+        String(
+          b.date ||
+          ""
+        ).localeCompare(
+          String(
+            a.date ||
+            ""
+          )
+        ) ||
+        String(
+          b.createdAt ||
+          ""
+        ).localeCompare(
+          String(
+            a.createdAt ||
+            ""
+          )
+        )
+    );
+
+}
+
+
+function renderReceiptGallery() {
+
+  const grid =
+    document.getElementById(
+      "receiptGalleryGrid"
+    );
+
+
+  const empty =
+    document.getElementById(
+      "receiptGalleryEmpty"
+    );
+
+
+  const count =
+    document.getElementById(
+      "receiptGalleryCount"
+    );
+
+
+  const resultCount =
+    document.getElementById(
+      "receiptResultCount"
+    );
+
+
+  if (
+    !grid ||
+    !empty
+  ) {
+
+    return;
+
+  }
+
+
+  populateReceiptFilters();
+
+
+  const allReceipts =
+    getReceiptExpenses();
+
+
+  const filtered =
+    getFilteredReceiptExpenses();
+
+
+  if (
+    count
+  ) {
+
+    count.textContent =
+      `${allReceipts.length} ${
+        allReceipts.length ===
+        1
+          ? "photo"
+          : "photos"
+      }`;
+
+  }
+
+
+  if (
+    resultCount
+  ) {
+
+    resultCount.textContent =
+      `${filtered.length} ${
+        filtered.length ===
+        1
+          ? "receipt"
+          : "receipts"
+      }`;
+
+  }
+
+
+  if (
+    filtered.length ===
+    0
+  ) {
+
+    grid.innerHTML =
+      "";
+
+
+    empty.hidden =
+      false;
+
+
+    const title =
+      empty.querySelector(
+        "h3"
+      );
+
+
+    const copy =
+      empty.querySelector(
+        "p"
+      );
+
+
+    if (
+      title
+    ) {
+
+      title.textContent =
+        allReceipts.length
+          ? "No matching receipts"
+          : "No receipts yet";
+
+    }
+
+
+    if (
+      copy
+    ) {
+
+      copy.textContent =
+        allReceipts.length
+          ? "Try changing or clearing your receipt filters."
+          : "Add a photo to an expense and it will appear here automatically.";
+
+    }
+
+
+    return;
+
+  }
+
+
+  empty.hidden =
+    true;
+
+
+  grid.innerHTML =
+    filtered
+      .map(
+        (expense) => {
+
+          const tags =
+            normalizeExpenseTags(
+              expense.tags
+            );
+
+
+          return `
+
+            <button
+              class="receipt-gallery-card"
+              type="button"
+              data-receipt-expense-id="${escapeHTML(
+                expense.id
+              )}"
+              aria-label="Open ${escapeHTML(
+                expense.title ||
+                "receipt"
+              )}"
+            >
+
+              <div class="receipt-gallery-photo">
+
+                <img
+                  src="${expense.photo}"
+                  alt="${escapeHTML(
+                    expense.title ||
+                    "Expense receipt"
+                  )}"
+                  loading="lazy"
+                >
+
+                <span class="receipt-gallery-amount">
+                  ${formatCurrency(
+                    expense.amount,
+                    expense.currency
+                  )}
+                </span>
+
+              </div>
+
+
+              <div class="receipt-gallery-copy">
+
+                <strong>
+                  ${escapeHTML(
+                    expense.title ||
+                    "Expense"
+                  )}
+                </strong>
+
+                <span>
+                  ${escapeHTML(
+                    formatShortDate(
+                      expense.date
+                    )
+                  )}
+                  ·
+                  ${escapeHTML(
+                    expense.category ||
+                    "Other"
+                  )}
+                </span>
+
+                ${
+                  expense.tripId
+                    ? `
+                        <small>
+                          ✈ ${escapeHTML(
+                            getExpenseTripName(
+                              expense
+                            )
+                          )}
+                        </small>
+                      `
+                    : ""
+                }
+
+                ${
+                  tags.length
+                    ? `
+                        <div class="receipt-gallery-tags">
+                          ${tags
+                            .slice(
+                              0,
+                              2
+                            )
+                            .map(
+                              (tag) =>
+                                `<span>#${escapeHTML(
+                                  tag
+                                )}</span>`
+                            )
+                            .join("")}
+                        </div>
+                      `
+                    : ""
+                }
+
+              </div>
+
+            </button>
+
+          `;
+
+        }
+      )
+      .join("");
+
+
+  grid
+    .querySelectorAll(
+      "[data-receipt-expense-id]"
+    )
+    .forEach(
+      (card) => {
+
+        card.addEventListener(
+          "click",
+          () => {
+
+            const expense =
+              expenses.find(
+                (item) =>
+                  item.id ===
+                  card.dataset
+                    .receiptExpenseId
+              );
+
+
+            if (
+              expense
+            ) {
+
+              openExpenseDetail(
+                expense
+              );
+
+            }
+
+          }
+        );
+
+      }
+    );
+
+}
+
+
+[
+  receiptSearch,
+  receiptCategoryFilter,
+  receiptTripFilter,
+  receiptDateFrom,
+  receiptDateTo
+]
+  .filter(
+    Boolean
+  )
+  .forEach(
+    (control) => {
+
+      control.addEventListener(
+        control ===
+          receiptSearch
+          ? "input"
+          : "change",
+        renderReceiptGallery
+      );
+
+    }
+  );
+
+
+document
+  .getElementById(
+    "clearReceiptFilters"
+  )
+  ?.addEventListener(
+    "click",
+    () => {
+
+      [
+        receiptSearch,
+        receiptCategoryFilter,
+        receiptTripFilter,
+        receiptDateFrom,
+        receiptDateTo
+      ]
+        .filter(
+          Boolean
+        )
+        .forEach(
+          (control) => {
+
+            control.value =
+              "";
+
+          }
+        );
+
+
+      renderReceiptGallery();
+
+    }
+  );
+
+
 // ========================================
 // RENDER EVERYTHING
 // ========================================
@@ -20290,6 +25921,12 @@ function renderAll() {
   renderPlannedExpenses();
 
   renderFavoriteQuickAdd();
+
+  renderSavingsGoals();
+
+  renderTravelSettlement();
+
+  renderReceiptGallery();
 
   renderBackupStatus();
 
@@ -20418,6 +26055,13 @@ document.addEventListener(
         true;
 
     }
+
+
+    closeSavingsGoalModal();
+
+    closeSavingsGoalDetail();
+
+    closeSavingsContributionModal();
 
 
     if (

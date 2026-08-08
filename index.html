@@ -15,11 +15,11 @@
   <meta name="apple-mobile-web-app-title" content="Momo">
 
   <title>Momo — Spending Diary</title>
-  <meta name="momo-app-version" content="20260808-5">
+  <meta name="momo-app-version" content="20260808-6">
 
   <link rel="manifest" href="manifest.json">
   <link rel="apple-touch-icon" href="icon-192.png">
-  <link rel="stylesheet" href="styles.css?v=20260808-5">
+  <link rel="stylesheet" href="styles.css">
 </head>
 
 <body>
@@ -126,6 +126,19 @@
         <button
           class="drawer-item"
           type="button"
+          data-drawer-nav="receipts"
+        >
+          <span class="drawer-icon">🖼️</span>
+          <span class="drawer-copy">
+            <strong>Receipt Gallery</strong>
+            <small>Browse photos attached to your expenses.</small>
+          </span>
+          <span class="drawer-arrow">›</span>
+        </button>
+
+        <button
+          class="drawer-item"
+          type="button"
           data-drawer-nav="reports"
         >
           <span class="drawer-icon">◔</span>
@@ -165,6 +178,19 @@
         <button
           class="drawer-item"
           type="button"
+          data-drawer-nav="savings"
+        >
+          <span class="drawer-icon">🌱</span>
+          <span class="drawer-copy">
+            <strong>Savings Goals</strong>
+            <small>Track money you are setting aside for something special.</small>
+          </span>
+          <span class="drawer-arrow">›</span>
+        </button>
+
+        <button
+          class="drawer-item"
+          type="button"
           data-drawer-nav="backup"
         >
           <span class="drawer-icon">⇩</span>
@@ -188,6 +214,19 @@
           <span class="drawer-copy">
             <strong>Trips</strong>
             <small>Track travel budgets and expenses.</small>
+          </span>
+          <span class="drawer-arrow">›</span>
+        </button>
+
+        <button
+          class="drawer-item"
+          type="button"
+          data-drawer-nav="settlement"
+        >
+          <span class="drawer-icon">🤝</span>
+          <span class="drawer-copy">
+            <strong>Travel Settlement</strong>
+            <small>Split shared trip costs and see who owes whom.</small>
           </span>
           <span class="drawer-arrow">›</span>
         </button>
@@ -1054,6 +1093,186 @@
       </section>
 
 
+      <!-- TRAVEL SETTLEMENT -->
+      <section
+        class="screen"
+        data-screen="settlement"
+      >
+        <div class="page-heading">
+          <div>
+            <p class="eyebrow">Split the trip</p>
+            <h1>Travel Settlement</h1>
+            <p class="page-description">
+              Track shared costs locally and see the simplest way to settle up.
+            </p>
+          </div>
+        </div>
+
+        <section class="card settlement-trip-picker">
+          <label>
+            <span>Trip</span>
+            <select id="settlementTripSelect">
+              <option value="">Choose a trip</option>
+            </select>
+          </label>
+
+          <p id="settlementTripHint" class="muted small">
+            Choose a trip to start splitting expenses.
+          </p>
+        </section>
+
+        <div id="settlementWorkspace" hidden>
+          <section class="settlement-summary-card">
+            <div>
+              <p class="label">Shared Expenses</p>
+              <strong id="settlementSharedTotal">¥0</strong>
+            </div>
+
+            <div class="budget-summary-divider"></div>
+
+            <div>
+              <p class="label">People</p>
+              <strong id="settlementPeopleCount">0</strong>
+            </div>
+
+            <div class="budget-summary-divider"></div>
+
+            <div>
+              <p class="label">Unsettled</p>
+              <strong id="settlementUnsettledCount">0</strong>
+            </div>
+          </section>
+
+          <section class="section-block settlement-section">
+            <div class="section-title-row">
+              <div>
+                <p class="section-kicker">Travelers</p>
+                <h2>People</h2>
+              </div>
+
+              <button
+                id="addSettlementPersonButton"
+                class="text-btn"
+                type="button"
+              >
+                ＋ Add Person
+              </button>
+            </div>
+
+            <div
+              id="settlementPeopleList"
+              class="settlement-people-list"
+            ></div>
+          </section>
+
+          <section class="section-block settlement-section">
+            <div class="section-title-row">
+              <div>
+                <p class="section-kicker">Current balance</p>
+                <h2>Who Owes Whom</h2>
+              </div>
+            </div>
+
+            <div
+              id="settlementBalanceList"
+              class="settlement-balance-list"
+            ></div>
+          </section>
+
+          <section class="settlement-action-grid">
+            <button
+              id="addSharedExpenseButton"
+              class="primary-btn"
+              type="button"
+            >
+              ＋ Shared Expense
+            </button>
+
+            <button
+              id="recordSettlementPaymentButton"
+              class="secondary-btn"
+              type="button"
+            >
+              ✓ Record Payment
+            </button>
+          </section>
+
+          <section class="section-block settlement-section">
+            <div class="section-title-row">
+              <div>
+                <p class="section-kicker">History</p>
+                <h2>Shared Expenses</h2>
+              </div>
+
+              <span id="settlementExpenseCount" class="date-pill">
+                0
+              </span>
+            </div>
+
+            <div
+              id="settlementExpenseList"
+              class="settlement-expense-list"
+            ></div>
+
+            <div
+              id="settlementExpenseEmpty"
+              class="empty-panel compact-empty"
+            >
+              <span class="empty-icon">🍜</span>
+              <h3>No shared expenses yet</h3>
+              <p>
+                Add a shared meal, ticket, taxi, hotel, or anything else you split.
+              </p>
+            </div>
+          </section>
+
+          <section class="section-block settlement-section">
+            <div class="section-title-row">
+              <div>
+                <p class="section-kicker">Paid back</p>
+                <h2>Settlement History</h2>
+              </div>
+            </div>
+
+            <div
+              id="settlementPaymentList"
+              class="settlement-payment-list"
+            ></div>
+
+            <div
+              id="settlementPaymentEmpty"
+              class="empty-panel compact-empty"
+            >
+              <span class="empty-icon">🤝</span>
+              <h3>No payments recorded</h3>
+              <p>
+                Record repayments here when someone settles what they owe.
+              </p>
+            </div>
+          </section>
+        </div>
+
+        <div
+          id="settlementNoTrips"
+          class="empty-panel"
+          hidden
+        >
+          <span class="empty-icon">✈️</span>
+          <h3>Create a trip first</h3>
+          <p>
+            Travel Settlement belongs to a trip, so add a trip before splitting costs.
+          </p>
+          <button
+            class="secondary-btn"
+            type="button"
+            data-nav="trips"
+          >
+            Go to Trips
+          </button>
+        </div>
+      </section>
+
+
       <!-- CALENDAR -->
       <section
         class="screen"
@@ -1278,6 +1497,148 @@
           <h3>No planned expenses yet</h3>
           <p>
             Add something you may want to buy later.
+          </p>
+        </div>
+      </section>
+
+
+      <!-- SAVINGS GOALS -->
+      <section
+        class="screen"
+        data-screen="savings"
+      >
+        <div class="page-heading compact">
+          <div>
+            <p class="eyebrow">Little by little</p>
+            <h1>Savings Goals</h1>
+            <p class="page-description">
+              Keep track of money you are setting aside without counting it as spending.
+            </p>
+          </div>
+
+          <button
+            id="addSavingsGoalButton"
+            class="round-add-btn"
+            type="button"
+            aria-label="Add savings goal"
+          >
+            ＋
+          </button>
+        </div>
+
+        <section class="savings-summary-card">
+          <div>
+            <p class="label">Saved</p>
+            <strong id="savingsTotalSaved">₱0.00</strong>
+          </div>
+
+          <div class="budget-summary-divider"></div>
+
+          <div>
+            <p class="label">Goals</p>
+            <strong id="savingsGoalCount">0</strong>
+          </div>
+        </section>
+
+        <div
+          id="savingsGoalList"
+          class="savings-goal-list"
+        ></div>
+
+        <div
+          id="savingsGoalEmpty"
+          class="empty-panel"
+        >
+          <span class="empty-icon">🌱</span>
+          <h3>No savings goals yet</h3>
+          <p>
+            Create a goal for something you want to save for.
+          </p>
+        </div>
+      </section>
+
+
+      <!-- RECEIPT GALLERY -->
+      <section
+        class="screen"
+        data-screen="receipts"
+      >
+        <div class="page-heading">
+          <div>
+            <p class="eyebrow">Photo diary</p>
+            <h1>Receipt Gallery</h1>
+            <p class="page-description">
+              Every photo attached to an expense appears here automatically.
+            </p>
+          </div>
+
+          <span id="receiptGalleryCount" class="date-pill">0 photos</span>
+        </div>
+
+        <section class="card receipt-tools">
+          <label class="activity-search receipt-search">
+            <span>⌕</span>
+            <input
+              id="receiptSearch"
+              type="search"
+              placeholder="Search receipts..."
+              autocomplete="off"
+            >
+          </label>
+
+          <div class="receipt-filter-grid">
+            <label>
+              <span>Category</span>
+              <select id="receiptCategoryFilter">
+                <option value="">All categories</option>
+              </select>
+            </label>
+
+            <label>
+              <span>Trip</span>
+              <select id="receiptTripFilter">
+                <option value="">All trips</option>
+              </select>
+            </label>
+          </div>
+
+          <div class="receipt-filter-grid">
+            <label>
+              <span>From</span>
+              <input id="receiptDateFrom" type="date">
+            </label>
+
+            <label>
+              <span>To</span>
+              <input id="receiptDateTo" type="date">
+            </label>
+          </div>
+
+          <div class="activity-filter-footer">
+            <span id="receiptResultCount">0 receipts</span>
+            <button
+              id="clearReceiptFilters"
+              class="text-btn"
+              type="button"
+            >
+              Clear filters
+            </button>
+          </div>
+        </section>
+
+        <div
+          id="receiptGalleryGrid"
+          class="receipt-gallery-grid"
+        ></div>
+
+        <div
+          id="receiptGalleryEmpty"
+          class="empty-panel receipt-gallery-empty"
+        >
+          <span class="empty-icon">🧾</span>
+          <h3>No receipts yet</h3>
+          <p>
+            Add a photo to an expense and it will appear here automatically.
           </p>
         </div>
       </section>
@@ -1701,6 +2062,511 @@
     </nav>
 
 
+
+
+    <!-- ========================================
+         SETTLEMENT PERSON MODAL
+    ========================================= -->
+    <div
+      id="settlementPersonModal"
+      class="modal-backdrop"
+      hidden
+    >
+      <section
+        class="modal-card settlement-small-modal"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="settlementPersonTitle"
+      >
+        <div class="modal-header">
+          <div>
+            <p class="eyebrow">Traveler</p>
+            <h2 id="settlementPersonTitle">Add Person</h2>
+          </div>
+
+          <button
+            id="closeSettlementPerson"
+            class="icon-btn soft"
+            type="button"
+            aria-label="Close traveler form"
+          >
+            ×
+          </button>
+        </div>
+
+        <form id="settlementPersonForm">
+          <input id="settlementPersonId" type="hidden">
+
+          <label class="modal-field">
+            <span>Name</span>
+            <input
+              id="settlementPersonName"
+              type="text"
+              maxlength="50"
+              placeholder="Martin"
+              required
+            >
+          </label>
+
+          <button
+            class="primary-button settlement-modal-save"
+            type="submit"
+          >
+            Save Person
+          </button>
+        </form>
+      </section>
+    </div>
+
+
+    <!-- ========================================
+         SHARED EXPENSE MODAL
+    ========================================= -->
+    <div
+      id="sharedExpenseModal"
+      class="modal-backdrop"
+      hidden
+    >
+      <section
+        class="modal-card shared-expense-modal"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="sharedExpenseModalTitle"
+      >
+        <div class="modal-header">
+          <div>
+            <p class="eyebrow">Shared cost</p>
+            <h2 id="sharedExpenseModalTitle">Add Shared Expense</h2>
+          </div>
+
+          <button
+            id="closeSharedExpense"
+            class="icon-btn soft"
+            type="button"
+            aria-label="Close shared expense"
+          >
+            ×
+          </button>
+        </div>
+
+        <form id="sharedExpenseForm">
+          <input id="sharedExpenseId" type="hidden">
+
+          <label class="modal-field">
+            <span>What was it?</span>
+            <input
+              id="sharedExpenseTitle"
+              type="text"
+              maxlength="80"
+              placeholder="Dinner in Shinjuku"
+              required
+            >
+          </label>
+
+          <div class="modal-field-row settlement-two-column">
+            <label>
+              <span>Amount</span>
+              <input
+                id="sharedExpenseAmount"
+                type="number"
+                inputmode="decimal"
+                min="0.01"
+                step="0.01"
+                placeholder="0"
+                required
+              >
+            </label>
+
+            <label>
+              <span>Currency</span>
+              <select id="sharedExpenseCurrency">
+                <option value="PHP">PHP</option>
+                <option value="JPY">JPY</option>
+                <option value="USD">USD</option>
+                <option value="GBP">GBP</option>
+                <option value="HKD">HKD</option>
+                <option value="SGD">SGD</option>
+                <option value="CNY">CNY</option>
+              </select>
+            </label>
+          </div>
+
+          <div class="modal-field-row settlement-two-column">
+            <label>
+              <span>Date</span>
+              <input
+                id="sharedExpenseDate"
+                type="date"
+                required
+              >
+            </label>
+
+            <label>
+              <span>Paid By</span>
+              <select
+                id="sharedExpensePayer"
+                required
+              ></select>
+            </label>
+          </div>
+
+          <label class="modal-field">
+            <span>Split Method</span>
+            <select id="sharedExpenseSplitMode">
+              <option value="equal">Split Equally</option>
+              <option value="exact">Exact Amounts</option>
+            </select>
+          </label>
+
+          <section class="shared-split-section">
+            <div class="shared-split-heading">
+              <strong>Split Between</strong>
+              <small id="sharedSplitHelp">
+                Choose who shared this expense.
+              </small>
+            </div>
+
+            <div
+              id="sharedExpenseParticipants"
+              class="shared-participant-list"
+            ></div>
+          </section>
+
+          <label class="modal-field">
+            <span>Notes <small>Optional</small></span>
+            <input
+              id="sharedExpenseNotes"
+              type="text"
+              maxlength="120"
+              placeholder="Late-night ramen after the concert"
+            >
+          </label>
+
+          <div class="shared-expense-validation" id="sharedExpenseValidation"></div>
+
+          <button
+            class="primary-button settlement-modal-save"
+            type="submit"
+          >
+            Save Shared Expense
+          </button>
+        </form>
+      </section>
+    </div>
+
+
+    <!-- ========================================
+         SETTLEMENT PAYMENT MODAL
+    ========================================= -->
+    <div
+      id="settlementPaymentModal"
+      class="modal-backdrop"
+      hidden
+    >
+      <section
+        class="modal-card settlement-small-modal"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="settlementPaymentTitle"
+      >
+        <div class="modal-header">
+          <div>
+            <p class="eyebrow">Settle up</p>
+            <h2 id="settlementPaymentTitle">Record Payment</h2>
+          </div>
+
+          <button
+            id="closeSettlementPayment"
+            class="icon-btn soft"
+            type="button"
+            aria-label="Close settlement payment"
+          >
+            ×
+          </button>
+        </div>
+
+        <form id="settlementPaymentForm">
+          <div class="modal-field-row settlement-two-column">
+            <label>
+              <span>From</span>
+              <select
+                id="settlementPaymentFrom"
+                required
+              ></select>
+            </label>
+
+            <label>
+              <span>To</span>
+              <select
+                id="settlementPaymentTo"
+                required
+              ></select>
+            </label>
+          </div>
+
+          <label class="modal-field">
+            <span>Amount</span>
+            <input
+              id="settlementPaymentAmount"
+              type="number"
+              inputmode="decimal"
+              min="0.01"
+              step="0.01"
+              placeholder="0"
+              required
+            >
+          </label>
+
+          <label class="modal-field">
+            <span>Date</span>
+            <input
+              id="settlementPaymentDate"
+              type="date"
+              required
+            >
+          </label>
+
+          <label class="modal-field">
+            <span>Note <small>Optional</small></span>
+            <input
+              id="settlementPaymentNote"
+              type="text"
+              maxlength="100"
+              placeholder="Paid in cash"
+            >
+          </label>
+
+          <button
+            class="primary-button settlement-modal-save"
+            type="submit"
+          >
+            Record Payment
+          </button>
+        </form>
+      </section>
+    </div>
+
+
+    <!-- ========================================
+         ADD / EDIT SAVINGS GOAL MODAL
+    ========================================= -->
+    <div
+      id="savingsGoalModal"
+      class="modal-backdrop"
+      hidden
+    >
+      <section
+        class="modal-card savings-goal-modal"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="savingsGoalModalTitle"
+      >
+        <div class="modal-header">
+          <div>
+            <p class="eyebrow">Savings</p>
+            <h2 id="savingsGoalModalTitle">New Goal</h2>
+          </div>
+
+          <button
+            id="closeSavingsGoalModal"
+            class="icon-btn soft"
+            type="button"
+            aria-label="Close savings goal"
+          >
+            ×
+          </button>
+        </div>
+
+        <form id="savingsGoalForm">
+          <input id="savingsGoalId" type="hidden">
+
+          <div class="savings-goal-name-grid">
+            <label>
+              <span>Emoji</span>
+              <input
+                id="savingsGoalEmoji"
+                type="text"
+                inputmode="text"
+                maxlength="8"
+                placeholder="🌸"
+              >
+            </label>
+
+            <label>
+              <span>Goal Name</span>
+              <input
+                id="savingsGoalName"
+                type="text"
+                maxlength="60"
+                placeholder="Japan Shopping Fund"
+                required
+              >
+            </label>
+          </div>
+
+          <div class="modal-field-row savings-amount-row">
+            <label>
+              <span>Target Amount</span>
+              <input
+                id="savingsGoalTarget"
+                type="number"
+                inputmode="decimal"
+                min="0.01"
+                step="0.01"
+                placeholder="0"
+                required
+              >
+            </label>
+
+            <label>
+              <span>Currency</span>
+              <select id="savingsGoalCurrency">
+                <option value="PHP">PHP</option>
+                <option value="JPY">JPY</option>
+                <option value="USD">USD</option>
+                <option value="GBP">GBP</option>
+                <option value="HKD">HKD</option>
+                <option value="SGD">SGD</option>
+                <option value="CNY">CNY</option>
+              </select>
+            </label>
+          </div>
+
+          <label class="modal-field">
+            <span>Target Date <small>Optional</small></span>
+            <input id="savingsGoalTargetDate" type="date">
+          </label>
+
+          <label class="modal-field">
+            <span>Notes <small>Optional</small></span>
+            <textarea
+              id="savingsGoalNotes"
+              rows="3"
+              maxlength="300"
+              placeholder="Anything you want to remember about this goal"
+            ></textarea>
+          </label>
+
+          <button
+            class="primary-button savings-save-btn"
+            type="submit"
+          >
+            Save Goal
+          </button>
+        </form>
+      </section>
+    </div>
+
+
+    <!-- ========================================
+         SAVINGS GOAL DETAIL MODAL
+    ========================================= -->
+    <div
+      id="savingsGoalDetailModal"
+      class="modal-backdrop"
+      hidden
+    >
+      <section
+        class="modal-card savings-detail-modal"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="savingsGoalDetailTitle"
+      >
+        <div class="modal-header">
+          <div>
+            <p class="eyebrow">Savings goal</p>
+            <h2 id="savingsGoalDetailTitle">Goal</h2>
+          </div>
+
+          <button
+            id="closeSavingsGoalDetail"
+            class="icon-btn soft"
+            type="button"
+            aria-label="Close savings goal details"
+          >
+            ×
+          </button>
+        </div>
+
+        <div id="savingsGoalDetailBody"></div>
+      </section>
+    </div>
+
+
+    <!-- ========================================
+         SAVINGS CONTRIBUTION MODAL
+    ========================================= -->
+    <div
+      id="savingsContributionModal"
+      class="modal-backdrop"
+      hidden
+    >
+      <section
+        class="modal-card savings-contribution-modal"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="savingsContributionTitle"
+      >
+        <div class="modal-header">
+          <div>
+            <p class="eyebrow">Add money</p>
+            <h2 id="savingsContributionTitle">Contribution</h2>
+          </div>
+
+          <button
+            id="closeSavingsContribution"
+            class="icon-btn soft"
+            type="button"
+            aria-label="Close contribution"
+          >
+            ×
+          </button>
+        </div>
+
+        <form id="savingsContributionForm">
+          <input id="savingsContributionGoalId" type="hidden">
+
+          <label class="modal-field">
+            <span>Amount</span>
+            <input
+              id="savingsContributionAmount"
+              type="number"
+              inputmode="decimal"
+              min="0.01"
+              step="0.01"
+              placeholder="0"
+              required
+            >
+          </label>
+
+          <label class="modal-field">
+            <span>Date</span>
+            <input
+              id="savingsContributionDate"
+              type="date"
+              required
+            >
+          </label>
+
+          <label class="modal-field">
+            <span>Note <small>Optional</small></span>
+            <input
+              id="savingsContributionNote"
+              type="text"
+              maxlength="100"
+              placeholder="Payday savings"
+            >
+          </label>
+
+          <button
+            class="primary-button savings-save-btn"
+            type="submit"
+          >
+            Add Contribution
+          </button>
+        </form>
+      </section>
+    </div>
 
 
     <!-- ========================================
@@ -2908,7 +3774,7 @@
 
   </div>
 
-  <script src="app.js?v=20260808-5"></script>
+  <script src="app.js"></script>
 
   <script>
     (() => {
