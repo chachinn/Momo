@@ -10,7 +10,7 @@
 
 const DB_NAME = "momo_database";
 
-const DB_VERSION = 1;
+const DB_VERSION = 2;
 
 
 const STORES = {
@@ -23,7 +23,6 @@ const STORES = {
 
   cards: "cards",
 
-  accounts: "accounts",
 
   recurring: "recurring",
 
@@ -47,7 +46,6 @@ let trips = [];
 
 let cards = [];
 
-let accounts = [];
 
 let recurringExpenses = [];
 
@@ -64,8 +62,36 @@ let tripPendingDelete =
   null;
 
 
+let expensePendingDelete =
+  null;
+
+
+let selectedExpenseDetailId =
+  "";
+
+
+let editingExpenseId =
+  "";
+
+
+let openingExpenseEditor =
+  false;
+
+
 let currentPhotoData =
   "";
+
+
+let photoProcessingPromise =
+  null;
+
+
+const PHOTO_MAX_DIMENSION =
+  1600;
+
+
+const PHOTO_JPEG_QUALITY =
+  0.8;
 
 
 // ========================================
@@ -316,19 +342,16 @@ function openDatabase() {
           }
 
 
-          // ACCOUNTS
+          // REMOVE LEGACY ACCOUNTS STORE
 
           if (
-            !database.objectStoreNames.contains(
-              STORES.accounts
+            database.objectStoreNames.contains(
+              "accounts"
             )
           ) {
 
-            database.createObjectStore(
-              STORES.accounts,
-              {
-                keyPath: "id"
-              }
+            database.deleteObjectStore(
+              "accounts"
             );
 
           }
@@ -660,10 +683,6 @@ async function performCleanStartIfNeeded() {
     ),
 
     clearStore(
-      STORES.accounts
-    ),
-
-    clearStore(
       STORES.recurring
     )
 
@@ -694,8 +713,6 @@ async function loadAppData() {
 
     cards,
 
-    accounts,
-
     recurringExpenses
 
   ] = await Promise.all([
@@ -714,10 +731,6 @@ async function loadAppData() {
 
     getAllRecords(
       STORES.cards
-    ),
-
-    getAllRecords(
-      STORES.accounts
     ),
 
     getAllRecords(
@@ -1682,7 +1695,7 @@ const topLevelScreens = [
 
   "trips",
 
-  "wallet"
+  "calendar"
 
 ];
 
@@ -1726,7 +1739,20 @@ function showScreen(
     "add"
   ) {
 
+    if (
+      !openingExpenseEditor
+    ) {
+
+      resetExpenseForm();
+
+    }
+
+
     prepareExpenseForm();
+
+
+    openingExpenseEditor =
+      false;
 
   }
 
@@ -1747,6 +1773,16 @@ function showScreen(
   ) {
 
     renderTrips();
+
+  }
+
+
+  if (
+    name ===
+    "calendar"
+  ) {
+
+    renderCalendar();
 
   }
 
@@ -1826,78 +1862,6 @@ document.addEventListener(
       );
 
     }
-
-  }
-);
-
-
-// ========================================
-// WALLET SWITCH
-// ========================================
-
-const walletTabs =
-  document.getElementById(
-    "walletTabs"
-  );
-
-
-walletTabs?.addEventListener(
-  "click",
-  (event) => {
-
-    const button =
-      event.target.closest(
-        "[data-wallet-view]"
-      );
-
-
-    if (
-      !button
-    ) {
-
-      return;
-
-    }
-
-
-    const view =
-      button.dataset
-        .walletView;
-
-
-    walletTabs
-      .querySelectorAll(
-        ".wallet-switch-btn"
-      )
-      .forEach(
-        (item) => {
-
-          item.classList.toggle(
-            "active",
-            item ===
-              button
-          );
-
-        }
-      );
-
-
-    document
-      .querySelectorAll(
-        ".wallet-view"
-      )
-      .forEach(
-        (panel) => {
-
-          panel.classList.toggle(
-            "active",
-            panel.dataset
-              .walletPanel ===
-              view
-          );
-
-        }
-      );
 
   }
 );
@@ -3336,6 +3300,91 @@ function populateExpenseBudgetDropdown() {
 }
 
 
+// ========================================
+// EXPENSE TRIP DROPDOWN
+// ========================================
+
+const expenseTrip =
+  document.getElementById(
+    "expenseTrip"
+  );
+
+
+function populateExpenseTripDropdown() {
+
+  if (
+    !expenseTrip
+  ) {
+
+    return;
+
+  }
+
+
+  const currentValue =
+    expenseTrip.value;
+
+
+  const options =
+    trips
+
+      .map(
+        (trip) => `
+
+          <option
+            value="${escapeHTML(
+              trip.id
+            )}"
+          >
+
+            ${escapeHTML(
+              trip.name
+            )}
+
+            ${
+              trip.destination
+                ? `— ${escapeHTML(
+                    trip.destination
+                  )}`
+                : ""
+            }
+
+          </option>
+
+        `
+      )
+
+      .join("");
+
+
+  expenseTrip.innerHTML = `
+
+    <option value="">
+      Personal / No Trip
+    </option>
+
+    ${options}
+
+  `;
+
+
+  if (
+    currentValue &&
+    trips.some(
+      (trip) =>
+        trip.id ===
+        currentValue
+    )
+  ) {
+
+    expenseTrip.value =
+      currentValue;
+
+  }
+
+}
+
+
 expenseBudget?.addEventListener(
   "change",
   () => {
@@ -3723,7 +3772,9 @@ function attachBudgetActions() {
 
         button.addEventListener(
           "click",
-          () => {
+          (event) => {
+
+            event.stopPropagation();
 
             const budget =
               budgets.find(
@@ -3760,7 +3811,9 @@ function attachBudgetActions() {
 
         button.addEventListener(
           "click",
-          () => {
+          (event) => {
+
+            event.stopPropagation();
 
             budgetPendingDelete =
               button.dataset
@@ -3967,10 +4020,8 @@ function getTripSpent(
 ) {
 
   /*
-    This is already structured for the next update.
-
-    When expenses receive a tripId, Momo will
-    automatically calculate spending here.
+    Trip spending is calculated from expenses
+    linked to this trip through tripId.
   */
 
   return expenses
@@ -5074,6 +5125,262 @@ const photoPreview =
   );
 
 
+function readFileAsDataURL(
+  file
+) {
+
+  return new Promise(
+    (resolve, reject) => {
+
+      const reader =
+        new FileReader();
+
+
+      reader.onload =
+        () => {
+
+          resolve(
+            reader.result
+          );
+
+        };
+
+
+      reader.onerror =
+        () => {
+
+          reject(
+            reader.error
+          );
+
+        };
+
+
+      reader.readAsDataURL(
+        file
+      );
+
+    }
+  );
+
+}
+
+
+function loadImageFromFile(
+  file
+) {
+
+  return new Promise(
+    (resolve, reject) => {
+
+      const image =
+        new Image();
+
+
+      const objectURL =
+        URL.createObjectURL(
+          file
+        );
+
+
+      image.onload =
+        () => {
+
+          URL.revokeObjectURL(
+            objectURL
+          );
+
+
+          resolve(
+            image
+          );
+
+        };
+
+
+      image.onerror =
+        () => {
+
+          URL.revokeObjectURL(
+            objectURL
+          );
+
+
+          reject(
+            new Error(
+              "Could not read image"
+            )
+          );
+
+        };
+
+
+      image.src =
+        objectURL;
+
+    }
+  );
+
+}
+
+
+async function compressExpensePhoto(
+  file
+) {
+
+  const image =
+    await loadImageFromFile(
+      file
+    );
+
+
+  const originalWidth =
+    image.naturalWidth ||
+    image.width;
+
+
+  const originalHeight =
+    image.naturalHeight ||
+    image.height;
+
+
+  if (
+    !originalWidth ||
+    !originalHeight
+  ) {
+
+    throw new Error(
+      "Invalid image dimensions"
+    );
+
+  }
+
+
+  const scale =
+    Math.min(
+      1,
+      PHOTO_MAX_DIMENSION /
+        Math.max(
+          originalWidth,
+          originalHeight
+        )
+    );
+
+
+  const targetWidth =
+    Math.max(
+      1,
+      Math.round(
+        originalWidth *
+        scale
+      )
+    );
+
+
+  const targetHeight =
+    Math.max(
+      1,
+      Math.round(
+        originalHeight *
+        scale
+      )
+    );
+
+
+  const canvas =
+    document.createElement(
+      "canvas"
+    );
+
+
+  canvas.width =
+    targetWidth;
+
+
+  canvas.height =
+    targetHeight;
+
+
+  const context =
+    canvas.getContext(
+      "2d",
+      {
+        alpha: false
+      }
+    );
+
+
+  if (
+    !context
+  ) {
+
+    throw new Error(
+      "Canvas is unavailable"
+    );
+
+  }
+
+
+  context.fillStyle =
+    "#ffffff";
+
+
+  context.fillRect(
+    0,
+    0,
+    targetWidth,
+    targetHeight
+  );
+
+
+  context.drawImage(
+    image,
+    0,
+    0,
+    targetWidth,
+    targetHeight
+  );
+
+
+  return canvas.toDataURL(
+    "image/jpeg",
+    PHOTO_JPEG_QUALITY
+  );
+
+}
+
+
+function renderExpensePhotoPreview(
+  photoData =
+    ""
+) {
+
+  if (
+    !photoPreview
+  ) {
+
+    return;
+
+  }
+
+
+  photoPreview.innerHTML =
+    photoData
+
+      ? `
+
+          <img
+            src="${photoData}"
+            alt="Expense photo"
+          >
+
+        `
+
+      : "📸";
+
+}
+
+
 expensePhoto?.addEventListener(
   "change",
   () => {
@@ -5093,32 +5400,125 @@ expensePhoto?.addEventListener(
     }
 
 
-    const reader =
-      new FileReader();
+    if (
+      !file.type.startsWith(
+        "image/"
+      )
+    ) {
+
+      expensePhoto.value =
+        "";
 
 
-    reader.onload =
-      () => {
-
-        currentPhotoData =
-          reader.result;
+      showToast(
+        "Please choose an image."
+      );
 
 
-        photoPreview.innerHTML = `
+      return;
 
-          <img
-            src="${currentPhotoData}"
-            alt="Expense photo"
-          >
-
-        `;
-
-      };
+    }
 
 
-    reader.readAsDataURL(
-      file
-    );
+    photoProcessingPromise =
+      (
+        async () => {
+
+          try {
+
+            showToast(
+              "Optimizing photo…"
+            );
+
+
+            const compressed =
+              await compressExpensePhoto(
+                file
+              );
+
+
+            currentPhotoData =
+              compressed;
+
+
+            renderExpensePhotoPreview(
+              currentPhotoData
+            );
+
+
+            showToast(
+              "Photo ready 📸"
+            );
+
+          } catch (
+            error
+          ) {
+
+            console.error(
+              "Photo compression failed:",
+              error
+            );
+
+
+            try {
+
+              /*
+                Fallback keeps photo attachment usable
+                if an iPhone/browser cannot decode a
+                particular image format through canvas.
+              */
+
+              currentPhotoData =
+                await readFileAsDataURL(
+                  file
+                );
+
+
+              renderExpensePhotoPreview(
+                currentPhotoData
+              );
+
+
+              showToast(
+                "Photo ready 📸"
+              );
+
+            } catch (
+              fallbackError
+            ) {
+
+              console.error(
+                "Photo fallback failed:",
+                fallbackError
+              );
+
+
+              currentPhotoData =
+                "";
+
+
+              expensePhoto.value =
+                "";
+
+
+              renderExpensePhotoPreview();
+
+
+              showToast(
+                "Could not attach that photo."
+              );
+
+            }
+
+          } finally {
+
+            photoProcessingPromise =
+              null;
+
+          }
+
+        }
+      )();
 
   }
 );
@@ -5140,9 +5540,117 @@ const expenseForm =
   );
 
 
+const expenseIdInput =
+  document.getElementById(
+    "expenseId"
+  );
+
+
+const expenseFormTitle =
+  document.getElementById(
+    "expenseFormTitle"
+  );
+
+
+function setExpenseFormMode(
+  mode =
+    "add"
+) {
+
+  const isEditing =
+    mode ===
+    "edit";
+
+
+  if (
+    expenseFormTitle
+  ) {
+
+    expenseFormTitle.textContent =
+      isEditing
+        ? "Edit Expense"
+        : "Add Expense";
+
+  }
+
+}
+
+
+function resetExpenseForm() {
+
+  editingExpenseId =
+    "";
+
+
+  expenseForm?.reset();
+
+
+  if (
+    expenseIdInput
+  ) {
+
+    expenseIdInput.value =
+      "";
+
+  }
+
+
+  currentPhotoData =
+    "";
+
+
+  photoProcessingPromise =
+    null;
+
+
+  if (
+    expensePhoto
+  ) {
+
+    expensePhoto.value =
+      "";
+
+  }
+
+
+  renderExpensePhotoPreview();
+
+
+  setExpenseFormMode(
+    "add"
+  );
+
+
+  if (
+    expenseDate
+  ) {
+
+    expenseDate.value =
+      getTodayString();
+
+  }
+
+
+  if (
+    currencySelect
+  ) {
+
+    currencySelect.value =
+      "PHP";
+
+  }
+
+
+  updateExpenseConversion();
+
+}
+
+
 function prepareExpenseForm() {
 
   populateExpenseBudgetDropdown();
+
+  populateExpenseTripDropdown();
 
 
   if (
@@ -5154,6 +5662,134 @@ function prepareExpenseForm() {
       getTodayString();
 
   }
+
+}
+
+
+function openExpenseEditor(
+  expense
+) {
+
+  if (
+    !expense
+  ) {
+
+    return;
+
+  }
+
+
+  editingExpenseId =
+    expense.id;
+
+
+  openingExpenseEditor =
+    true;
+
+
+  showScreen(
+    "add"
+  );
+
+
+  if (
+    expenseIdInput
+  ) {
+
+    expenseIdInput.value =
+      expense.id;
+
+  }
+
+
+  setExpenseFormMode(
+    "edit"
+  );
+
+
+  document
+    .getElementById(
+      "expenseTitle"
+    )
+    .value =
+    expense.title ||
+    "";
+
+
+  amountInput.value =
+    expense.amount ??
+    "";
+
+
+  currencySelect.value =
+    expense.currency ||
+    "PHP";
+
+
+  expenseCategory.value =
+    expense.category ||
+    "Other";
+
+
+  expenseBudget.value =
+    expense.budgetId ||
+    "";
+
+
+  if (
+    expenseTrip
+  ) {
+
+    expenseTrip.value =
+      expense.tripId ||
+      "";
+
+  }
+
+
+  document
+    .getElementById(
+      "paymentMethod"
+    )
+    .value =
+    expense.paymentMethod ||
+    "Cash";
+
+
+  expenseDate.value =
+    expense.date ||
+    getTodayString();
+
+
+  document
+    .getElementById(
+      "expenseLocation"
+    )
+    .value =
+    expense.location ||
+    "";
+
+
+  document
+    .getElementById(
+      "expenseNotes"
+    )
+    .value =
+    expense.notes ||
+    "";
+
+
+  currentPhotoData =
+    expense.photo ||
+    "";
+
+
+  renderExpensePhotoPreview(
+    currentPhotoData
+  );
+
+
+  updateExpenseConversion();
 
 }
 
@@ -5171,6 +5807,28 @@ expenseForm?.addEventListener(
     event.preventDefault();
 
 
+    if (
+      photoProcessingPromise
+    ) {
+
+      try {
+
+        await photoProcessingPromise;
+
+      } catch (
+        error
+      ) {
+
+        console.error(
+          "Photo processing error:",
+          error
+        );
+
+      }
+
+    }
+
+
     const selectedBudget =
       budgets.find(
         (budget) =>
@@ -5179,9 +5837,31 @@ expenseForm?.addEventListener(
       );
 
 
+    const selectedTrip =
+      trips.find(
+        (trip) =>
+          trip.id ===
+          expenseTrip?.value
+      );
+
+
+    const existingId =
+      expenseIdInput?.value ||
+      editingExpenseId;
+
+
+    const previous =
+      expenses.find(
+        (item) =>
+          item.id ===
+          existingId
+      );
+
+
     const expense = {
 
       id:
+        existingId ||
         generateId(
           "expense"
         ),
@@ -5245,14 +5925,12 @@ expenseForm?.addEventListener(
       photo:
         currentPhotoData,
 
-      /*
-        Trip linking will be added next.
-      */
-
       tripId:
+        selectedTrip?.id ||
         "",
 
       createdAt:
+        previous?.createdAt ||
         new Date()
           .toISOString(),
 
@@ -5272,33 +5950,22 @@ expenseForm?.addEventListener(
     await loadAppData();
 
 
-    expenseForm.reset();
+    const wasEditing =
+      Boolean(
+        existingId
+      );
 
 
-    currentPhotoData =
-      "";
-
-
-    photoPreview.innerHTML =
-      "📸";
-
-
-    expenseDate.value =
-      getTodayString();
-
-
-    currencySelect.value =
-      "PHP";
-
-
-    updateExpenseConversion();
+    resetExpenseForm();
 
 
     renderAll();
 
 
     showToast(
-      "Expense saved ✨"
+      wasEditing
+        ? "Expense updated ✨"
+        : "Expense saved ✨"
     );
 
 
@@ -5337,7 +6004,9 @@ document
 // ========================================
 
 function renderTransaction(
-  expense
+  expense,
+  showActions =
+    false
 ) {
 
   const convertedPHP =
@@ -5378,7 +6047,16 @@ function renderTransaction(
 
   return `
 
-    <article class="transaction-row">
+    <article
+      class="transaction-row transaction-row-openable"
+      data-expense-detail-id="${escapeHTML(
+        expense.id
+      )}"
+      tabindex="0"
+      aria-label="View ${escapeHTML(
+        expense.title
+      )} expense details"
+    >
 
       <div class="thumb">
 
@@ -5411,6 +6089,43 @@ function renderTransaction(
           )}
 
         </span>
+
+
+        ${
+          showActions
+
+            ? `
+
+              <div class="budget-actions">
+
+                <button
+                  class="tiny-icon-btn edit-expense"
+                  type="button"
+                  data-expense-id="${escapeHTML(
+                    expense.id
+                  )}"
+                  aria-label="Edit expense"
+                >
+                  ✎
+                </button>
+
+                <button
+                  class="tiny-icon-btn delete-expense"
+                  type="button"
+                  data-expense-id="${escapeHTML(
+                    expense.id
+                  )}"
+                  aria-label="Delete expense"
+                >
+                  🗑
+                </button>
+
+              </div>
+
+            `
+
+            : ""
+        }
 
       </div>
 
@@ -5450,6 +6165,387 @@ function renderTransaction(
   `;
 
 }
+
+
+// ========================================
+// ACTIVITY SEARCH + FILTERS
+// ========================================
+
+const activitySearch =
+  document.getElementById("activitySearch");
+
+const activityCategoryFilter =
+  document.getElementById("activityCategoryFilter");
+
+const activityTripFilter =
+  document.getElementById("activityTripFilter");
+
+const activityPaymentFilter =
+  document.getElementById("activityPaymentFilter");
+
+const activityDateFrom =
+  document.getElementById("activityDateFrom");
+
+const activityDateTo =
+  document.getElementById("activityDateTo");
+
+const activityFilteredTotal =
+  document.getElementById("activityFilteredTotal");
+
+const activityResultCount =
+  document.getElementById("activityResultCount");
+
+
+function populateActivityFilters() {
+
+  const preserveSelect =
+    (
+      select,
+      options,
+      firstLabel
+    ) => {
+
+      if (!select) return;
+
+      const current =
+        select.value;
+
+      select.innerHTML =
+        `<option value="">${firstLabel}</option>` +
+        options.join("");
+
+      const exists =
+        Array.from(select.options)
+          .some(
+            (option) =>
+              option.value === current
+          );
+
+      if (exists) {
+        select.value = current;
+      }
+
+    };
+
+
+  const categories =
+    [...new Set(
+      expenses
+        .map((expense) => expense.category)
+        .filter(Boolean)
+    )].sort();
+
+
+  preserveSelect(
+    activityCategoryFilter,
+    categories.map(
+      (category) =>
+        `<option value="${escapeHTML(category)}">${escapeHTML(category)}</option>`
+    ),
+    "All categories"
+  );
+
+
+  preserveSelect(
+    activityTripFilter,
+    [
+      `<option value="__personal__">Personal / No Trip</option>`,
+      ...trips.map(
+        (trip) =>
+          `<option value="${escapeHTML(trip.id)}">${escapeHTML(trip.name)}</option>`
+      )
+    ],
+    "All trips"
+  );
+
+
+  const methods =
+    [...new Set(
+      expenses
+        .map((expense) => expense.paymentMethod)
+        .filter(Boolean)
+    )].sort();
+
+
+  preserveSelect(
+    activityPaymentFilter,
+    methods.map(
+      (method) =>
+        `<option value="${escapeHTML(method)}">${escapeHTML(method)}</option>`
+    ),
+    "All payment methods"
+  );
+
+}
+
+
+function getFilteredActivityExpenses() {
+
+  const search =
+    activitySearch?.value
+      .trim()
+      .toLowerCase() || "";
+
+  const category =
+    activityCategoryFilter?.value || "";
+
+  const tripId =
+    activityTripFilter?.value || "";
+
+  const paymentMethod =
+    activityPaymentFilter?.value || "";
+
+  const dateFrom =
+    activityDateFrom?.value || "";
+
+  const dateTo =
+    activityDateTo?.value || "";
+
+
+  return expenses.filter(
+    (expense) => {
+
+      if (search) {
+
+        const searchable =
+          [
+            expense.title,
+            expense.location,
+            expense.notes,
+            expense.category,
+            expense.paymentMethod,
+            expense.currency
+          ]
+            .filter(Boolean)
+            .join(" ")
+            .toLowerCase();
+
+        if (!searchable.includes(search)) {
+          return false;
+        }
+
+      }
+
+
+      if (
+        category &&
+        expense.category !== category
+      ) {
+        return false;
+      }
+
+
+      if (tripId) {
+
+        if (
+          tripId === "__personal__"
+        ) {
+
+          if (expense.tripId) {
+            return false;
+          }
+
+        } else if (
+          expense.tripId !== tripId
+        ) {
+          return false;
+        }
+
+      }
+
+
+      if (
+        paymentMethod &&
+        expense.paymentMethod !== paymentMethod
+      ) {
+        return false;
+      }
+
+
+      if (
+        dateFrom &&
+        expense.date < dateFrom
+      ) {
+        return false;
+      }
+
+
+      if (
+        dateTo &&
+        expense.date > dateTo
+      ) {
+        return false;
+      }
+
+
+      return true;
+
+    }
+  );
+
+}
+
+
+function updateActivityFilteredSummary(
+  filteredExpenses
+) {
+
+  if (activityResultCount) {
+
+    activityResultCount.textContent =
+      `${filteredExpenses.length} ${
+        filteredExpenses.length === 1
+          ? "expense"
+          : "expenses"
+      }`;
+
+  }
+
+
+  if (activityFilteredTotal) {
+
+    const total =
+      filteredExpenses.reduce(
+        (sum, expense) =>
+          sum +
+          convertToPHP(
+            expense.amount,
+            expense.currency
+          ),
+        0
+      );
+
+    activityFilteredTotal.textContent =
+      formatPHP(total);
+
+  }
+
+}
+
+
+function renderActivityTransactions() {
+
+  const activity =
+    document.getElementById("activityList");
+
+  const empty =
+    document.getElementById("activityEmpty");
+
+  if (!activity || !empty) return;
+
+
+  populateActivityFilters();
+
+
+  const filtered =
+    getFilteredActivityExpenses();
+
+
+  updateActivityFilteredSummary(
+    filtered
+  );
+
+
+  if (filtered.length === 0) {
+
+    activity.innerHTML = "";
+
+    empty.hidden = false;
+
+    const title =
+      empty.querySelector("h3");
+
+    const copy =
+      empty.querySelector("p");
+
+    if (title) {
+      title.textContent =
+        expenses.length
+          ? "No matching expenses"
+          : "No expenses yet";
+    }
+
+    if (copy) {
+      copy.textContent =
+        expenses.length
+          ? "Try changing or clearing your filters."
+          : "Add your first expense and it will appear here.";
+    }
+
+    return;
+
+  }
+
+
+  empty.hidden = true;
+
+
+  activity.innerHTML =
+    filtered
+      .map(
+        (expense) =>
+          renderTransaction(
+            expense,
+            true
+          )
+      )
+      .join("");
+
+
+  attachExpenseActions();
+
+}
+
+
+[
+  activitySearch,
+  activityCategoryFilter,
+  activityTripFilter,
+  activityPaymentFilter,
+  activityDateFrom,
+  activityDateTo
+]
+  .filter(Boolean)
+  .forEach(
+    (control) => {
+
+      control.addEventListener(
+        control === activitySearch
+          ? "input"
+          : "change",
+        renderActivityTransactions
+      );
+
+    }
+  );
+
+
+document
+  .getElementById("clearActivityFilters")
+  ?.addEventListener(
+    "click",
+    () => {
+
+      [
+        activitySearch,
+        activityCategoryFilter,
+        activityTripFilter,
+        activityPaymentFilter,
+        activityDateFrom,
+        activityDateTo
+      ]
+        .filter(Boolean)
+        .forEach(
+          (control) => {
+            control.value = "";
+          }
+        );
+
+
+      renderActivityTransactions();
+
+    }
+  );
 
 
 // ========================================
@@ -5518,6 +6614,11 @@ function renderTransactions() {
     }
 
 
+    updateActivityFilteredSummary(
+      []
+    );
+
+
     if (
       empty
     ) {
@@ -5561,6 +6662,9 @@ function renderTransactions() {
 
         .join("");
 
+
+    attachExpenseDetailActions();
+
   }
 
 
@@ -5568,19 +6672,723 @@ function renderTransactions() {
     activity
   ) {
 
-    activity.innerHTML =
-      expenses
-
-        .map(
-          renderTransaction
-        )
-
-        .join("");
+    renderActivityTransactions();
 
   }
 
 }
 
+
+
+
+
+
+// ========================================
+// EXPENSE DETAIL VIEW
+// ========================================
+
+const expenseDetailModal =
+  document.getElementById(
+    "expenseDetailModal"
+  );
+
+
+const expenseDetailBody =
+  document.getElementById(
+    "expenseDetailBody"
+  );
+
+
+function getExpenseBudgetName(
+  expense
+) {
+
+  if (
+    !expense?.budgetId
+  ) {
+
+    return "No budget";
+
+  }
+
+
+  const budget =
+    budgets.find(
+      (item) =>
+        item.id ===
+        expense.budgetId
+    );
+
+
+  return (
+    budget?.name ||
+    "No budget"
+  );
+
+}
+
+
+function getExpenseTripName(
+  expense
+) {
+
+  if (
+    !expense?.tripId
+  ) {
+
+    return "Personal / No Trip";
+
+  }
+
+
+  const trip =
+    trips.find(
+      (item) =>
+        item.id ===
+        expense.tripId
+    );
+
+
+  return (
+    trip?.name ||
+    "Trip unavailable"
+  );
+
+}
+
+
+function createExpenseDetailRow(
+  label,
+  value
+) {
+
+  return `
+
+    <div class="expense-detail-row">
+
+      <span>
+        ${escapeHTML(
+          label
+        )}
+      </span>
+
+      <strong>
+        ${escapeHTML(
+          value ||
+          "—"
+        )}
+      </strong>
+
+    </div>
+
+  `;
+
+}
+
+
+function openExpenseDetail(
+  expense
+) {
+
+  if (
+    !expense ||
+    !expenseDetailModal ||
+    !expenseDetailBody
+  ) {
+
+    return;
+
+  }
+
+
+  selectedExpenseDetailId =
+    expense.id;
+
+
+  const convertedPHP =
+    convertCurrency(
+      expense.amount,
+      expense.currency,
+      "PHP"
+    );
+
+
+  const convertedText =
+    expense.currency !==
+    "PHP"
+
+      ? `≈ ${formatPHP(
+          convertedPHP
+        )}`
+
+      : "";
+
+
+  const photoHTML =
+    expense.photo
+
+      ? `
+
+          <div class="expense-detail-photo">
+
+            <img
+              src="${expense.photo}"
+              alt="${escapeHTML(
+                expense.title
+              )}"
+            >
+
+          </div>
+
+        `
+
+      : `
+
+          <div class="expense-detail-photo expense-detail-photo-empty">
+
+            <span>
+              ${getCategoryEmoji(
+                expense.category
+              )}
+            </span>
+
+          </div>
+
+        `;
+
+
+  expenseDetailBody.innerHTML = `
+
+    ${photoHTML}
+
+
+    <div class="expense-detail-hero">
+
+      <div>
+
+        <p class="expense-detail-category">
+
+          ${escapeHTML(
+            expense.category ||
+            "Other"
+          )}
+
+        </p>
+
+
+        <h3>
+
+          ${escapeHTML(
+            expense.title ||
+            "Expense"
+          )}
+
+        </h3>
+
+      </div>
+
+
+      <div class="expense-detail-amount">
+
+        <strong>
+
+          ${formatCurrency(
+            expense.amount,
+            expense.currency
+          )}
+
+        </strong>
+
+
+        ${
+          convertedText
+
+            ? `
+
+                <span>
+
+                  ${convertedText}
+
+                </span>
+
+              `
+
+            : ""
+        }
+
+      </div>
+
+    </div>
+
+
+    <div class="expense-detail-info">
+
+      ${createExpenseDetailRow(
+        "Date",
+        formatDate(
+          expense.date
+        )
+      )}
+
+      ${createExpenseDetailRow(
+        "Payment",
+        expense.paymentMethod
+      )}
+
+      ${createExpenseDetailRow(
+        "Budget",
+        getExpenseBudgetName(
+          expense
+        )
+      )}
+
+      ${createExpenseDetailRow(
+        "Trip",
+        getExpenseTripName(
+          expense
+        )
+      )}
+
+      ${createExpenseDetailRow(
+        "Location / Store",
+        expense.location
+      )}
+
+    </div>
+
+
+    ${
+      expense.notes
+
+        ? `
+
+            <div class="expense-detail-notes">
+
+              <span>
+                Notes
+              </span>
+
+              <p>
+
+                ${escapeHTML(
+                  expense.notes
+                )}
+
+              </p>
+
+            </div>
+
+          `
+
+        : ""
+    }
+
+  `;
+
+
+  expenseDetailModal.hidden =
+    false;
+
+}
+
+
+function closeExpenseDetail() {
+
+  if (
+    expenseDetailModal
+  ) {
+
+    expenseDetailModal.hidden =
+      true;
+
+  }
+
+
+  selectedExpenseDetailId =
+    "";
+
+}
+
+
+function attachExpenseDetailActions() {
+
+  document
+    .querySelectorAll(
+      "[data-expense-detail-id]"
+    )
+    .forEach(
+      (row) => {
+
+        if (
+          row.dataset
+            .detailBound ===
+          "yes"
+        ) {
+
+          return;
+
+        }
+
+
+        row.dataset
+          .detailBound =
+          "yes";
+
+
+        const openFromRow =
+          (event) => {
+
+            if (
+              event.target.closest(
+                "button"
+              )
+            ) {
+
+              return;
+
+            }
+
+
+            const expense =
+              expenses.find(
+                (item) =>
+                  item.id ===
+                  row.dataset
+                    .expenseDetailId
+              );
+
+
+            if (
+              expense
+            ) {
+
+              openExpenseDetail(
+                expense
+              );
+
+            }
+
+          };
+
+
+        row.addEventListener(
+          "click",
+          openFromRow
+        );
+
+
+        row.addEventListener(
+          "keydown",
+          (event) => {
+
+            if (
+              event.key !==
+              "Enter" &&
+              event.key !==
+              " "
+            ) {
+
+              return;
+
+            }
+
+
+            if (
+              event.target.closest(
+                "button"
+              )
+            ) {
+
+              return;
+
+            }
+
+
+            event.preventDefault();
+
+
+            openFromRow(
+              event
+            );
+
+          }
+        );
+
+      }
+    );
+
+}
+
+
+document
+  .getElementById(
+    "closeExpenseDetail"
+  )
+  ?.addEventListener(
+    "click",
+    closeExpenseDetail
+  );
+
+
+expenseDetailModal?.addEventListener(
+  "click",
+  (event) => {
+
+    if (
+      event.target ===
+      expenseDetailModal
+    ) {
+
+      closeExpenseDetail();
+
+    }
+
+  }
+);
+
+
+document
+  .getElementById(
+    "editExpenseFromDetail"
+  )
+  ?.addEventListener(
+    "click",
+    () => {
+
+      const expense =
+        expenses.find(
+          (item) =>
+            item.id ===
+            selectedExpenseDetailId
+        );
+
+
+      if (
+        !expense
+      ) {
+
+        return;
+
+      }
+
+
+      closeExpenseDetail();
+
+
+      openExpenseEditor(
+        expense
+      );
+
+    }
+  );
+
+
+document
+  .getElementById(
+    "deleteExpenseFromDetail"
+  )
+  ?.addEventListener(
+    "click",
+    () => {
+
+      if (
+        !selectedExpenseDetailId
+      ) {
+
+        return;
+
+      }
+
+
+      expensePendingDelete =
+        selectedExpenseDetailId;
+
+
+      closeExpenseDetail();
+
+
+      document
+        .getElementById(
+          "deleteExpenseModal"
+        )
+        .hidden =
+        false;
+
+    }
+  );
+
+
+// ========================================
+// EDIT / DELETE EXPENSES
+// ========================================
+
+function attachExpenseActions() {
+
+  document
+    .querySelectorAll(
+      ".edit-expense"
+    )
+    .forEach(
+      (button) => {
+
+        button.addEventListener(
+          "click",
+          () => {
+
+            const expense =
+              expenses.find(
+                (item) =>
+                  item.id ===
+                  button.dataset
+                    .expenseId
+              );
+
+
+            if (
+              expense
+            ) {
+
+              openExpenseEditor(
+                expense
+              );
+
+            }
+
+          }
+        );
+
+      }
+    );
+
+
+  document
+    .querySelectorAll(
+      ".delete-expense"
+    )
+    .forEach(
+      (button) => {
+
+        button.addEventListener(
+          "click",
+          () => {
+
+            expensePendingDelete =
+              button.dataset
+                .expenseId;
+
+
+            document
+              .getElementById(
+                "deleteExpenseModal"
+              )
+              .hidden =
+              false;
+
+          }
+        );
+
+      }
+    );
+
+}
+
+
+document
+  .getElementById(
+    "cancelDeleteExpense"
+  )
+  ?.addEventListener(
+    "click",
+    () => {
+
+      expensePendingDelete =
+        null;
+
+
+      document
+        .getElementById(
+          "deleteExpenseModal"
+        )
+        .hidden =
+        true;
+
+    }
+  );
+
+
+document
+  .getElementById(
+    "confirmDeleteExpense"
+  )
+  ?.addEventListener(
+    "click",
+    async () => {
+
+      if (
+        !expensePendingDelete
+      ) {
+
+        return;
+
+      }
+
+
+      await deleteRecord(
+        STORES.expenses,
+        expensePendingDelete
+      );
+
+
+      expensePendingDelete =
+        null;
+
+
+      document
+        .getElementById(
+          "deleteExpenseModal"
+        )
+        .hidden =
+        true;
+
+
+      await loadAppData();
+
+
+      renderAll();
+
+
+      showToast(
+        "Expense deleted"
+      );
+
+    }
+  );
+
+
+document
+  .getElementById(
+    "deleteExpenseModal"
+  )
+  ?.addEventListener(
+    "click",
+    (event) => {
+
+      if (
+        event.target.id ===
+        "deleteExpenseModal"
+      ) {
+
+        expensePendingDelete =
+          null;
+
+
+        event.currentTarget.hidden =
+          true;
+
+      }
+
+    }
+  );
 
 // ========================================
 // MONTHLY SPENDING
@@ -5991,6 +7799,586 @@ function showToast(
 }
 
 
+
+// ========================================
+// CALENDAR
+// ========================================
+
+const calendarMonthLabel =
+  document.getElementById("calendarMonthLabel");
+
+const calendarGrid =
+  document.getElementById("calendarGrid");
+
+const calendarDayDetails =
+  document.getElementById("calendarDayDetails");
+
+let calendarCursor =
+  new Date();
+
+let selectedCalendarDate =
+  getTodayString();
+
+
+function getCalendarMonthKey(
+  date
+) {
+
+  return `${date.getFullYear()}-${String(
+    date.getMonth() + 1
+  ).padStart(2, "0")}`;
+
+}
+
+
+function getExpenseDateKey(
+  expense
+) {
+
+  return (
+    expense.date ||
+    (
+      expense.createdAt
+        ? expense.createdAt.slice(0, 10)
+        : ""
+    )
+  );
+
+}
+
+
+function getExpensesForDate(
+  dateKey
+) {
+
+  return expenses.filter(
+    (expense) =>
+      getExpenseDateKey(expense) ===
+      dateKey
+  );
+
+}
+
+
+function getDateExpenseTotalPHP(
+  dateKey
+) {
+
+  return getExpensesForDate(
+    dateKey
+  ).reduce(
+    (total, expense) =>
+      total +
+      convertCurrency(
+        expense.amount,
+        expense.currency,
+        "PHP"
+      ),
+    0
+  );
+
+}
+
+
+function formatCalendarDayTotal(
+  amount
+) {
+
+  const value =
+    Number(amount || 0);
+
+
+  if (
+    value >=
+    1000000
+  ) {
+
+    return `₱${(
+      value /
+      1000000
+    ).toFixed(
+      value >=
+      10000000
+        ? 0
+        : 1
+    )}m`;
+
+  }
+
+
+  if (
+    value >=
+    1000
+  ) {
+
+    return `₱${(
+      value /
+      1000
+    ).toFixed(
+      value >=
+      10000
+        ? 0
+        : 1
+    )}k`;
+
+  }
+
+
+  return (
+    value >
+    0
+      ? `₱${Math.round(value)}`
+      : ""
+  );
+
+}
+
+
+function getTripsForDate(
+  dateKey
+) {
+
+  return trips.filter(
+    (trip) =>
+      trip.startDate &&
+      trip.endDate &&
+      dateKey >=
+        trip.startDate &&
+      dateKey <=
+        trip.endDate
+  );
+
+}
+
+
+function renderCalendarDayDetails(
+  dateKey
+) {
+
+  if (
+    !calendarDayDetails
+  ) {
+
+    return;
+
+  }
+
+
+  selectedCalendarDate =
+    dateKey;
+
+
+  const date =
+    createLocalDate(dateKey);
+
+
+  const dayExpenses =
+    getExpensesForDate(dateKey);
+
+
+  const total =
+    getDateExpenseTotalPHP(dateKey);
+
+
+  const dateTitle =
+    new Intl.DateTimeFormat(
+      "en-US",
+      {
+        weekday: "long",
+        month: "long",
+        day: "numeric",
+        year: "numeric"
+      }
+    ).format(date);
+
+
+  const activeTrips =
+    getTripsForDate(dateKey);
+
+
+  calendarDayDetails.innerHTML = `
+
+    <div class="calendar-detail-heading">
+
+      <div>
+
+        <p class="eyebrow">
+          Selected day
+        </p>
+
+        <h2>
+          ${escapeHTML(dateTitle)}
+        </h2>
+
+      </div>
+
+      <div class="calendar-detail-total">
+
+        <span>Total</span>
+
+        <strong>
+          ${formatPHP(total)}
+        </strong>
+
+      </div>
+
+    </div>
+
+    ${
+      activeTrips.length
+
+        ? `
+
+            <div class="calendar-trip-pills">
+
+              ${activeTrips
+                .map(
+                  (trip) => `
+                    <span>
+                      ✈ ${escapeHTML(trip.name)}
+                    </span>
+                  `
+                )
+                .join("")}
+
+            </div>
+
+          `
+
+        : ""
+    }
+
+    ${
+      dayExpenses.length
+
+        ? `
+
+            <div class="calendar-expense-list">
+
+              ${dayExpenses
+                .map(
+                  (expense) =>
+                    renderTransaction(
+                      expense,
+                      false
+                    )
+                )
+                .join("")}
+
+            </div>
+
+          `
+
+        : `
+
+            <div class="calendar-empty-day">
+
+              <span>🌸</span>
+
+              <strong>
+                No spending recorded
+              </strong>
+
+              <p>
+                A quiet money day.
+              </p>
+
+            </div>
+
+          `
+    }
+
+  `;
+
+
+  attachExpenseDetailActions();
+
+}
+
+
+function renderCalendar() {
+
+  if (
+    !calendarGrid ||
+    !calendarMonthLabel
+  ) {
+
+    return;
+
+  }
+
+
+  const year =
+    calendarCursor.getFullYear();
+
+  const month =
+    calendarCursor.getMonth();
+
+
+  calendarMonthLabel.textContent =
+    new Intl.DateTimeFormat(
+      "en-US",
+      {
+        month: "long",
+        year: "numeric"
+      }
+    ).format(calendarCursor);
+
+
+  const firstDay =
+    new Date(
+      year,
+      month,
+      1
+    );
+
+  const lastDay =
+    new Date(
+      year,
+      month + 1,
+      0
+    );
+
+  const leadingDays =
+    firstDay.getDay();
+
+  const daysInMonth =
+    lastDay.getDate();
+
+  const today =
+    getTodayString();
+
+  const monthKey =
+    getCalendarMonthKey(
+      calendarCursor
+    );
+
+
+  if (
+    !selectedCalendarDate.startsWith(
+      monthKey
+    )
+  ) {
+
+    selectedCalendarDate =
+      `${monthKey}-01`;
+
+  }
+
+
+  let cells =
+    "";
+
+
+  for (
+    let index = 0;
+    index < leadingDays;
+    index++
+  ) {
+
+    cells += `
+      <div
+        class="calendar-cell calendar-cell-empty"
+        aria-hidden="true"
+      ></div>
+    `;
+
+  }
+
+
+  for (
+    let day = 1;
+    day <= daysInMonth;
+    day++
+  ) {
+
+    const dateKey =
+      `${monthKey}-${String(day).padStart(
+        2,
+        "0"
+      )}`;
+
+
+    const dailyTotal =
+      getDateExpenseTotalPHP(
+        dateKey
+      );
+
+
+    const dayExpenses =
+      getExpensesForDate(
+        dateKey
+      );
+
+
+    const activeTrips =
+      getTripsForDate(
+        dateKey
+      );
+
+
+    cells += `
+
+      <button
+        class="calendar-cell
+          ${dailyTotal > 0 ? "has-spending" : ""}
+          ${dateKey === today ? "is-today" : ""}
+          ${dateKey === selectedCalendarDate ? "is-selected" : ""}"
+        type="button"
+        data-calendar-date="${dateKey}"
+      >
+
+        <span class="calendar-day-number">
+          ${day}
+        </span>
+
+        ${
+          dailyTotal > 0
+            ? `
+                <span class="calendar-day-total">
+                  ${formatCalendarDayTotal(dailyTotal)}
+                </span>
+              `
+            : ""
+        }
+
+        <span class="calendar-day-markers">
+
+          ${
+            activeTrips.length
+              ? `<i>✈</i>`
+              : ""
+          }
+
+          ${
+            dayExpenses.length
+              ? `<b></b>`
+              : ""
+          }
+
+        </span>
+
+      </button>
+
+    `;
+
+  }
+
+
+  calendarGrid.innerHTML =
+    cells;
+
+
+  calendarGrid
+    .querySelectorAll(
+      "[data-calendar-date]"
+    )
+    .forEach(
+      (button) => {
+
+        button.addEventListener(
+          "click",
+          () => {
+
+            selectedCalendarDate =
+              button.dataset
+                .calendarDate;
+
+
+            renderCalendar();
+
+          }
+        );
+
+      }
+    );
+
+
+  renderCalendarDayDetails(
+    selectedCalendarDate
+  );
+
+}
+
+
+document
+  .getElementById(
+    "calendarPreviousMonth"
+  )
+  ?.addEventListener(
+    "click",
+    () => {
+
+      calendarCursor =
+        new Date(
+          calendarCursor.getFullYear(),
+          calendarCursor.getMonth() - 1,
+          1
+        );
+
+
+      selectedCalendarDate =
+        `${getCalendarMonthKey(
+          calendarCursor
+        )}-01`;
+
+
+      renderCalendar();
+
+    }
+  );
+
+
+document
+  .getElementById(
+    "calendarNextMonth"
+  )
+  ?.addEventListener(
+    "click",
+    () => {
+
+      calendarCursor =
+        new Date(
+          calendarCursor.getFullYear(),
+          calendarCursor.getMonth() + 1,
+          1
+        );
+
+
+      selectedCalendarDate =
+        `${getCalendarMonthKey(
+          calendarCursor
+        )}-01`;
+
+
+      renderCalendar();
+
+    }
+  );
+
+
+document
+  .getElementById(
+    "calendarToday"
+  )
+  ?.addEventListener(
+    "click",
+    () => {
+
+      calendarCursor =
+        new Date();
+
+
+      selectedCalendarDate =
+        getTodayString();
+
+
+      renderCalendar();
+
+    }
+  );
+
+
 // ========================================
 // RENDER EVERYTHING
 // ========================================
@@ -6002,6 +8390,8 @@ function renderAll() {
   renderTrips();
 
   renderTransactions();
+
+  renderCalendar();
 
   renderHomeSummary();
 
@@ -6081,6 +8471,29 @@ document.addEventListener(
         true;
 
     }
+
+
+    closeExpenseDetail();
+
+
+    const deleteExpenseModal =
+      document.getElementById(
+        "deleteExpenseModal"
+      );
+
+
+    if (
+      deleteExpenseModal
+    ) {
+
+      deleteExpenseModal.hidden =
+        true;
+
+    }
+
+
+    expensePendingDelete =
+      null;
 
   }
 );

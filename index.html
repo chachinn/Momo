@@ -159,23 +159,6 @@
         </button>
       </div>
 
-      <div class="drawer-section">
-        <p class="drawer-label">Wallet</p>
-
-        <button
-          class="drawer-item"
-          type="button"
-          data-drawer-nav="wallet"
-        >
-          <span class="drawer-icon">💳</span>
-          <span class="drawer-copy">
-            <strong>Wallet</strong>
-            <small>Accounts, cards and recurring expenses.</small>
-          </span>
-          <span class="drawer-arrow">›</span>
-        </button>
-      </div>
-
       <div class="drawer-footer">
         <span>🌸</span>
         <p>
@@ -457,19 +440,49 @@
         </div>
 
         <section class="card activity-summary">
-          <p class="label">This Month</p>
-          <p
-            id="activityMonthTotal"
-            class="amount-lg"
-          >
-            ₱0.00
-          </p>
+          <div>
+            <p class="label">This Month</p>
+            <p id="activityMonthTotal" class="amount-lg">₱0.00</p>
+          </div>
+          <div>
+            <p class="label">Showing</p>
+            <p id="activityFilteredTotal" class="amount-lg">₱0.00</p>
+          </div>
         </section>
 
-        <div
-          id="activityList"
-          class="activity-list"
-        ></div>
+        <section class="card activity-tools">
+          <label class="activity-search">
+            <span>⌕</span>
+            <input id="activitySearch" type="search" placeholder="Search title, store, notes..." autocomplete="off">
+          </label>
+
+          <div class="activity-filter-grid">
+            <label>
+              <span>Category</span>
+              <select id="activityCategoryFilter"><option value="">All categories</option></select>
+            </label>
+            <label>
+              <span>Trip</span>
+              <select id="activityTripFilter"><option value="">All trips</option></select>
+            </label>
+            <label>
+              <span>Payment</span>
+              <select id="activityPaymentFilter"><option value="">All payment methods</option></select>
+            </label>
+          </div>
+
+          <div class="activity-date-grid">
+            <label><span>From</span><input id="activityDateFrom" type="date"></label>
+            <label><span>To</span><input id="activityDateTo" type="date"></label>
+          </div>
+
+          <div class="activity-filter-footer">
+            <span id="activityResultCount">0 expenses</span>
+            <button id="clearActivityFilters" class="text-btn" type="button">Clear filters</button>
+          </div>
+        </section>
+
+        <div id="activityList" class="activity-list"></div>
 
         <div
           id="activityEmpty"
@@ -492,7 +505,7 @@
         <div class="page-heading compact">
           <div>
             <p class="eyebrow">New entry</p>
-            <h1>Add Expense</h1>
+            <h1 id="expenseFormTitle">Add Expense</h1>
           </div>
 
           <button
@@ -506,6 +519,7 @@
         </div>
 
         <form id="expenseForm">
+          <input id="expenseId" type="hidden">
 
           <section class="photo-upload">
             <label
@@ -605,6 +619,13 @@
               <span>Budget</span>
               <select id="expenseBudget">
                 <option value="">No budget</option>
+              </select>
+            </label>
+
+            <label class="form-row">
+              <span>Trip</span>
+              <select id="expenseTrip">
+                <option value="">Personal / No Trip</option>
               </select>
             </label>
 
@@ -870,88 +891,88 @@
       </section>
 
 
-      <!-- WALLET -->
+      <!-- CALENDAR -->
       <section
         class="screen"
-        data-screen="wallet"
+        data-screen="calendar"
       >
-        <div class="page-heading">
+        <div class="page-heading compact">
           <div>
-            <p class="eyebrow">Money management</p>
-            <h1>Wallet</h1>
+            <p class="eyebrow">Spending timeline</p>
+            <h1>Calendar</h1>
             <p class="page-description">
-              Accounts, cards and recurring expenses will live here.
+              See when you spent, one day at a time.
             </p>
           </div>
-        </div>
-
-        <div
-          id="walletTabs"
-          class="wallet-switch"
-        >
-          <button
-            class="wallet-switch-btn active"
-            type="button"
-            data-wallet-view="cards"
-          >
-            Cards
-          </button>
 
           <button
-            class="wallet-switch-btn"
+            id="calendarToday"
+            class="date-pill calendar-today-btn"
             type="button"
-            data-wallet-view="accounts"
           >
-            Accounts
-          </button>
-
-          <button
-            class="wallet-switch-btn"
-            type="button"
-            data-wallet-view="recurring"
-          >
-            Recurring
+            Today
           </button>
         </div>
 
-        <div
-          class="wallet-view active"
-          data-wallet-panel="cards"
-        >
-          <section class="empty-panel card">
-            <span class="empty-icon">💳</span>
-            <h3>No cards yet</h3>
-            <p>
-              Credit card tracking will be added in a later development step.
-            </p>
-          </section>
-        </div>
+        <section class="card calendar-card">
+          <div class="calendar-month-header">
+            <button
+              id="calendarPreviousMonth"
+              class="icon-btn soft"
+              type="button"
+              aria-label="Previous month"
+            >
+              ‹
+            </button>
 
-        <div
-          class="wallet-view"
-          data-wallet-panel="accounts"
-        >
-          <section class="empty-panel card">
-            <span class="empty-icon">👛</span>
-            <h3>No accounts yet</h3>
-            <p>
-              Wallet and account management will be added later.
-            </p>
-          </section>
-        </div>
+            <h2 id="calendarMonthLabel">
+              Month
+            </h2>
 
-        <div
-          class="wallet-view"
-          data-wallet-panel="recurring"
-        >
-          <section class="empty-panel card">
-            <span class="empty-icon">↻</span>
-            <h3>No recurring expenses yet</h3>
-            <p>
-              Recurring expenses will be added later.
-            </p>
-          </section>
-        </div>
+            <button
+              id="calendarNextMonth"
+              class="icon-btn soft"
+              type="button"
+              aria-label="Next month"
+            >
+              ›
+            </button>
+          </div>
+
+          <div
+            class="calendar-weekdays"
+            aria-hidden="true"
+          >
+            <span>Sun</span>
+            <span>Mon</span>
+            <span>Tue</span>
+            <span>Wed</span>
+            <span>Thu</span>
+            <span>Fri</span>
+            <span>Sat</span>
+          </div>
+
+          <div
+            id="calendarGrid"
+            class="calendar-grid"
+          ></div>
+
+          <div class="calendar-legend">
+            <span>
+              <i class="calendar-legend-dot"></i>
+              Spending
+            </span>
+
+            <span>
+              ✈ Trip day
+            </span>
+          </div>
+        </section>
+
+        <section
+          id="calendarDayDetails"
+          class="calendar-day-details"
+        ></section>
       </section>
 
 
@@ -1032,10 +1053,10 @@
       <button
         class="nav-item"
         type="button"
-        data-nav="wallet"
+        data-nav="calendar"
       >
-        <span>▣</span>
-        <small>Wallet</small>
+        <span>▦</span>
+        <small>Calendar</small>
       </button>
     </nav>
 
@@ -1402,6 +1423,107 @@
 
           <button
             id="confirmDeleteTrip"
+            class="danger-btn"
+            type="button"
+          >
+            Delete
+          </button>
+        </div>
+      </section>
+    </div>
+
+
+
+
+    <!-- ========================================
+         EXPENSE DETAIL MODAL
+    ========================================= -->
+    <div
+      id="expenseDetailModal"
+      class="modal-backdrop expense-detail-backdrop"
+      hidden
+    >
+      <section
+        class="modal-card expense-detail-card"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="expenseDetailTitle"
+      >
+        <div class="modal-header expense-detail-header">
+          <div>
+            <p class="eyebrow">Expense</p>
+            <h2 id="expenseDetailTitle">Expense Details</h2>
+          </div>
+
+          <button
+            id="closeExpenseDetail"
+            class="icon-btn soft"
+            type="button"
+            aria-label="Close expense details"
+          >
+            ×
+          </button>
+        </div>
+
+        <div id="expenseDetailBody"></div>
+
+        <div class="expense-detail-actions">
+          <button
+            id="editExpenseFromDetail"
+            class="secondary-btn"
+            type="button"
+          >
+            ✎ Edit
+          </button>
+
+          <button
+            id="deleteExpenseFromDetail"
+            class="danger-btn"
+            type="button"
+          >
+            Delete
+          </button>
+        </div>
+      </section>
+    </div>
+
+
+    <!-- ========================================
+         DELETE EXPENSE MODAL
+    ========================================= -->
+    <div
+      id="deleteExpenseModal"
+      class="modal-backdrop"
+      hidden
+    >
+      <section
+        class="modal-card"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="deleteExpenseTitle"
+      >
+        <div class="modal-header">
+          <div>
+            <p class="eyebrow">Expense</p>
+            <h2 id="deleteExpenseTitle">Delete Expense?</h2>
+          </div>
+        </div>
+
+        <p class="muted">
+          This expense will be permanently removed. Any linked budget or trip totals will update automatically.
+        </p>
+
+        <div class="modal-field-row">
+          <button
+            id="cancelDeleteExpense"
+            class="secondary-btn"
+            type="button"
+          >
+            Cancel
+          </button>
+
+          <button
+            id="confirmDeleteExpense"
             class="danger-btn"
             type="button"
           >
