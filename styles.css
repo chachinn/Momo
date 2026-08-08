@@ -7168,3 +7168,44 @@ body.wallpaper-enabled .activity-empty p {
     1.45;
 }
 
+
+
+/* ========================================
+   V5 WALLPAPER CROP CLEANUP
+======================================== */
+
+/* Old v3 framing UI is obsolete and should never display. */
+.wallpaper-framing-block,
+.wallpaper-fit-options,
+.wallpaper-slider-row,
+.reset-framing-btn {
+  display: none !important;
+}
+
+.wallpaper-crop-modal {
+  overscroll-behavior: contain;
+}
+
+.wallpaper-crop-viewport {
+  touch-action: none !important;
+}
+
+.wallpaper-crop-zoom {
+  margin-top: 12px;
+  padding: 12px 14px;
+  border: 1px solid var(--border);
+  border-radius: 16px;
+  background: color-mix(in srgb, var(--blush) 54%, white);
+}
+
+.wallpaper-crop-zoom input[type="range"] {
+  width: 100%;
+  height: 34px;
+  accent-color: var(--rose);
+}
+
+.wallpaper-crop-actions .primary-button {
+  background: linear-gradient(135deg, var(--pink), var(--rose));
+  color: white;
+}
+

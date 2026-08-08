@@ -15,10 +15,11 @@
   <meta name="apple-mobile-web-app-title" content="Momo">
 
   <title>Momo — Spending Diary</title>
+  <meta name="momo-app-version" content="20260808-5">
 
   <link rel="manifest" href="manifest.json">
   <link rel="apple-touch-icon" href="icon-192.png">
-  <link rel="stylesheet" href="styles.css?v=20260808-3">
+  <link rel="stylesheet" href="styles.css?v=20260808-5">
 </head>
 
 <body>
@@ -1701,6 +1702,86 @@
 
 
 
+
+    <!-- ========================================
+         WALLPAPER CROP MODAL
+    ========================================= -->
+    <div
+      id="wallpaperCropModal"
+      class="modal-backdrop wallpaper-crop-backdrop"
+      hidden
+    >
+      <section
+        class="modal-card wallpaper-crop-modal"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="wallpaperCropTitle"
+      >
+        <div class="modal-header">
+          <div>
+            <p class="eyebrow">Wallpaper</p>
+            <h2 id="wallpaperCropTitle">Crop Photo</h2>
+          </div>
+
+          <button
+            id="closeWallpaperCrop"
+            class="icon-btn soft"
+            type="button"
+            aria-label="Cancel wallpaper crop"
+          >
+            ×
+          </button>
+        </div>
+
+        <p class="wallpaper-crop-help">
+          Drag the photo to reposition it. Pinch with two fingers or use the slider to zoom.
+        </p>
+
+        <div id="wallpaperCropViewport" class="wallpaper-crop-viewport">
+          <img
+            id="wallpaperCropImage"
+            alt=""
+            draggable="false"
+          >
+          <div class="wallpaper-crop-grid" aria-hidden="true"></div>
+        </div>
+
+        <label class="wallpaper-crop-zoom">
+          <span>
+            <strong>Zoom</strong>
+            <small id="wallpaperCropZoomValue">100%</small>
+          </span>
+          <input
+            id="wallpaperCropZoom"
+            type="range"
+            min="100"
+            max="300"
+            step="1"
+            value="100"
+          >
+        </label>
+
+        <div class="wallpaper-crop-actions">
+          <button
+            id="cancelWallpaperCrop"
+            class="secondary-btn"
+            type="button"
+          >
+            Cancel
+          </button>
+
+          <button
+            id="useWallpaperCrop"
+            class="primary-button"
+            type="button"
+          >
+            Use Crop
+          </button>
+        </div>
+      </section>
+    </div>
+
+
     <!-- ========================================
          APPEARANCE / PERSONALIZATION MODAL
     ========================================= -->
@@ -1830,70 +1911,9 @@
               <button type="button" data-overlay-choice="strong">Strong</button>
             </div>
           </div>
-
-          <div class="wallpaper-framing-block">
-            <div class="wallpaper-framing-heading">
-              <strong>Wallpaper Framing</strong>
-              <small>Adjust how the photo fits your screen.</small>
-            </div>
-
-            <div class="wallpaper-fit-options">
-              <button type="button" data-wallpaper-fit="cover" class="active">Fill Screen</button>
-              <button type="button" data-wallpaper-fit="contain">Fit Image</button>
-            </div>
-
-            <label class="wallpaper-slider-row">
-              <span>
-                <strong>Zoom</strong>
-                <small id="wallpaperZoomValue">100%</small>
-              </span>
-              <input
-                id="wallpaperZoom"
-                type="range"
-                min="100"
-                max="180"
-                step="1"
-                value="100"
-              >
-            </label>
-
-            <label class="wallpaper-slider-row">
-              <span>
-                <strong>Horizontal</strong>
-                <small id="wallpaperXValue">50%</small>
-              </span>
-              <input
-                id="wallpaperPositionX"
-                type="range"
-                min="0"
-                max="100"
-                step="1"
-                value="50"
-              >
-            </label>
-
-            <label class="wallpaper-slider-row">
-              <span>
-                <strong>Vertical</strong>
-                <small id="wallpaperYValue">50%</small>
-              </span>
-              <input
-                id="wallpaperPositionY"
-                type="range"
-                min="0"
-                max="100"
-                step="1"
-                value="50"
-              >
-            </label>
-
-            <button
-              id="resetWallpaperFramingButton"
-              class="secondary-button reset-framing-btn"
-              type="button"
-            >
-              Center & Reset Framing
-            </button>
+          <div class="wallpaper-crop-note">
+            <strong>Wallpaper Crop</strong>
+            <small>When you choose a photo, Momo will let you drag and zoom it to fit your screen before saving.</small>
           </div>
         </section>
 
@@ -2888,7 +2908,7 @@
 
   </div>
 
-  <script src="app.js?v=20260808-3"></script>
+  <script src="app.js?v=20260808-5"></script>
 
   <script>
     (() => {

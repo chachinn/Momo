@@ -1,5 +1,6 @@
 // ========================================
 // MOMO
+// Build: 20260808-5
 // CLEAN FOUNDATION + FUNCTIONAL TRIPS
 // ========================================
 
@@ -2237,6 +2238,10 @@ let pendingWallpaperSource =
   "";
 
 
+let pendingWallpaperObjectURL =
+  "";
+
+
 let cropImageNaturalWidth =
   0;
 
@@ -2480,7 +2485,10 @@ function initializeWallpaperCrop() {
 }
 
 
-function closeWallpaperCropModal() {
+function closeWallpaperCropModal(
+  restoreAppearance =
+    true
+) {
 
   if (
     wallpaperCropModal
@@ -2488,6 +2496,21 @@ function closeWallpaperCropModal() {
 
     wallpaperCropModal.hidden =
       true;
+
+  }
+
+
+  if (
+    pendingWallpaperObjectURL
+  ) {
+
+    URL.revokeObjectURL(
+      pendingWallpaperObjectURL
+    );
+
+
+    pendingWallpaperObjectURL =
+      "";
 
   }
 
@@ -2501,6 +2524,17 @@ function closeWallpaperCropModal() {
 
   cropDragPointerId =
     null;
+
+
+  if (
+    restoreAppearance &&
+    appearanceModal
+  ) {
+
+    appearanceModal.hidden =
+      false;
+
+  }
 
 }
 
@@ -2523,6 +2557,25 @@ function openWallpaperCropModal(
   }
 
 
+  if (
+    appearanceModal
+  ) {
+
+    appearanceModal.hidden =
+      true;
+
+  }
+
+
+  wallpaperCropModal.hidden =
+    false;
+
+
+  wallpaperCropImage.removeAttribute(
+    "src"
+  );
+
+
   wallpaperCropImage.onload =
     () => {
 
@@ -2532,6 +2585,24 @@ function openWallpaperCropModal(
 
       cropImageNaturalHeight =
         wallpaperCropImage.naturalHeight;
+
+
+      if (
+        !cropImageNaturalWidth ||
+        !cropImageNaturalHeight
+      ) {
+
+        showToast(
+          "Could not read that photo."
+        );
+
+
+        closeWallpaperCropModal();
+
+
+        return;
+
+      }
 
 
       requestAnimationFrame(
@@ -2545,12 +2616,21 @@ function openWallpaperCropModal(
     };
 
 
+  wallpaperCropImage.onerror =
+    () => {
+
+      showToast(
+        "That photo format could not be opened."
+      );
+
+
+      closeWallpaperCropModal();
+
+    };
+
+
   wallpaperCropImage.src =
     source;
-
-
-  wallpaperCropModal.hidden =
-    false;
 
 }
 
@@ -3081,7 +3161,7 @@ chooseWallpaperButton
 
 wallpaperInput?.addEventListener(
   "change",
-  async () => {
+  () => {
 
     const file =
       wallpaperInput.files?.[
@@ -3120,47 +3200,25 @@ wallpaperInput?.addEventListener(
 
     try {
 
-      const source =
-        await new Promise(
-          (
-            resolve,
-            reject
-          ) => {
+      if (
+        pendingWallpaperObjectURL
+      ) {
 
-            const reader =
-              new FileReader();
+        URL.revokeObjectURL(
+          pendingWallpaperObjectURL
+        );
 
-
-            reader.onload =
-              () =>
-                resolve(
-                  String(
-                    reader.result ||
-                    ""
-                  )
-                );
+      }
 
 
-            reader.onerror =
-              () =>
-                reject(
-                  reader.error ||
-                  new Error(
-                    "Could not read photo"
-                  )
-                );
-
-
-            reader.readAsDataURL(
-              file
-            );
-
-          }
+      pendingWallpaperObjectURL =
+        URL.createObjectURL(
+          file
         );
 
 
       openWallpaperCropModal(
-        source
+        pendingWallpaperObjectURL
       );
 
     } catch (
