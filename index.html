@@ -283,16 +283,27 @@
           <div class="momo-home-section-heading">
             <div>
               <p class="momo-section-kicker">✦ MONEY SNAPSHOT</p>
-              <h2>This Month</h2>
+              <h2 id="homeDashboardMonthTitle">This Month</h2>
             </div>
 
             <span id="homeMonthLabel" class="momo-soft-pill"></span>
           </div>
 
-          <article class="momo-money-snapshot">
+          <article class="momo-money-snapshot momo-month-dashboard">
             <div class="momo-snapshot-main">
-              <p class="label">Spent so far</p>
-              <strong id="homeMonthSpent">₱0.00</strong>
+              <div class="momo-dashboard-spent-row">
+                <div>
+                  <p class="label">Spent so far</p>
+                  <strong id="homeMonthSpent">₱0.00</strong>
+                </div>
+
+                <div
+                  id="homeMonthComparison"
+                  class="momo-month-comparison"
+                >
+                  —
+                </div>
+              </div>
 
               <div class="momo-snapshot-progress">
                 <div
@@ -307,36 +318,59 @@
               </p>
             </div>
 
-            <div class="momo-snapshot-grid">
+            <div class="momo-dashboard-primary-grid">
               <button
-                class="momo-snapshot-stat"
+                id="editHomeMonthlyIncome"
+                class="momo-dashboard-primary-stat"
                 type="button"
-                data-nav="budgets"
               >
-                <span class="momo-stat-icon">♡</span>
-                <small>Budget</small>
-                <strong id="homeMonthBudget">Not set</strong>
+                <span>💰</span>
+                <small>Income</small>
+                <strong id="homeMonthlyIncome">Add income</strong>
+                <em>Edit</em>
               </button>
 
               <button
-                class="momo-snapshot-stat"
+                class="momo-dashboard-primary-stat"
                 type="button"
                 data-nav="budgets"
               >
-                <span class="momo-stat-icon">✦</span>
-                <small>Left</small>
+                <span>♡</span>
+                <small>Budget left</small>
                 <strong id="homeMonthRemaining">—</strong>
+                <em id="homeMonthBudget">Not set</em>
               </button>
 
               <button
-                class="momo-snapshot-stat"
+                class="momo-dashboard-primary-stat"
                 type="button"
                 data-drawer-nav="savings"
               >
-                <span class="momo-stat-icon">🌱</span>
-                <small>Saved</small>
-                <strong id="homeSavingsTotal">₱0.00</strong>
+                <span>🌱</span>
+                <small>Saved this month</small>
+                <strong id="homeSavingsMonth">₱0.00</strong>
+                <em id="homeSavingsTotal">₱0.00 total</em>
               </button>
+            </div>
+
+            <div class="momo-dashboard-insight-grid">
+              <div class="momo-dashboard-insight">
+                <span>◔</span>
+                <small>Daily average</small>
+                <strong id="homeDailyAverage">₱0.00</strong>
+              </div>
+
+              <div class="momo-dashboard-insight">
+                <span>★</span>
+                <small>Biggest category</small>
+                <strong id="homeBiggestCategory">—</strong>
+              </div>
+
+              <div class="momo-dashboard-insight">
+                <span>↻</span>
+                <small>Recurring</small>
+                <strong id="homeRecurringTotal">₱0.00</strong>
+              </div>
             </div>
           </article>
         </section>
@@ -501,55 +535,189 @@
 
       <!-- ACTIVITY -->
       <section
-        class="screen"
+        class="screen momo-activity"
         data-screen="activity"
       >
         <div class="page-heading">
           <div>
-            <p class="eyebrow">History</p>
-            <h1>Activity</h1>
+            <p class="eyebrow">Find anything</p>
+            <h1>Spending Search</h1>
             <p class="page-description">
-              Your saved spending appears here.
+              Search across expenses, trips, stores, tags, payment methods, and notes.
             </p>
           </div>
         </div>
 
-        <section class="card activity-summary">
-          <div>
-            <p class="label">This Month</p>
-            <p id="activityMonthTotal" class="amount-lg">₱0.00</p>
-          </div>
-          <div>
-            <p class="label">Showing</p>
-            <p id="activityFilteredTotal" class="amount-lg">₱0.00</p>
-          </div>
-        </section>
+        <section class="momo-search-shell">
+          <div class="momo-smart-search-row">
+            <label class="momo-smart-search">
+              <span class="momo-smart-search-icon">⌕</span>
 
-        <section class="card activity-tools">
-          <label class="activity-search">
-            <span>⌕</span>
-            <input id="activitySearch" type="search" placeholder="Search title, store, notes..." autocomplete="off">
-          </label>
+              <input
+                id="activitySearch"
+                type="search"
+                placeholder="Try “Japan cash food” or “Grab”"
+                autocomplete="off"
+                autocapitalize="none"
+              >
 
-          <div class="activity-filter-grid">
-            <label>
-              <span>Category</span>
-              <select id="activityCategoryFilter"><option value="">All categories</option></select>
+              <button
+                id="clearActivitySearch"
+                class="momo-search-clear"
+                type="button"
+                aria-label="Clear search"
+                hidden
+              >
+                ×
+              </button>
             </label>
-            <label>
-              <span>Trip</span>
-              <select id="activityTripFilter"><option value="">All trips</option></select>
-            </label>
-            <label>
-              <span>Payment</span>
-              <select id="activityPaymentFilter"><option value="">All payment methods</option></select>
-            </label>
-            <label>
-              <span>Currency</span>
-              <select id="activityCurrencyFilter"><option value="">All currencies</option></select>
-            </label>
-            <label>
-              <span>Sort</span>
+
+            <button
+              id="activityFilterToggle"
+              class="momo-filter-toggle"
+              type="button"
+              aria-expanded="false"
+              aria-controls="activityFilterPanel"
+            >
+              <span>☷</span>
+              <b>Filters</b>
+              <i id="activityFilterBadge" hidden>0</i>
+            </button>
+          </div>
+
+          <p class="momo-search-help">
+            Each search word can match a different detail of the expense.
+          </p>
+
+          <div class="momo-search-presets">
+            <button type="button" data-activity-preset="today">Today</button>
+            <button type="button" data-activity-preset="month">This Month</button>
+            <button type="button" data-activity-preset="receipt">With Receipt</button>
+            <button type="button" data-activity-preset="personal">Personal</button>
+          </div>
+
+          <div
+            id="activityActiveFilters"
+            class="momo-active-filter-row"
+            hidden
+          ></div>
+
+          <div
+            id="activityFilterPanel"
+            class="momo-filter-panel"
+            hidden
+          >
+            <div class="momo-filter-panel-heading">
+              <div>
+                <strong>Refine your search</strong>
+                <small>Everything here is optional.</small>
+              </div>
+
+              <button
+                id="clearActivityFilters"
+                class="text-btn"
+                type="button"
+              >
+                Clear all
+              </button>
+            </div>
+
+            <div class="activity-filter-grid momo-filter-grid">
+              <label>
+                <span>Category</span>
+                <select id="activityCategoryFilter">
+                  <option value="">All categories</option>
+                </select>
+              </label>
+
+              <label>
+                <span>Payment</span>
+                <select id="activityPaymentFilter">
+                  <option value="">All payment methods</option>
+                </select>
+              </label>
+
+              <label>
+                <span>Trip</span>
+                <select id="activityTripFilter">
+                  <option value="">All trips</option>
+                </select>
+              </label>
+
+              <label>
+                <span>Tag</span>
+                <select id="activityTagFilter">
+                  <option value="">All tags</option>
+                </select>
+              </label>
+
+              <label>
+                <span>Receipt</span>
+                <select id="activityPhotoFilter">
+                  <option value="">Any receipt status</option>
+                  <option value="with">With receipt</option>
+                  <option value="without">Without receipt</option>
+                </select>
+              </label>
+
+              <label>
+                <span>Currency</span>
+                <select id="activityCurrencyFilter">
+                  <option value="">All currencies</option>
+                </select>
+              </label>
+            </div>
+
+            <div class="momo-filter-divider"></div>
+
+            <div class="momo-filter-subheading">
+              <strong>Date range</strong>
+            </div>
+
+            <div class="activity-range-grid momo-date-filter-grid">
+              <label>
+                <span>From</span>
+                <input id="activityDateFrom" type="date">
+              </label>
+
+              <label>
+                <span>To</span>
+                <input id="activityDateTo" type="date">
+              </label>
+            </div>
+
+            <div class="momo-filter-subheading">
+              <strong>Amount in PHP equivalent</strong>
+            </div>
+
+            <div class="activity-range-grid momo-amount-filter-grid">
+              <label>
+                <span>Minimum</span>
+                <input
+                  id="activityMinAmount"
+                  type="number"
+                  inputmode="decimal"
+                  min="0"
+                  step="any"
+                  placeholder="₱0"
+                >
+              </label>
+
+              <label>
+                <span>Maximum</span>
+                <input
+                  id="activityMaxAmount"
+                  type="number"
+                  inputmode="decimal"
+                  min="0"
+                  step="any"
+                  placeholder="Any"
+                >
+              </label>
+            </div>
+
+            <label class="momo-sort-field">
+              <span>Sort results</span>
               <select id="activitySortFilter">
                 <option value="newest">Newest first</option>
                 <option value="oldest">Oldest first</option>
@@ -557,28 +725,25 @@
                 <option value="lowest">Lowest amount</option>
               </select>
             </label>
-            <label>
-              <span>Receipt</span>
-              <select id="activityPhotoFilter">
-                <option value="">Any</option>
-                <option value="with">With photo</option>
-                <option value="without">Without photo</option>
-              </select>
-            </label>
-          </div>
-
-          <div class="activity-range-grid">
-            <label><span>From</span><input id="activityDateFrom" type="date"></label>
-            <label><span>To</span><input id="activityDateTo" type="date"></label>
-            <label><span>Min ₱</span><input id="activityMinAmount" type="number" inputmode="decimal" min="0" step="any" placeholder="0"></label>
-            <label><span>Max ₱</span><input id="activityMaxAmount" type="number" inputmode="decimal" min="0" step="any" placeholder="Any"></label>
-          </div>
-
-          <div class="activity-filter-footer">
-            <span id="activityResultCount">0 expenses</span>
-            <button id="clearActivityFilters" class="text-btn" type="button">Clear filters</button>
           </div>
         </section>
+
+        <section class="card activity-summary momo-search-summary">
+          <div>
+            <p class="label">This Month</p>
+            <p id="activityMonthTotal" class="amount-lg">₱0.00</p>
+          </div>
+
+          <div>
+            <p class="label">Results Total</p>
+            <p id="activityFilteredTotal" class="amount-lg">₱0.00</p>
+          </div>
+        </section>
+
+        <div class="momo-search-result-heading">
+          <strong id="activityResultCount">0 expenses</strong>
+          <span id="activityResultContext">All spending</span>
+        </div>
 
         <div id="activityList" class="activity-list"></div>
 
@@ -623,7 +788,7 @@
         >
           <div class="section-title-row favorite-quick-heading">
             <div>
-              <p class="eyebrow">Favorites</p>
+              <p class="eyebrow">Templates</p>
               <h2>Quick Add</h2>
             </div>
             <span class="favorite-quick-hint">Tap to prefill</span>
@@ -887,14 +1052,27 @@
               >
             </label>
 
-            <label class="form-row">
-              <span>Location / Store</span>
-              <input
-                id="expenseLocation"
-                type="text"
-                placeholder="Optional"
-              >
-            </label>
+            <div class="merchant-memory-field">
+              <label class="form-row">
+                <span>
+                  Location / Store
+                  <small class="field-optional">Optional</small>
+                </span>
+
+                <input
+                  id="expenseLocation"
+                  type="text"
+                  placeholder="Start typing a place..."
+                  autocomplete="off"
+                >
+              </label>
+
+              <div
+                id="merchantMemorySuggestions"
+                class="merchant-memory-suggestions"
+                hidden
+              ></div>
+            </div>
 
             <label class="form-row form-row-notes">
               <span>Notes</span>
@@ -919,7 +1097,7 @@
               class="secondary-btn favorite-save-btn"
               type="button"
             >
-              ★ Save as Favorite
+              ⚡ Save as Template
             </button>
           </div>
         </form>
@@ -1756,8 +1934,10 @@
             <p class="eyebrow">Full backup</p>
             <h2>Protect your Momo data</h2>
             <p>
-              Creates one Momo backup file containing your expenses, budgets, trips,
-              recurring expenses, planned expenses, favorites, settings, links, and attached photos.
+              Creates one complete Momo backup file containing expenses, photos,
+              budgets, trips, recurring and planned expenses, Quick Add templates,
+              savings, Travel Settlement, trip shopping lists, monthly income,
+              appearance settings, and other local Momo data.
             </p>
           </div>
 
@@ -1781,7 +1961,8 @@
           </div>
 
           <p class="backup-section-copy">
-            Choose a Momo backup file. Momo checks the file first and asks for confirmation before replacing your current local data.
+            Choose a Momo backup file. Momo validates it first, shows what is inside,
+            and creates a safety copy of your current data before anything is replaced.
           </p>
 
           <input
@@ -1836,37 +2017,22 @@
         >
           <span>Current local data</span>
 
-          <div class="backup-status-grid">
-            <div>
-              <strong id="backupExpenseCount">0</strong>
-              <small>Expenses</small>
-            </div>
-
-            <div>
-              <strong id="backupBudgetCount">0</strong>
-              <small>Budgets</small>
-            </div>
-
-            <div>
-              <strong id="backupTripCount">0</strong>
-              <small>Trips</small>
-            </div>
-
-            <div>
-              <strong id="backupRecurringCount">0</strong>
-              <small>Recurring</small>
-            </div>
-
-            <div>
-              <strong id="backupPlannedCount">0</strong>
-              <small>Planned</small>
-            </div>
-
-            <div>
-              <strong id="backupFavoriteCount">0</strong>
-              <small>Favorites</small>
-            </div>
+          <div class="backup-status-grid backup-status-grid-expanded">
+            <div><strong id="backupExpenseCount">0</strong><small>Expenses</small></div>
+            <div><strong id="backupPhotoCount">0</strong><small>Photos</small></div>
+            <div><strong id="backupBudgetCount">0</strong><small>Budgets</small></div>
+            <div><strong id="backupTripCount">0</strong><small>Trips</small></div>
+            <div><strong id="backupRecurringCount">0</strong><small>Recurring</small></div>
+            <div><strong id="backupPlannedCount">0</strong><small>Planned</small></div>
+            <div><strong id="backupFavoriteCount">0</strong><small>Templates</small></div>
+            <div><strong id="backupSavingsCount">0</strong><small>Savings Goals</small></div>
+            <div><strong id="backupSettlementCount">0</strong><small>Settlements</small></div>
+            <div><strong id="backupShoppingCount">0</strong><small>Shopping Items</small></div>
           </div>
+
+          <p id="backupCoverageText" class="backup-coverage-text">
+            Full local backup ready.
+          </p>
         </section>
       </section>
 
@@ -3085,7 +3251,7 @@
             class="danger-btn"
             type="button"
           >
-            Delete
+            Delete Expense
           </button>
         </div>
       </section>
@@ -3612,7 +3778,8 @@
         ></div>
 
         <p class="muted restore-warning">
-          Restoring replaces the current Momo records on this device with the records inside the selected backup.
+          Restoring replaces the current Momo records on this device. Before restoring,
+          Momo automatically downloads a safety backup of your current data.
         </p>
 
         <div class="modal-field-row">
@@ -3888,6 +4055,204 @@
 
 
     <!-- ========================================
+         TRIP SHOPPING ITEM MODAL
+    ========================================= -->
+    <div
+      id="tripShoppingModal"
+      class="modal-backdrop"
+      hidden
+    >
+      <section
+        class="modal-card trip-shopping-modal"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="tripShoppingModalTitle"
+      >
+        <div class="modal-header">
+          <div>
+            <p class="eyebrow">Trip shopping</p>
+            <h2 id="tripShoppingModalTitle">Add Item</h2>
+          </div>
+
+          <button
+            id="closeTripShoppingModal"
+            class="icon-btn soft"
+            type="button"
+            aria-label="Close shopping item"
+          >
+            ×
+          </button>
+        </div>
+
+        <form id="tripShoppingForm">
+          <input id="tripShoppingItemId" type="hidden">
+
+          <label class="trip-shopping-photo-picker">
+            <input
+              id="tripShoppingPhoto"
+              type="file"
+              accept="image/*"
+              hidden
+            >
+
+            <span
+              id="tripShoppingPhotoPreview"
+              class="trip-shopping-photo-preview"
+            >
+              🛍️
+            </span>
+
+            <span class="trip-shopping-photo-copy">
+              <strong>Add a photo</strong>
+              <small>Optional · tap to choose</small>
+            </span>
+          </label>
+
+          <label class="modal-field">
+            <span>Item</span>
+            <input
+              id="tripShoppingName"
+              type="text"
+              maxlength="80"
+              placeholder="Blue Box merch"
+              required
+            >
+          </label>
+
+          <div class="modal-field-row trip-shopping-price-grid">
+            <label>
+              <span>Target Price <small>Optional</small></span>
+              <input
+                id="tripShoppingTargetPrice"
+                type="number"
+                inputmode="decimal"
+                min="0"
+                step="0.01"
+                placeholder="0"
+              >
+            </label>
+
+            <label>
+              <span>Actual Price <small>Optional</small></span>
+              <input
+                id="tripShoppingActualPrice"
+                type="number"
+                inputmode="decimal"
+                min="0"
+                step="0.01"
+                placeholder="0"
+              >
+            </label>
+          </div>
+
+          <label class="modal-field">
+            <span>Store / Location <small>Optional</small></span>
+            <input
+              id="tripShoppingStore"
+              type="text"
+              maxlength="100"
+              placeholder="Animate Ikebukuro"
+            >
+          </label>
+
+          <label class="trip-shopping-bought-toggle">
+            <span>
+              <strong>Bought it</strong>
+              <small>Mark this item as purchased.</small>
+            </span>
+
+            <input
+              id="tripShoppingBought"
+              type="checkbox"
+            >
+            <span class="appearance-switch" aria-hidden="true"></span>
+          </label>
+
+          <button
+            class="primary-button trip-shopping-save"
+            type="submit"
+          >
+            Save Item
+          </button>
+
+          <button
+            id="deleteTripShoppingItem"
+            class="danger-btn trip-shopping-delete"
+            type="button"
+            hidden
+          >
+            Delete Item
+          </button>
+        </form>
+      </section>
+    </div>
+
+
+    <!-- ========================================
+         MONTHLY INCOME MODAL
+    ========================================= -->
+    <div
+      id="monthlyIncomeModal"
+      class="modal-backdrop"
+      hidden
+    >
+      <section
+        class="modal-card monthly-income-modal"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="monthlyIncomeModalTitle"
+      >
+        <div class="modal-header">
+          <div>
+            <p class="eyebrow">Money snapshot</p>
+            <h2 id="monthlyIncomeModalTitle">Monthly Income</h2>
+          </div>
+
+          <button
+            id="closeMonthlyIncomeModal"
+            class="icon-btn soft"
+            type="button"
+            aria-label="Close monthly income"
+          >
+            ×
+          </button>
+        </div>
+
+        <p id="monthlyIncomeMonthLabel" class="muted"></p>
+
+        <form id="monthlyIncomeForm">
+          <label class="modal-field">
+            <span>
+              Income
+              <small class="field-optional">Optional</small>
+            </span>
+
+            <input
+              id="monthlyIncomeAmount"
+              type="number"
+              inputmode="decimal"
+              min="0"
+              step="0.01"
+              placeholder="0"
+            >
+          </label>
+
+          <p class="monthly-income-help">
+            This is only for your monthly snapshot. Leave it blank if you do not want to track income in Momo.
+          </p>
+
+          <button
+            class="primary-button monthly-income-save"
+            type="submit"
+          >
+            Save Income
+          </button>
+        </form>
+      </section>
+    </div>
+
+
+    <!-- ========================================
          EXPENSE DETAIL MODAL
     ========================================= -->
     <div
@@ -3903,7 +4268,7 @@
       >
         <div class="modal-header expense-detail-header">
           <div>
-            <p class="eyebrow">Expense</p>
+            <p class="eyebrow">Spending record</p>
             <h2 id="expenseDetailTitle">Expense Details</h2>
           </div>
 
@@ -3925,7 +4290,7 @@
             class="secondary-btn"
             type="button"
           >
-            ✎ Edit
+            ✎ Edit Expense
           </button>
 
           <button
