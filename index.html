@@ -3077,24 +3077,82 @@
             >
           </label>
 
-          <div class="modal-field-row trip-date-grid">
-            <label class="modal-field">
-              <span>Start Date</span>
-              <input
-                id="tripStartDate"
-                type="date"
-                required
-              >
-            </label>
+          <div class="trip-range-field">
+            <span class="trip-range-label">Travel Dates</span>
 
-            <label class="modal-field">
-              <span>End Date</span>
-              <input
-                id="tripEndDate"
-                type="date"
-                required
-              >
-            </label>
+            <input
+              id="tripStartDate"
+              type="hidden"
+            >
+
+            <input
+              id="tripEndDate"
+              type="hidden"
+            >
+
+            <button
+              id="tripDateRangeButton"
+              class="trip-date-range-button"
+              type="button"
+              aria-expanded="false"
+              aria-controls="tripDateCalendar"
+            >
+              <span class="trip-date-range-icon">📅</span>
+
+              <span class="trip-date-range-copy">
+                <strong id="tripDateRangePrimary">Choose dates</strong>
+                <small id="tripDateRangeSecondary">
+                  First tap = start · second tap = end
+                </small>
+              </span>
+
+              <span class="trip-date-range-arrow">⌄</span>
+            </button>
+
+            <div
+              id="tripDateCalendar"
+              class="trip-date-calendar"
+              hidden
+            >
+              <div class="trip-calendar-header">
+                <button
+                  id="tripCalendarPrev"
+                  type="button"
+                  aria-label="Previous month"
+                >
+                  ‹
+                </button>
+
+                <strong id="tripCalendarMonth"></strong>
+
+                <button
+                  id="tripCalendarNext"
+                  type="button"
+                  aria-label="Next month"
+                >
+                  ›
+                </button>
+              </div>
+
+              <div class="trip-calendar-weekdays" aria-hidden="true">
+                <span>Su</span>
+                <span>Mo</span>
+                <span>Tu</span>
+                <span>We</span>
+                <span>Th</span>
+                <span>Fr</span>
+                <span>Sa</span>
+              </div>
+
+              <div
+                id="tripCalendarGrid"
+                class="trip-calendar-grid"
+              ></div>
+
+              <div class="trip-calendar-tip">
+                Tap once to select. Double-tap a selected date to remove it.
+              </div>
+            </div>
           </div>
 
           <div class="modal-field-row trip-budget-grid">
@@ -3149,7 +3207,7 @@
 
             <textarea
               id="tripNotes"
-              rows="3"
+              rows="2"
               placeholder="Anything you want to remember about this trip"
             ></textarea>
           </label>

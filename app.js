@@ -7495,6 +7495,54 @@ const tripEndDate =
   );
 
 
+const tripDateRangeButton =
+  document.getElementById(
+    "tripDateRangeButton"
+  );
+
+
+const tripDateCalendar =
+  document.getElementById(
+    "tripDateCalendar"
+  );
+
+
+const tripDateRangePrimary =
+  document.getElementById(
+    "tripDateRangePrimary"
+  );
+
+
+const tripDateRangeSecondary =
+  document.getElementById(
+    "tripDateRangeSecondary"
+  );
+
+
+const tripCalendarMonth =
+  document.getElementById(
+    "tripCalendarMonth"
+  );
+
+
+const tripCalendarGrid =
+  document.getElementById(
+    "tripCalendarGrid"
+  );
+
+
+let tripCalendarViewDate =
+  new Date();
+
+
+let tripCalendarLastTapDate =
+  "";
+
+
+let tripCalendarLastTapTime =
+  0;
+
+
 const tripBudget =
   document.getElementById(
     "tripBudget"
@@ -7519,6 +7567,636 @@ const tripNotes =
   );
 
 
+
+function formatTripRangeDisplayDate(
+  dateString
+) {
+
+  if (
+    !dateString
+  ) {
+
+    return "";
+
+  }
+
+
+  const date =
+    createLocalDate(
+      dateString
+    );
+
+
+  return new Intl.DateTimeFormat(
+    "en-US",
+    {
+      month: "short",
+      day: "numeric",
+      year: "numeric"
+    }
+  ).format(
+    date
+  );
+
+}
+
+
+function setTripCalendarViewFromDate(
+  dateString
+) {
+
+  const date =
+    createLocalDate(
+      dateString
+    ) ||
+    new Date();
+
+
+  tripCalendarViewDate =
+    new Date(
+      date.getFullYear(),
+      date.getMonth(),
+      1
+    );
+
+}
+
+
+function updateTripDateRangeSummary() {
+
+  if (
+    !tripDateRangePrimary ||
+    !tripDateRangeSecondary
+  ) {
+
+    return;
+
+  }
+
+
+  const start =
+    tripStartDate?.value ||
+    "";
+
+
+  const end =
+    tripEndDate?.value ||
+    "";
+
+
+  if (
+    !start
+  ) {
+
+    tripDateRangePrimary.textContent =
+      "Choose dates";
+
+
+    tripDateRangeSecondary.textContent =
+      "First tap = start · second tap = end";
+
+
+    return;
+
+  }
+
+
+  if (
+    !end
+  ) {
+
+    tripDateRangePrimary.textContent =
+      formatTripRangeDisplayDate(
+        start
+      );
+
+
+    tripDateRangeSecondary.textContent =
+      "Start selected · tap another date for the end";
+
+
+    return;
+
+  }
+
+
+  tripDateRangePrimary.textContent =
+    `${formatTripRangeDisplayDate(
+      start
+    )} – ${formatTripRangeDisplayDate(
+      end
+    )}`;
+
+
+  const startDate =
+    createLocalDate(
+      start
+    );
+
+
+  const endDate =
+    createLocalDate(
+      end
+    );
+
+
+  const days =
+    Math.round(
+      (
+        endDate -
+        startDate
+      ) /
+      86400000
+    ) +
+    1;
+
+
+  tripDateRangeSecondary.textContent =
+    `${days} ${
+      days ===
+      1
+        ? "day"
+        : "days"
+    } · double-tap a selected date to remove it`;
+
+}
+
+
+function isDateInsideTripRange(
+  dateString
+) {
+
+  const start =
+    tripStartDate?.value ||
+    "";
+
+
+  const end =
+    tripEndDate?.value ||
+    "";
+
+
+  return Boolean(
+    start &&
+    end &&
+    dateString >
+      start &&
+    dateString <
+      end
+  );
+
+}
+
+
+function renderTripCalendar() {
+
+  if (
+    !tripCalendarGrid ||
+    !tripCalendarMonth
+  ) {
+
+    return;
+
+  }
+
+
+  const year =
+    tripCalendarViewDate
+      .getFullYear();
+
+
+  const month =
+    tripCalendarViewDate
+      .getMonth();
+
+
+  tripCalendarMonth.textContent =
+    new Intl.DateTimeFormat(
+      "en-US",
+      {
+        month: "long",
+        year: "numeric"
+      }
+    ).format(
+      tripCalendarViewDate
+    );
+
+
+  const firstDay =
+    new Date(
+      year,
+      month,
+      1
+    ).getDay();
+
+
+  const daysInMonth =
+    new Date(
+      year,
+      month +
+        1,
+      0
+    ).getDate();
+
+
+  const today =
+    getTodayString();
+
+
+  const cells =
+    [];
+
+
+  for (
+    let i = 0;
+    i <
+    firstDay;
+    i++
+  ) {
+
+    cells.push(
+      `<span class="trip-calendar-blank"></span>`
+    );
+
+  }
+
+
+  for (
+    let day = 1;
+    day <=
+    daysInMonth;
+    day++
+  ) {
+
+    const dateString =
+      `${year}-${String(
+        month +
+        1
+      ).padStart(
+        2,
+        "0"
+      )}-${String(
+        day
+      ).padStart(
+        2,
+        "0"
+      )}`;
+
+
+    const classes =
+      [
+        "trip-calendar-day"
+      ];
+
+
+    if (
+      dateString ===
+      today
+    ) {
+
+      classes.push(
+        "today"
+      );
+
+    }
+
+
+    if (
+      dateString ===
+      tripStartDate?.value
+    ) {
+
+      classes.push(
+        "start"
+      );
+
+    }
+
+
+    if (
+      dateString ===
+      tripEndDate?.value
+    ) {
+
+      classes.push(
+        "end"
+      );
+
+    }
+
+
+    if (
+      isDateInsideTripRange(
+        dateString
+      )
+    ) {
+
+      classes.push(
+        "in-range"
+      );
+
+    }
+
+
+    cells.push(
+      `
+        <button
+          type="button"
+          class="${classes.join(
+            " "
+          )}"
+          data-trip-calendar-date="${dateString}"
+          aria-label="${dateString}"
+        >
+          ${day}
+        </button>
+      `
+    );
+
+  }
+
+
+  tripCalendarGrid.innerHTML =
+    cells.join("");
+
+
+  tripCalendarGrid
+    .querySelectorAll(
+      "[data-trip-calendar-date]"
+    )
+    .forEach(
+      (
+        button
+      ) => {
+
+        button.addEventListener(
+          "click",
+          () => {
+
+            const dateString =
+              button.dataset
+                .tripCalendarDate;
+
+
+            const now =
+              Date.now();
+
+
+            const isDoubleTap =
+              tripCalendarLastTapDate ===
+                dateString &&
+              now -
+                tripCalendarLastTapTime <
+                420;
+
+
+            tripCalendarLastTapDate =
+              dateString;
+
+
+            tripCalendarLastTapTime =
+              now;
+
+
+            if (
+              isDoubleTap &&
+              (
+                dateString ===
+                  tripStartDate.value ||
+                dateString ===
+                  tripEndDate.value
+              )
+            ) {
+
+              if (
+                dateString ===
+                tripEndDate.value
+              ) {
+
+                tripEndDate.value =
+                  "";
+
+              } else if (
+                dateString ===
+                  tripStartDate.value &&
+                tripEndDate.value
+              ) {
+
+                tripStartDate.value =
+                  tripEndDate.value;
+
+
+                tripEndDate.value =
+                  "";
+
+              } else {
+
+                tripStartDate.value =
+                  "";
+
+              }
+
+
+              updateTripDateRangeSummary();
+
+
+              renderTripCalendar();
+
+
+              return;
+
+            }
+
+
+            if (
+              !tripStartDate.value
+            ) {
+
+              tripStartDate.value =
+                dateString;
+
+
+              tripEndDate.value =
+                "";
+
+            } else if (
+              !tripEndDate.value
+            ) {
+
+              if (
+                dateString <
+                tripStartDate.value
+              ) {
+
+                tripEndDate.value =
+                  tripStartDate.value;
+
+
+                tripStartDate.value =
+                  dateString;
+
+              } else if (
+                dateString >
+                tripStartDate.value
+              ) {
+
+                tripEndDate.value =
+                  dateString;
+
+              }
+
+            } else {
+
+              tripStartDate.value =
+                dateString;
+
+
+              tripEndDate.value =
+                "";
+
+            }
+
+
+            updateTripDateRangeSummary();
+
+
+            renderTripCalendar();
+
+          }
+        );
+
+      }
+    );
+
+}
+
+
+function openTripDateCalendar() {
+
+  if (
+    !tripDateCalendar
+  ) {
+
+    return;
+
+  }
+
+
+  const willOpen =
+    tripDateCalendar.hidden;
+
+
+  tripDateCalendar.hidden =
+    !willOpen;
+
+
+  tripDateRangeButton
+    ?.setAttribute(
+      "aria-expanded",
+      String(
+        willOpen
+      )
+    );
+
+
+  if (
+    willOpen
+  ) {
+
+    setTripCalendarViewFromDate(
+      tripStartDate.value ||
+      getTodayString()
+    );
+
+
+    renderTripCalendar();
+
+  }
+
+}
+
+
+function closeTripDateCalendar() {
+
+  if (
+    !tripDateCalendar
+  ) {
+
+    return;
+
+  }
+
+
+  tripDateCalendar.hidden =
+    true;
+
+
+  tripDateRangeButton
+    ?.setAttribute(
+      "aria-expanded",
+      "false"
+    );
+
+}
+
+
+tripDateRangeButton
+  ?.addEventListener(
+    "click",
+    openTripDateCalendar
+  );
+
+
+document
+  .getElementById(
+    "tripCalendarPrev"
+  )
+  ?.addEventListener(
+    "click",
+    () => {
+
+      tripCalendarViewDate =
+        new Date(
+          tripCalendarViewDate
+            .getFullYear(),
+          tripCalendarViewDate
+            .getMonth() -
+            1,
+          1
+        );
+
+
+      renderTripCalendar();
+
+    }
+  );
+
+
+document
+  .getElementById(
+    "tripCalendarNext"
+  )
+  ?.addEventListener(
+    "click",
+    () => {
+
+      tripCalendarViewDate =
+        new Date(
+          tripCalendarViewDate
+            .getFullYear(),
+          tripCalendarViewDate
+            .getMonth() +
+            1,
+          1
+        );
+
+
+      renderTripCalendar();
+
+    }
+  );
+
+
 function openTripModal(
   trip =
     null
@@ -7526,6 +8204,17 @@ function openTripModal(
 
   tripModal.hidden =
     false;
+
+
+  closeTripDateCalendar();
+
+
+  tripCalendarLastTapDate =
+    "";
+
+
+  tripCalendarLastTapTime =
+    0;
 
 
   if (
@@ -7597,12 +8286,32 @@ function openTripModal(
     tripCurrency.value =
       "JPY";
 
+
+    tripStartDate.value =
+      "";
+
+
+    tripEndDate.value =
+      "";
+
   }
+
+
+  updateTripDateRangeSummary();
+
+
+  setTripCalendarViewFromDate(
+    tripStartDate.value ||
+    getTodayString()
+  );
 
 }
 
 
 function closeTripModal() {
+
+  closeTripDateCalendar();
+
 
   tripModal.hidden =
     true;
@@ -7662,6 +8371,24 @@ tripForm?.addEventListener(
   ) => {
 
     event.preventDefault();
+
+
+    if (
+      !tripStartDate.value ||
+      !tripEndDate.value
+    ) {
+
+      showToast(
+        "Choose both a start date and an end date."
+      );
+
+
+      openTripDateCalendar();
+
+
+      return;
+
+    }
 
 
     const start =

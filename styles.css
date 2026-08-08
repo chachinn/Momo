@@ -8363,3 +8363,422 @@ body.wallpaper-enabled .settlement-payment-card {
   }
 }
 
+
+
+/* ========================================
+   COMPACT TRIP MODAL + DATE RANGE PICKER
+======================================== */
+
+.trip-modal-card {
+  width:
+    min(
+      calc(100vw - 28px),
+      430px
+    );
+  max-height:
+    min(
+      88dvh,
+      760px
+    );
+  padding:
+    18px;
+  overflow-y:
+    auto;
+}
+
+.trip-modal-card .modal-header {
+  margin-bottom:
+    14px;
+}
+
+.trip-modal-card .modal-header h2 {
+  font-size:
+    27px;
+}
+
+.trip-modal-card .modal-field {
+  margin-bottom:
+    11px;
+}
+
+.trip-modal-card .modal-field > span,
+.trip-range-label {
+  display:
+    block;
+  margin-bottom:
+    5px;
+  color:
+    var(--text-soft);
+  font-size:
+    10px;
+  font-weight:
+    700;
+}
+
+.trip-modal-card input:not([type="hidden"]),
+.trip-modal-card select {
+  min-height:
+    49px;
+  padding:
+    0 13px;
+  border-radius:
+    16px;
+}
+
+.trip-modal-card textarea {
+  min-height:
+    76px;
+  padding:
+    12px 13px;
+  border-radius:
+    16px;
+}
+
+.trip-budget-grid {
+  grid-template-columns:
+    minmax(0, 1fr)
+    110px;
+  gap:
+    10px;
+}
+
+.trip-budget-grid label {
+  min-width:
+    0;
+}
+
+.trip-budget-grid input,
+.trip-budget-grid select {
+  width:
+    100%;
+  min-width:
+    0;
+  max-width:
+    100%;
+}
+
+.trip-range-field {
+  margin-bottom:
+    11px;
+}
+
+.trip-date-range-button {
+  width:
+    100%;
+  min-height:
+    58px;
+  padding:
+    9px 11px;
+  border:
+    1px solid
+    var(--border);
+  border-radius:
+    17px;
+  display:
+    grid;
+  grid-template-columns:
+    34px
+    minmax(0, 1fr)
+    24px;
+  align-items:
+    center;
+  gap:
+    9px;
+  background:
+    color-mix(
+      in srgb,
+      var(--surface) 88%,
+      var(--blush)
+    );
+  color:
+    var(--text);
+  text-align:
+    left;
+}
+
+.trip-date-range-icon {
+  width:
+    34px;
+  height:
+    34px;
+  border-radius:
+    11px;
+  display:
+    grid;
+  place-items:
+    center;
+  background:
+    var(--blush);
+  font-size:
+    16px;
+}
+
+.trip-date-range-copy {
+  min-width:
+    0;
+}
+
+.trip-date-range-copy strong,
+.trip-date-range-copy small {
+  display:
+    block;
+}
+
+.trip-date-range-copy strong {
+  overflow:
+    hidden;
+  font-size:
+    12px;
+  text-overflow:
+    ellipsis;
+  white-space:
+    nowrap;
+}
+
+.trip-date-range-copy small {
+  margin-top:
+    3px;
+  overflow:
+    hidden;
+  color:
+    var(--text-soft);
+  font-size:
+    8px;
+  line-height:
+    1.35;
+  text-overflow:
+    ellipsis;
+  white-space:
+    nowrap;
+}
+
+.trip-date-range-arrow {
+  color:
+    var(--rose);
+  font-size:
+    17px;
+  text-align:
+    center;
+}
+
+.trip-date-calendar {
+  margin-top:
+    8px;
+  padding:
+    11px;
+  border:
+    1px solid
+    var(--border);
+  border-radius:
+    18px;
+  background:
+    color-mix(
+      in srgb,
+      var(--surface) 94%,
+      var(--blush)
+    );
+  box-shadow:
+    var(--shadow);
+}
+
+.trip-date-calendar[hidden] {
+  display:
+    none;
+}
+
+.trip-calendar-header {
+  display:
+    grid;
+  grid-template-columns:
+    34px
+    1fr
+    34px;
+  align-items:
+    center;
+  gap:
+    8px;
+  margin-bottom:
+    8px;
+}
+
+.trip-calendar-header strong {
+  text-align:
+    center;
+  font-family:
+    Georgia,
+    serif;
+  font-size:
+    14px;
+}
+
+.trip-calendar-header button {
+  width:
+    34px;
+  height:
+    34px;
+  padding:
+    0;
+  border:
+    1px solid
+    var(--border);
+  border-radius:
+    11px;
+  display:
+    grid;
+  place-items:
+    center;
+  background:
+    var(--surface);
+  color:
+    var(--rose);
+  font-size:
+    20px;
+}
+
+.trip-calendar-weekdays,
+.trip-calendar-grid {
+  display:
+    grid;
+  grid-template-columns:
+    repeat(
+      7,
+      minmax(
+        0,
+        1fr
+      )
+    );
+}
+
+.trip-calendar-weekdays {
+  margin-bottom:
+    3px;
+}
+
+.trip-calendar-weekdays span {
+  padding:
+    4px 0;
+  color:
+    var(--text-soft);
+  font-size:
+    8px;
+  font-weight:
+    800;
+  text-align:
+    center;
+}
+
+.trip-calendar-blank,
+.trip-calendar-day {
+  aspect-ratio:
+    1;
+}
+
+.trip-calendar-day {
+  min-width:
+    0;
+  padding:
+    0;
+  border:
+    0;
+  border-radius:
+    11px;
+  background:
+    transparent;
+  color:
+    var(--text);
+  font-size:
+    10px;
+  font-weight:
+    600;
+  touch-action:
+    manipulation;
+}
+
+.trip-calendar-day.today {
+  box-shadow:
+    inset
+    0 0 0 1px
+    var(--pink);
+}
+
+.trip-calendar-day.in-range {
+  border-radius:
+    0;
+  background:
+    color-mix(
+      in srgb,
+      var(--pink) 18%,
+      transparent
+    );
+  color:
+    var(--rose);
+}
+
+.trip-calendar-day.start,
+.trip-calendar-day.end {
+  border-radius:
+    11px;
+  background:
+    linear-gradient(
+      135deg,
+      var(--pink),
+      var(--rose)
+    );
+  color:
+    white;
+  box-shadow:
+    0 5px 12px
+    color-mix(
+      in srgb,
+      var(--rose) 24%,
+      transparent
+    );
+}
+
+.trip-calendar-tip {
+  margin-top:
+    7px;
+  color:
+    var(--text-soft);
+  font-size:
+    8px;
+  line-height:
+    1.4;
+  text-align:
+    center;
+}
+
+.trip-modal-card .modal-save {
+  min-height:
+    48px;
+  margin-top:
+    4px;
+}
+
+body.wallpaper-enabled .trip-date-range-button,
+body.wallpaper-enabled .trip-date-calendar {
+  background:
+    color-mix(
+      in srgb,
+      var(--surface) 80%,
+      transparent
+    );
+  -webkit-backdrop-filter:
+    blur(12px);
+  backdrop-filter:
+    blur(12px);
+}
+
+@media (max-width: 360px) {
+  .trip-modal-card {
+    padding:
+      15px;
+  }
+
+  .trip-budget-grid {
+    grid-template-columns:
+      minmax(0, 1fr)
+      96px;
+  }
+}
+
