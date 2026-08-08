@@ -9399,17 +9399,100 @@ body:not([data-theme]) {
   --text-soft: #8e7875;
 }
 
+/* Full-theme overrides for the Peachy Life visual layer.
+   These keep Momo's neutral typography while recoloring the
+   actual surfaces, borders, selected states and decorative accents. */
+body[data-theme="sakura"] {
+  --momo-peach: #efb4ce;
+  --momo-peach-deep: #d889ad;
+  --momo-apricot: #f5d3e2;
+  --momo-cream: #fff9fc;
+  --momo-blush: #fcecf4;
+  --momo-cocoa: #604b55;
+  --momo-cocoa-soft: #8c7480;
+  --momo-leaf: #8faa9a;
+  --momo-gold: #edc99a;
+  --momo-glass: rgba(255, 249, 252, 0.82);
+  --momo-glass-strong: rgba(255, 251, 253, 0.91);
+  --momo-hairline: rgba(216, 137, 173, 0.25);
+  --momo-shadow: 0 16px 42px rgba(96, 75, 85, 0.09);
+}
+
+body[data-theme="lavender"] {
+  --momo-peach: #c9b4e8;
+  --momo-peach-deep: #9273bf;
+  --momo-apricot: #ddd0f1;
+  --momo-cream: #fbf8ff;
+  --momo-blush: #f0e9fa;
+  --momo-cocoa: #554b60;
+  --momo-cocoa-soft: #80758c;
+  --momo-leaf: #8eaa9b;
+  --momo-gold: #e9c98f;
+  --momo-glass: rgba(251, 248, 255, 0.82);
+  --momo-glass-strong: rgba(253, 251, 255, 0.91);
+  --momo-hairline: rgba(146, 115, 191, 0.24);
+  --momo-shadow: 0 16px 42px rgba(79, 64, 96, 0.09);
+}
+
+body[data-theme="sky"] {
+  --momo-peach: #acd4ed;
+  --momo-peach-deep: #679fca;
+  --momo-apricot: #cce5f4;
+  --momo-cream: #f7fbff;
+  --momo-blush: #e9f4fb;
+  --momo-cocoa: #445760;
+  --momo-cocoa-soft: #71858e;
+  --momo-leaf: #89a99b;
+  --momo-gold: #e8c889;
+  --momo-glass: rgba(247, 251, 255, 0.82);
+  --momo-glass-strong: rgba(251, 253, 255, 0.91);
+  --momo-hairline: rgba(103, 159, 202, 0.23);
+  --momo-shadow: 0 16px 42px rgba(62, 83, 94, 0.09);
+}
+
+body[data-theme="mint"] {
+  --momo-peach: #a9dcca;
+  --momo-peach-deep: #68aa91;
+  --momo-apricot: #cbeade;
+  --momo-cream: #f8fdfb;
+  --momo-blush: #e9f7f1;
+  --momo-cocoa: #455850;
+  --momo-cocoa-soft: #74877f;
+  --momo-leaf: #72a78d;
+  --momo-gold: #e8c98c;
+  --momo-glass: rgba(248, 253, 251, 0.82);
+  --momo-glass-strong: rgba(251, 255, 253, 0.91);
+  --momo-hairline: rgba(104, 170, 145, 0.23);
+  --momo-shadow: 0 16px 42px rgba(66, 88, 80, 0.09);
+}
+
+body[data-theme="butter"] {
+  --momo-peach: #edd183;
+  --momo-peach-deep: #caa247;
+  --momo-apricot: #f3dfaa;
+  --momo-cream: #fffdf7;
+  --momo-blush: #fff6dc;
+  --momo-cocoa: #5b5547;
+  --momo-cocoa-soft: #857c69;
+  --momo-leaf: #8fa88d;
+  --momo-gold: #d9ad4e;
+  --momo-glass: rgba(255, 253, 247, 0.82);
+  --momo-glass-strong: rgba(255, 254, 250, 0.91);
+  --momo-hairline: rgba(202, 162, 71, 0.23);
+  --momo-shadow: 0 16px 42px rgba(91, 85, 71, 0.08);
+}
+
 body {
   color: var(--momo-cocoa);
   background:
     radial-gradient(
       circle at 12% 8%,
-      rgba(246, 195, 159, 0.22),
+      color-mix(in srgb, var(--momo-apricot) 22%, transparent),
       transparent 25%
     ),
     radial-gradient(
       circle at 88% 16%,
-      rgba(242, 161, 143, 0.18),
+      color-mix(in srgb, var(--momo-peach) 18%, transparent),
       transparent 28%
     ),
     var(--bg);
@@ -9439,7 +9522,7 @@ body {
 .bottom-nav {
   border:
     1px solid
-    rgba(213, 153, 143, 0.20);
+    color-mix(in srgb, var(--momo-peach-deep) 20%, transparent);
   background:
     color-mix(
       in srgb,
@@ -9461,8 +9544,8 @@ body {
   background:
     linear-gradient(
       180deg,
-      rgba(249, 229, 228, 0.92),
-      rgba(255, 249, 244, 0.78)
+      color-mix(in srgb, var(--momo-blush) 92%, transparent),
+      color-mix(in srgb, var(--momo-cream) 78%, transparent)
     );
 }
 
@@ -9470,7 +9553,7 @@ body {
   color:
     var(--momo-peach-deep);
   background:
-    rgba(242, 161, 143, 0.16);
+    color-mix(in srgb, var(--momo-peach) 16%, transparent);
 }
 
 .nav-item.nav-add > span,
@@ -9478,12 +9561,12 @@ body {
   background:
     linear-gradient(
       145deg,
-      #f5b0a2,
-      #df827d
+      color-mix(in srgb, var(--momo-peach) 84%, white),
+      var(--momo-peach-deep)
     );
   box-shadow:
     0 12px 24px
-    rgba(216, 126, 120, 0.24);
+    color-mix(in srgb, var(--momo-peach-deep) 24%, transparent);
 }
 
 .card,
@@ -9498,7 +9581,7 @@ body {
   filter:
     drop-shadow(
       0 4px 8px
-      rgba(216, 126, 120, 0.20)
+      color-mix(in srgb, var(--momo-peach-deep) 20%, transparent)
     );
 }
 
@@ -9544,8 +9627,8 @@ body {
   background:
     linear-gradient(
       135deg,
-      rgba(255, 252, 249, 0.94),
-      rgba(249, 226, 222, 0.80)
+      color-mix(in srgb, var(--momo-cream) 94%, white),
+      color-mix(in srgb, var(--momo-blush) 80%, var(--momo-cream))
     );
   box-shadow:
     var(--momo-shadow);
@@ -9569,8 +9652,8 @@ body {
   background:
     radial-gradient(
       circle,
-      rgba(246, 195, 159, 0.46),
-      rgba(246, 195, 159, 0)
+      color-mix(in srgb, var(--momo-apricot) 46%, transparent),
+      transparent
       70%
     );
   pointer-events:
@@ -9587,7 +9670,7 @@ body {
   bottom:
     15px;
   color:
-    rgba(216, 126, 120, 0.36);
+    color-mix(in srgb, var(--momo-peach-deep) 36%, transparent);
   font-size:
     13px;
   letter-spacing:
@@ -9668,7 +9751,7 @@ body {
     5px;
   border:
     1px solid
-    rgba(216, 126, 120, 0.18);
+    color-mix(in srgb, var(--momo-peach-deep) 18%, transparent);
   border-radius:
     28px;
   background:
@@ -9687,7 +9770,7 @@ body {
   filter:
     drop-shadow(
       0 10px 15px
-      rgba(174, 105, 92, 0.17)
+      color-mix(in srgb, var(--momo-peach-deep) 17%, transparent)
     );
 }
 
@@ -9756,7 +9839,7 @@ body {
   border-radius:
     999px;
   background:
-    rgba(255, 251, 248, 0.68);
+    color-mix(in srgb, var(--momo-cream) 68%, transparent);
   color:
     var(--momo-cocoa-soft);
   font-size:
@@ -9789,8 +9872,8 @@ body {
   background:
     linear-gradient(
       145deg,
-      rgba(255, 252, 249, 0.93),
-      rgba(249, 230, 226, 0.82)
+      color-mix(in srgb, var(--momo-cream) 93%, white),
+      color-mix(in srgb, var(--momo-blush) 82%, var(--momo-cream))
     );
   box-shadow:
     var(--momo-shadow);
@@ -9843,7 +9926,7 @@ body {
   border-radius:
     999px;
   background:
-    rgba(216, 126, 120, 0.11);
+    color-mix(in srgb, var(--momo-peach-deep) 11%, transparent);
 }
 
 .momo-snapshot-progress-fill {
@@ -9925,7 +10008,7 @@ body {
   place-items:
     center;
   background:
-    rgba(242, 161, 143, 0.13);
+    color-mix(in srgb, var(--momo-peach) 13%, transparent);
   color:
     var(--momo-peach-deep);
   font-size:
@@ -10255,7 +10338,7 @@ body {
   place-items:
     center;
   background:
-    rgba(242, 161, 143, 0.13);
+    color-mix(in srgb, var(--momo-peach) 13%, transparent);
   color:
     var(--momo-peach-deep);
   font-size:
@@ -10662,7 +10745,7 @@ body.wallpaper-enabled
     0 8px 0 10px;
   border:
     1px solid
-    rgba(216, 126, 120, 0.24);
+    color-mix(in srgb, var(--momo-peach-deep) 24%, transparent);
   border-radius:
     999px;
   display:
