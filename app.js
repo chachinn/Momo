@@ -6091,6 +6091,65 @@ function updateExpenseOtherCategoryVisibility() {
 }
 
 
+function updateOptionalOtherField(
+  select,
+  row,
+  input
+) {
+
+  const isOther =
+    select?.value ===
+    "Other";
+
+
+  if (
+    row
+  ) {
+
+    row.hidden =
+      !isOther;
+
+  }
+
+
+  if (
+    !isOther &&
+    input
+  ) {
+
+    input.value =
+      "";
+
+  }
+
+}
+
+
+const expenseOtherPaymentRow =
+  document.getElementById(
+    "expenseOtherPaymentRow"
+  );
+
+
+const expenseOtherPaymentMethod =
+  document.getElementById(
+    "expenseOtherPaymentMethod"
+  );
+
+
+function updateExpenseOtherPaymentVisibility() {
+
+  updateOptionalOtherField(
+    document.getElementById(
+      "paymentMethod"
+    ),
+    expenseOtherPaymentRow,
+    expenseOtherPaymentMethod
+  );
+
+}
+
+
 function populateExpenseBudgetDropdown() {
 
   if (
@@ -7269,6 +7328,16 @@ expenseCategory?.addEventListener(
 );
 
 
+document
+  .getElementById(
+    "paymentMethod"
+  )
+  ?.addEventListener(
+    "change",
+    updateExpenseOtherPaymentVisibility
+  );
+
+
 expenseBudget?.addEventListener(
   "change",
   () => {
@@ -7292,6 +7361,17 @@ expenseBudget?.addEventListener(
 
     expenseCategory.value =
       budget.category;
+
+
+    if (
+      expenseOtherCategory
+    ) {
+
+      expenseOtherCategory.value =
+        budget.otherCategory ||
+        "";
+
+    }
 
 
     updateExpenseOtherCategoryVisibility();
@@ -7339,6 +7419,35 @@ const budgetCategory =
   document.getElementById(
     "budgetCategory"
   );
+
+
+const budgetOtherCategoryRow =
+  document.getElementById(
+    "budgetOtherCategoryRow"
+  );
+
+
+const budgetOtherCategory =
+  document.getElementById(
+    "budgetOtherCategory"
+  );
+
+
+function updateBudgetOtherCategoryVisibility() {
+
+  updateOptionalOtherField(
+    budgetCategory,
+    budgetOtherCategoryRow,
+    budgetOtherCategory
+  );
+
+}
+
+
+budgetCategory?.addEventListener(
+  "change",
+  updateBudgetOtherCategoryVisibility
+);
 
 
 const budgetAmount =
@@ -7429,6 +7538,14 @@ function openBudgetModal(
 
     budgetCategory.value =
       budget.category;
+
+
+    budgetOtherCategory.value =
+      budget.otherCategory ||
+      "";
+
+
+    updateBudgetOtherCategoryVisibility();
 
 
     budgetAmount.value =
@@ -7578,6 +7695,16 @@ budgetForm?.addEventListener(
 
       category:
         budgetCategory.value,
+
+      otherCategory:
+        budgetCategory.value ===
+          "Other"
+          ? (
+              budgetOtherCategory?.value
+                .trim() ||
+              ""
+            )
+          : "",
 
       amount:
         Number(
@@ -10060,6 +10187,37 @@ function renderTripDashboard(
     );
 
 
+  const receiptExpenses =
+    tripExpenses.filter(
+      (
+        expense
+      ) =>
+        Boolean(
+          expense.photo
+        )
+    );
+
+
+  const tripSettlement =
+    getSettlementForTrip(
+      trip.id,
+      false
+    );
+
+
+  const settlementTransfers =
+    tripSettlement
+      ? calculateSettlementTransfers(
+          tripSettlement
+        )
+      : [];
+
+
+  const settlementPeople =
+    tripSettlement?.people?.length ||
+    0;
+
+
   const budgetPercent =
     budget >
     0
@@ -10404,6 +10562,117 @@ function renderTripDashboard(
     </section>
 
 
+    <section class="trip-dashboard-section trip-dashboard-travel-hub">
+
+      <div class="trip-dashboard-section-heading">
+
+        <div>
+          <p class="eyebrow">Trip hub</p>
+          <h3>Receipts & Settlement</h3>
+        </div>
+
+      </div>
+
+
+      <div class="trip-dashboard-hub-grid">
+
+        <button
+          class="trip-dashboard-hub-card trip-dashboard-open-receipts"
+          type="button"
+        >
+          <span class="trip-dashboard-hub-icon">🧾</span>
+
+          <span class="trip-dashboard-hub-copy">
+            <small>Receipts</small>
+            <strong>
+              ${receiptExpenses.length}
+              ${
+                receiptExpenses.length ===
+                  1
+                  ? "photo"
+                  : "photos"
+              }
+            </strong>
+            <em>
+              ${
+                receiptExpenses.length
+                  ? "View trip receipts"
+                  : "Attach photos to expenses"
+              }
+            </em>
+          </span>
+
+          <span class="trip-dashboard-hub-arrow">›</span>
+        </button>
+
+
+        <button
+          class="trip-dashboard-hub-card trip-dashboard-open-settlement"
+          type="button"
+        >
+          <span class="trip-dashboard-hub-icon">🤝</span>
+
+          <span class="trip-dashboard-hub-copy">
+            <small>Settlement</small>
+
+            ${
+              tripSettlement &&
+              settlementPeople >
+                1
+                ? (
+                    settlementTransfers.length
+                      ? `
+                          <strong>
+                            ${escapeHTML(
+                              getSettlementPerson(
+                                tripSettlement,
+                                settlementTransfers[0].fromId
+                              )?.name ||
+                              "Someone"
+                            )}
+                            owes
+                            ${escapeHTML(
+                              getSettlementPerson(
+                                tripSettlement,
+                                settlementTransfers[0].toId
+                              )?.name ||
+                              "someone"
+                            )}
+                          </strong>
+
+                          <em>
+                            ${formatSettlementAmount(
+                              settlementTransfers[0].amount,
+                              trip.currency
+                            )}
+                            ${
+                              settlementTransfers.length >
+                                1
+                                ? ` · ${settlementTransfers.length} balances`
+                                : ""
+                            }
+                          </em>
+                        `
+                      : `
+                          <strong>All settled ✨</strong>
+                          <em>${settlementPeople} travelers</em>
+                        `
+                  )
+                : `
+                    <strong>Set up travelers</strong>
+                    <em>Split shared trip expenses</em>
+                  `
+            }
+          </span>
+
+          <span class="trip-dashboard-hub-arrow">›</span>
+        </button>
+
+      </div>
+
+    </section>
+
+
     <section class="trip-dashboard-section">
 
       <div class="trip-dashboard-section-heading">
@@ -10726,12 +10995,70 @@ function renderTripDashboard(
         }
 
 
+        renderExpenseSettlementControls();
+
+
         expenseDate.value =
           getTodayString();
 
 
         showToast(
           `${trip.name} selected ✈️`
+        );
+
+      }
+    );
+
+
+  tripDashboardBody
+    .querySelector(
+      ".trip-dashboard-open-receipts"
+    )
+    ?.addEventListener(
+      "click",
+      () => {
+
+        closeTripDashboard();
+
+
+        showScreen(
+          "receipts"
+        );
+
+
+        if (
+          receiptTripFilter
+        ) {
+
+          receiptTripFilter.value =
+            trip.id;
+
+
+          renderReceiptGallery();
+
+        }
+
+      }
+    );
+
+
+  tripDashboardBody
+    .querySelector(
+      ".trip-dashboard-open-settlement"
+    )
+    ?.addEventListener(
+      "click",
+      () => {
+
+        closeTripDashboard();
+
+
+        activeSettlementTripId =
+          trip.id;
+
+
+        showScreen(
+          "settlement"
         );
 
       }
@@ -11868,6 +12195,19 @@ function resetExpenseForm() {
   updateExpenseOtherCategoryVisibility();
 
 
+  if (
+    expenseOtherPaymentMethod
+  ) {
+
+    expenseOtherPaymentMethod.value =
+      "";
+
+  }
+
+
+  updateExpenseOtherPaymentVisibility();
+
+
   updateExpenseConversion();
 
   renderExpenseTagSuggestions();
@@ -11914,6 +12254,9 @@ function prepareExpenseForm() {
 
 
   updateExpenseOtherCategoryVisibility();
+
+
+  updateExpenseOtherPaymentVisibility();
 
 }
 
@@ -12020,6 +12363,20 @@ function openExpenseEditor(
     .value =
     expense.paymentMethod ||
     "Cash";
+
+
+  if (
+    expenseOtherPaymentMethod
+  ) {
+
+    expenseOtherPaymentMethod.value =
+      expense.otherPaymentMethod ||
+      "";
+
+  }
+
+
+  updateExpenseOtherPaymentVisibility();
 
 
   expenseDate.value =
@@ -12884,6 +13241,20 @@ expenseForm?.addEventListener(
             "paymentMethod"
           )
           .value,
+
+      otherPaymentMethod:
+        document
+          .getElementById(
+            "paymentMethod"
+          )
+          .value ===
+          "Other"
+          ? (
+              expenseOtherPaymentMethod?.value
+                .trim() ||
+              ""
+            )
+          : "",
 
       date:
         expenseDate.value,
@@ -18487,10 +18858,68 @@ const recurringCategory =
   );
 
 
+const recurringOtherCategoryRow =
+  document.getElementById(
+    "recurringOtherCategoryRow"
+  );
+
+
+const recurringOtherCategory =
+  document.getElementById(
+    "recurringOtherCategory"
+  );
+
+
+function updateRecurringOtherCategoryVisibility() {
+
+  updateOptionalOtherField(
+    recurringCategory,
+    recurringOtherCategoryRow,
+    recurringOtherCategory
+  );
+
+}
+
+
+recurringCategory?.addEventListener(
+  "change",
+  updateRecurringOtherCategoryVisibility
+);
+
+
 const recurringPaymentMethod =
   document.getElementById(
     "recurringPaymentMethod"
   );
+
+
+const recurringOtherPaymentRow =
+  document.getElementById(
+    "recurringOtherPaymentRow"
+  );
+
+
+const recurringOtherPaymentMethod =
+  document.getElementById(
+    "recurringOtherPaymentMethod"
+  );
+
+
+function updateRecurringOtherPaymentVisibility() {
+
+  updateOptionalOtherField(
+    recurringPaymentMethod,
+    recurringOtherPaymentRow,
+    recurringOtherPaymentMethod
+  );
+
+}
+
+
+recurringPaymentMethod?.addEventListener(
+  "change",
+  updateRecurringOtherPaymentVisibility
+);
 
 
 const recurringFrequency =
@@ -18965,9 +19394,25 @@ function openRecurringModal(
       "Bills";
 
 
+    recurringOtherCategory.value =
+      recurring.otherCategory ||
+      "";
+
+
+    updateRecurringOtherCategoryVisibility();
+
+
     recurringPaymentMethod.value =
       recurring.paymentMethod ||
       "Credit Card";
+
+
+    recurringOtherPaymentMethod.value =
+      recurring.otherPaymentMethod ||
+      "";
+
+
+    updateRecurringOtherPaymentVisibility();
 
 
     recurringFrequency.value =
@@ -19014,8 +19459,22 @@ function openRecurringModal(
       "Bills";
 
 
+    recurringOtherCategory.value =
+      "";
+
+
+    updateRecurringOtherCategoryVisibility();
+
+
     recurringPaymentMethod.value =
       "Credit Card";
+
+
+    recurringOtherPaymentMethod.value =
+      "";
+
+
+    updateRecurringOtherPaymentVisibility();
 
 
     recurringFrequency.value =
@@ -19149,8 +19608,28 @@ recurringForm?.addEventListener(
       category:
         recurringCategory.value,
 
+      otherCategory:
+        recurringCategory.value ===
+          "Other"
+          ? (
+              recurringOtherCategory?.value
+                .trim() ||
+              ""
+            )
+          : "",
+
       paymentMethod:
         recurringPaymentMethod.value,
+
+      otherPaymentMethod:
+        recurringPaymentMethod.value ===
+          "Other"
+          ? (
+              recurringOtherPaymentMethod?.value
+                .trim() ||
+              ""
+            )
+          : "",
 
       frequency:
         recurringFrequency.value,
@@ -19252,11 +19731,19 @@ function createRecurringCardHTML(
 
           <p>
             ${escapeHTML(
-              recurring.category
+              recurring.category ===
+                "Other" &&
+              recurring.otherCategory
+                ? `Other · ${recurring.otherCategory}`
+                : recurring.category
             )}
             ·
             ${escapeHTML(
-              recurring.paymentMethod
+              recurring.paymentMethod ===
+                "Other" &&
+              recurring.otherPaymentMethod
+                ? `Other · ${recurring.otherPaymentMethod}`
+                : recurring.paymentMethod
             )}
           </p>
 
@@ -19669,6 +20156,10 @@ function attachRecurringActions() {
               category:
                 recurring.category,
 
+              otherCategory:
+                recurring.otherCategory ||
+                "",
+
               budgetId:
                 "",
 
@@ -19677,6 +20168,10 @@ function attachRecurringActions() {
 
               paymentMethod:
                 recurring.paymentMethod,
+
+              otherPaymentMethod:
+                recurring.otherPaymentMethod ||
+                "",
 
               date:
                 getTodayString(),
@@ -19915,6 +20410,35 @@ const plannedExpenseCategory =
   );
 
 
+const plannedOtherCategoryRow =
+  document.getElementById(
+    "plannedOtherCategoryRow"
+  );
+
+
+const plannedOtherCategory =
+  document.getElementById(
+    "plannedOtherCategory"
+  );
+
+
+function updatePlannedOtherCategoryVisibility() {
+
+  updateOptionalOtherField(
+    plannedExpenseCategory,
+    plannedOtherCategoryRow,
+    plannedOtherCategory
+  );
+
+}
+
+
+plannedExpenseCategory?.addEventListener(
+  "change",
+  updatePlannedOtherCategoryVisibility
+);
+
+
 const plannedExpenseTrip =
   document.getElementById(
     "plannedExpenseTrip"
@@ -20052,6 +20576,14 @@ function openPlannedExpenseModal(
       "Shopping";
 
 
+    plannedOtherCategory.value =
+      planned.otherCategory ||
+      "";
+
+
+    updatePlannedOtherCategoryVisibility();
+
+
     plannedExpenseTrip.value =
       planned.tripId ||
       "";
@@ -20089,6 +20621,13 @@ function openPlannedExpenseModal(
 
     plannedExpenseCategory.value =
       "Shopping";
+
+
+    plannedOtherCategory.value =
+      "";
+
+
+    updatePlannedOtherCategoryVisibility();
 
 
     plannedExpenseTrip.value =
@@ -20197,6 +20736,16 @@ plannedExpenseForm?.addEventListener(
 
       category:
         plannedExpenseCategory.value,
+
+      otherCategory:
+        plannedExpenseCategory.value ===
+          "Other"
+          ? (
+              plannedOtherCategory?.value
+                .trim() ||
+              ""
+            )
+          : "",
 
       tripId:
         plannedExpenseTrip.value,
@@ -20376,7 +20925,11 @@ function createPlannedExpenseCardHTML(
           <p>
 
             ${escapeHTML(
-              planned.category
+              planned.category ===
+                "Other" &&
+              planned.otherCategory
+                ? `Other · ${planned.otherCategory}`
+                : planned.category
             )}
 
             ·
@@ -20883,6 +21436,20 @@ function attachPlannedExpenseActions() {
             expenseCategory.value =
               planned.category ||
               "Shopping";
+
+
+            if (
+              expenseOtherCategory
+            ) {
+
+              expenseOtherCategory.value =
+                planned.otherCategory ||
+                "";
+
+            }
+
+
+            updateExpenseOtherCategoryVisibility();
 
 
             if (
