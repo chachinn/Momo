@@ -33325,33 +33325,142 @@ document
 // RENDER EVERYTHING
 // ========================================
 
+function safelyRenderSection(
+  label,
+  renderer
+) {
+
+  try {
+
+    renderer();
+
+    return true;
+
+  } catch (
+    error
+  ) {
+
+    console.error(
+      `Momo could not render ${label}:`,
+      error
+    );
+
+    return false;
+
+  }
+
+}
+
+
 function renderAll() {
 
-  renderBudgets();
+  const renderSteps = [
 
-  renderTrips();
+    [
+      "Home summary",
+      renderHomeSummary
+    ],
 
-  renderTransactions();
+    [
+      "Budgets",
+      renderBudgets
+    ],
 
-  renderCalendar();
+    [
+      "Trips",
+      renderTrips
+    ],
 
-  renderRecurringExpenses();
+    [
+      "Transactions",
+      renderTransactions
+    ],
 
-  renderPlannedExpenses();
+    [
+      "Calendar",
+      renderCalendar
+    ],
 
-  renderFavoriteQuickAdd();
+    [
+      "Recurring expenses",
+      renderRecurringExpenses
+    ],
 
-  renderSavingsGoals();
+    [
+      "Planned expenses",
+      renderPlannedExpenses
+    ],
 
-  renderTravelSettlement();
+    [
+      "Favorite Quick Add",
+      renderFavoriteQuickAdd
+    ],
 
-  renderReceiptGallery();
+    [
+      "Savings goals",
+      renderSavingsGoals
+    ],
 
-  renderBackupStatus();
+    [
+      "Travel Settlement",
+      renderTravelSettlement
+    ],
 
-  renderHomeSummary();
+    [
+      "Receipt Gallery",
+      renderReceiptGallery
+    ],
 
-  renderReportSummary();
+    [
+      "Backup status",
+      renderBackupStatus
+    ],
+
+    [
+      "Reports",
+      renderReportSummary
+    ]
+
+  ];
+
+
+  let failedSections =
+    0;
+
+
+  renderSteps.forEach(
+    (
+      [
+        label,
+        renderer
+      ]
+    ) => {
+
+      if (
+        !safelyRenderSection(
+          label,
+          renderer
+        )
+      ) {
+
+        failedSections++;
+
+      }
+
+    }
+  );
+
+
+  if (
+    failedSections >
+    0
+  ) {
+
+    console.warn(
+      `Momo finished loading with ${failedSections} section(s) that could not render.`
+    );
+
+  }
 
 }
 
@@ -34925,6 +35034,33 @@ async function openDatabaseWithRetry(
 }
 
 
+function safelyInitializeInterfaceStep(
+  label,
+  initializer
+) {
+
+  try {
+
+    initializer();
+
+    return true;
+
+  } catch (
+    error
+  ) {
+
+    console.error(
+      `Momo interface step failed (${label}):`,
+      error
+    );
+
+    return false;
+
+  }
+
+}
+
+
 async function initializeApp() {
 
   try {
@@ -34978,52 +35114,56 @@ async function initializeApp() {
   }
 
 
-  try {
+  safelyInitializeInterfaceStep(
+    "Appearance",
+    applyAppearance
+  );
 
-    applyAppearance();
 
+  safelyInitializeInterfaceStep(
+    "Expense date",
+    () => {
 
-    if (
-      expenseDate
-    ) {
+      if (
+        expenseDate
+      ) {
 
-      expenseDate.value =
-        getTodayString();
+        expenseDate.value =
+          getTodayString();
+
+      }
 
     }
+  );
 
 
-    initializeConverter();
+  safelyInitializeInterfaceStep(
+    "Currency converter",
+    initializeConverter
+  );
 
 
-    updateExpenseConversion();
+  safelyInitializeInterfaceStep(
+    "Expense conversion preview",
+    updateExpenseConversion
+  );
 
 
-    renderAll();
+  safelyInitializeInterfaceStep(
+    "Main screen rendering",
+    renderAll
+  );
 
 
-    maybeOpenWelcomeTour();
+  safelyInitializeInterfaceStep(
+    "Welcome tutorial",
+    maybeOpenWelcomeTour
+  );
 
 
-    console.log(
-      "🍑 Momo ready."
-    );
-
-  } catch (
-    error
-  ) {
-
-    console.error(
-      "Momo opened, but part of the interface could not initialize:",
-      error
-    );
-
-
-    showToast(
-      "Momo opened, but part of the interface could not finish loading."
-    );
-
-  }
+  console.log(
+    "🍑 Momo ready."
+  );
 
 }
 
