@@ -1767,9 +1767,12 @@ function getWallpaperOverlayColor(
 ) {
 
   const alphaByStrength = {
-    light: 0.64,
-    medium: 0.78,
-    strong: 0.9
+    // Lower alpha = more of the wallpaper stays visible.
+    // Even "Strong" is intentionally softer than before so
+    // the selected photo never disappears under a white wash.
+    light: 0.18,
+    medium: 0.34,
+    strong: 0.52
   };
 
 

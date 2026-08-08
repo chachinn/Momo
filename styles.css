@@ -6151,23 +6151,57 @@ body[data-theme="butter"] {
   --text-soft: #887f6c;
 }
 
+/*
+  Lockscreen-style wallpaper:
+  the photo lives on a fixed viewport layer instead of the
+  scrolling document, so it does not move as Momo scrolls.
+*/
 body.wallpaper-enabled {
-  background:
-    linear-gradient(
-      var(--momo-wallpaper-overlay),
-      var(--momo-wallpaper-overlay)
-    ),
-    var(--momo-wallpaper-image)
-    center / cover fixed no-repeat;
+  position: relative;
+  background: var(--bg);
+}
+
+body.wallpaper-enabled::before {
+  content: "";
+  position: fixed;
+  z-index: -2;
+  inset: 0;
+  width: 100vw;
+  height: 100dvh;
+  pointer-events: none;
+  background-image: var(--momo-wallpaper-image);
+  background-position: center center;
+  background-repeat: no-repeat;
+  background-size: cover;
+  transform: translateZ(0);
+  -webkit-transform: translateZ(0);
+}
+
+body.wallpaper-enabled::after {
+  content: "";
+  position: fixed;
+  z-index: -1;
+  inset: 0;
+  width: 100vw;
+  height: 100dvh;
+  pointer-events: none;
+  background: var(--momo-wallpaper-overlay);
 }
 
 body.wallpaper-enabled .app-shell {
-  background: rgba(255, 255, 255, 0.10);
+  background: transparent;
+}
+
+body.wallpaper-enabled .screen-stack,
+body.wallpaper-enabled .screen {
+  background: transparent;
 }
 
 body.wallpaper-enabled .topbar,
 body.wallpaper-enabled .bottom-nav {
-  background: color-mix(in srgb, var(--bg) 86%, transparent);
+  background: color-mix(in srgb, var(--bg) 72%, transparent);
+  -webkit-backdrop-filter: blur(18px);
+  backdrop-filter: blur(18px);
 }
 
 .appearance-header-btn {
@@ -6454,5 +6488,209 @@ body.wallpaper-enabled .bottom-nav {
   .wallpaper-toggle-row {
     background: white;
   }
+}
+
+
+
+/* ========================================
+   IOS TAP / ZOOM BEHAVIOR
+======================================== */
+
+/*
+  Prevent iOS double-tap zoom on interactive controls.
+  Normal vertical scrolling remains available.
+*/
+html,
+body {
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
+}
+
+button,
+a,
+input,
+select,
+textarea,
+label,
+.nav-item,
+.home-action,
+.drawer-item,
+.text-btn,
+.icon-btn {
+  touch-action: manipulation;
+}
+
+
+
+/* ========================================
+   STRONGER WHOLE-APP PASTEL THEMES
+======================================== */
+
+/*
+  Theme variables now tint the actual Momo surfaces, not just
+  selected icons/borders. Wallpaper mode intentionally stays
+  more transparent so the photo remains visible.
+*/
+
+body:not(.wallpaper-enabled) {
+  background:
+    radial-gradient(
+      circle at 8% 4%,
+      color-mix(in srgb, var(--pink) 24%, transparent),
+      transparent 28%
+    ),
+    radial-gradient(
+      circle at 92% 12%,
+      color-mix(in srgb, var(--peach) 30%, transparent),
+      transparent 30%
+    ),
+    var(--bg);
+}
+
+body:not(.wallpaper-enabled) .app-shell {
+  background:
+    linear-gradient(
+      180deg,
+      color-mix(in srgb, var(--bg) 88%, white),
+      color-mix(in srgb, var(--blush) 34%, var(--bg))
+    );
+}
+
+.brand-name,
+.appearance-header-btn {
+  color: var(--rose);
+}
+
+.topbar {
+  background:
+    color-mix(in srgb, var(--bg) 88%, white);
+  border-bottom-color:
+    color-mix(in srgb, var(--border) 92%, transparent);
+}
+
+.bottom-nav {
+  background:
+    color-mix(in srgb, var(--bg) 90%, white);
+  border-top-color:
+    color-mix(in srgb, var(--border) 95%, transparent);
+}
+
+.card,
+.budget-summary-card,
+.activity-tools,
+.activity-summary,
+.form-card,
+.appearance-section,
+.modal-card {
+  border-color: var(--border);
+  background:
+    color-mix(in srgb, var(--surface) 82%, var(--blush));
+}
+
+.monthly-card {
+  background:
+    radial-gradient(
+      circle at 100% 0,
+      color-mix(in srgb, var(--pink) 26%, transparent),
+      transparent 38%
+    ),
+    color-mix(in srgb, var(--surface) 84%, var(--blush));
+}
+
+.home-action,
+.drawer-icon,
+.date-pill,
+.converter-live-label {
+  background:
+    color-mix(in srgb, var(--blush) 76%, white);
+}
+
+.nav-item {
+  color:
+    color-mix(in srgb, var(--text-soft) 88%, var(--rose));
+}
+
+.nav-item.active {
+  color: var(--rose);
+  background:
+    linear-gradient(
+      180deg,
+      color-mix(in srgb, var(--blush) 88%, white),
+      color-mix(in srgb, var(--bg) 74%, white)
+    );
+}
+
+.nav-item.active > span {
+  color: var(--rose);
+  background:
+    color-mix(in srgb, var(--pink) 22%, transparent);
+}
+
+.nav-item.nav-add > span,
+.nav-item.nav-add.active > span {
+  color: white;
+  background:
+    linear-gradient(
+      145deg,
+      color-mix(in srgb, var(--pink) 90%, white),
+      var(--rose)
+    );
+  box-shadow:
+    0 10px 22px
+    color-mix(in srgb, var(--rose) 28%, transparent);
+}
+
+.round-add-btn {
+  color:
+    color-mix(in srgb, var(--text) 72%, var(--rose));
+  background:
+    linear-gradient(
+      135deg,
+      color-mix(in srgb, var(--peach) 86%, white),
+      color-mix(in srgb, var(--pink) 92%, white)
+    );
+}
+
+.progress-track {
+  background:
+    color-mix(in srgb, var(--blush) 88%, white);
+}
+
+.progress-fill {
+  background:
+    linear-gradient(
+      90deg,
+      var(--pink),
+      var(--rose)
+    );
+}
+
+.budget-ring {
+  color: var(--rose);
+  background:
+    radial-gradient(
+      circle,
+      color-mix(in srgb, var(--surface) 88%, var(--bg)) 55%,
+      transparent 57%
+    ),
+    conic-gradient(
+      var(--rose) 0 0%,
+      color-mix(in srgb, var(--blush) 84%, white) 0 100%
+    );
+}
+
+/*
+  With wallpaper enabled, keep cards readable but translucent
+  so the chosen image remains visible behind the content.
+*/
+body.wallpaper-enabled .card,
+body.wallpaper-enabled .budget-summary-card,
+body.wallpaper-enabled .activity-tools,
+body.wallpaper-enabled .activity-summary,
+body.wallpaper-enabled .form-card {
+  background:
+    color-mix(in srgb, var(--surface) 74%, transparent);
+  -webkit-backdrop-filter: blur(10px);
+  backdrop-filter: blur(10px);
 }
 
