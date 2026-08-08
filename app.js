@@ -28,7 +28,6 @@ const STORES = {
 
   planned: "planned",
 
-  favorites: "favorites",
 
   settings: "settings"
 
@@ -187,6 +186,24 @@ const LOCAL_KEYS = {
   cleanStart:
     "momo_clean_start_v1"
 
+};
+
+
+
+const APPEARANCE_SETTING_KEY =
+  "appearance_preferences";
+
+
+const APPEARANCE_DEFAULTS = {
+  theme: "peach",
+  wallpaperData: "",
+  wallpaperEnabled: false,
+  overlay: "medium"
+};
+
+
+let appearancePreferences = {
+  ...APPEARANCE_DEFAULTS
 };
 
 
@@ -441,24 +458,6 @@ function openDatabase() {
               "status",
               {
                 unique: false
-              }
-            );
-
-          }
-
-
-          // FAVORITES / QUICK ADD
-
-          if (
-            !database.objectStoreNames.contains(
-              STORES.favorites
-            )
-          ) {
-
-            database.createObjectStore(
-              STORES.favorites,
-              {
-                keyPath: "id"
               }
             );
 
@@ -744,6 +743,10 @@ async function performCleanStartIfNeeded() {
   }
 
 
+  // Legacy localStorage cleanup only.
+  // Never clear IndexedDB here: live Momo financial data
+  // must survive normal app updates and launches.
+
   localStorage.removeItem(
     "momo_budgets"
   );
@@ -752,35 +755,6 @@ async function performCleanStartIfNeeded() {
   localStorage.removeItem(
     "momo_expenses"
   );
-
-
-  await Promise.all([
-
-    clearStore(
-      STORES.expenses
-    ),
-
-    clearStore(
-      STORES.budgets
-    ),
-
-    clearStore(
-      STORES.trips
-    ),
-
-    clearStore(
-      STORES.cards
-    ),
-
-    clearStore(
-      STORES.recurring
-    ),
-
-    clearStore(
-      STORES.planned
-    )
-
-  ]);
 
 
   localStorage.setItem(
@@ -809,9 +783,7 @@ async function loadAppData() {
 
     recurringExpenses,
 
-    plannedExpenses,
-
-    favoriteExpenses
+    plannedExpenses
 
   ] = await Promise.all([
 
@@ -837,13 +809,51 @@ async function loadAppData() {
 
     getAllRecords(
       STORES.planned
-    ),
-
-    getAllRecords(
-      STORES.favorites
     )
 
   ]);
+
+
+  const settingsRecords =
+    await getAllRecords(
+      STORES.settings
+    );
+
+
+  const favoriteSetting =
+    settingsRecords.find(
+      (item) =>
+        item?.key ===
+        "favorite_expenses"
+    );
+
+
+  favoriteExpenses =
+    Array.isArray(
+      favoriteSetting?.value
+    )
+      ? favoriteSetting.value
+      : [];
+
+
+  const appearanceSetting =
+    settingsRecords.find(
+      (item) =>
+        item?.key ===
+        APPEARANCE_SETTING_KEY
+    );
+
+
+  appearancePreferences = {
+    ...APPEARANCE_DEFAULTS,
+    ...(
+      appearanceSetting?.value &&
+      typeof appearanceSetting.value ===
+        "object"
+        ? appearanceSetting.value
+        : {}
+    )
+  };
 
 
   expenses.sort(
@@ -930,8 +940,6 @@ async function loadAppData() {
     }
   );
 
-}
-
 
   favoriteExpenses.sort(
     (a, b) =>
@@ -939,6 +947,8 @@ async function loadAppData() {
         String(b.title || "")
       )
   );
+
+}
 
 
 // ========================================
@@ -1651,6 +1661,771 @@ function formatPlainNumber(
   );
 
 }
+
+
+
+// ========================================
+// APPEARANCE
+// ========================================
+
+const appearanceButton =
+  document.getElementById(
+    "appearanceButton"
+  );
+
+
+const appearanceModal =
+  document.getElementById(
+    "appearanceModal"
+  );
+
+
+const closeAppearanceModalButton =
+  document.getElementById(
+    "closeAppearanceModal"
+  );
+
+
+const doneAppearanceButton =
+  document.getElementById(
+    "doneAppearanceButton"
+  );
+
+
+const appearanceThemeName =
+  document.getElementById(
+    "appearanceThemeName"
+  );
+
+
+const appearanceThemeOptions =
+  document.getElementById(
+    "appearanceThemeOptions"
+  );
+
+
+const wallpaperInput =
+  document.getElementById(
+    "wallpaperInput"
+  );
+
+
+const chooseWallpaperButton =
+  document.getElementById(
+    "chooseWallpaperButton"
+  );
+
+
+const removeWallpaperButton =
+  document.getElementById(
+    "removeWallpaperButton"
+  );
+
+
+const wallpaperPreview =
+  document.getElementById(
+    "wallpaperPreview"
+  );
+
+
+const wallpaperToggle =
+  document.getElementById(
+    "wallpaperToggle"
+  );
+
+
+const wallpaperStatus =
+  document.getElementById(
+    "wallpaperStatus"
+  );
+
+
+const overlayStrengthOptions =
+  document.getElementById(
+    "overlayStrengthOptions"
+  );
+
+
+const resetAppearanceButton =
+  document.getElementById(
+    "resetAppearanceButton"
+  );
+
+
+const THEME_LABELS = {
+  peach: "Peach Pink",
+  lavender: "Lavender Purple",
+  sky: "Sky Blue",
+  mint: "Mint Green",
+  butter: "Soft Yellow"
+};
+
+
+function getWallpaperOverlayColor(
+  overlay =
+    "medium"
+) {
+
+  const alphaByStrength = {
+    light: 0.64,
+    medium: 0.78,
+    strong: 0.9
+  };
+
+
+  const alpha =
+    alphaByStrength[
+      overlay
+    ] ??
+    alphaByStrength.medium;
+
+
+  return `rgba(255, 252, 250, ${alpha})`;
+
+}
+
+
+function applyAppearance() {
+
+  const theme =
+    THEME_LABELS[
+      appearancePreferences.theme
+    ]
+      ? appearancePreferences.theme
+      : APPEARANCE_DEFAULTS.theme;
+
+
+  document.body.dataset.theme =
+    theme;
+
+
+  const hasWallpaper =
+    Boolean(
+      appearancePreferences.wallpaperData
+    );
+
+
+  const wallpaperIsOn =
+    hasWallpaper &&
+    Boolean(
+      appearancePreferences.wallpaperEnabled
+    );
+
+
+  document.body.classList.toggle(
+    "wallpaper-enabled",
+    wallpaperIsOn
+  );
+
+
+  document.body.style.setProperty(
+    "--momo-wallpaper-image",
+    hasWallpaper
+      ? `url("${appearancePreferences.wallpaperData}")`
+      : "none"
+  );
+
+
+  document.body.style.setProperty(
+    "--momo-wallpaper-overlay",
+    getWallpaperOverlayColor(
+      appearancePreferences.overlay
+    )
+  );
+
+
+  renderAppearanceControls();
+
+}
+
+
+function renderAppearanceControls() {
+
+  const theme =
+    THEME_LABELS[
+      appearancePreferences.theme
+    ]
+      ? appearancePreferences.theme
+      : APPEARANCE_DEFAULTS.theme;
+
+
+  if (
+    appearanceThemeName
+  ) {
+
+    appearanceThemeName.textContent =
+      THEME_LABELS[
+        theme
+      ];
+
+  }
+
+
+  appearanceThemeOptions
+    ?.querySelectorAll(
+      "[data-theme-choice]"
+    )
+    .forEach(
+      (button) => {
+
+        const active =
+          button.dataset
+            .themeChoice ===
+          theme;
+
+
+        button.classList.toggle(
+          "active",
+          active
+        );
+
+
+        button.setAttribute(
+          "aria-checked",
+          String(
+            active
+          )
+        );
+
+      }
+    );
+
+
+  const hasWallpaper =
+    Boolean(
+      appearancePreferences.wallpaperData
+    );
+
+
+  if (
+    wallpaperPreview
+  ) {
+
+    wallpaperPreview.classList.toggle(
+      "has-image",
+      hasWallpaper
+    );
+
+
+    wallpaperPreview.style.backgroundImage =
+      hasWallpaper
+        ? `linear-gradient(rgba(255,255,255,.18), rgba(255,255,255,.18)), url("${appearancePreferences.wallpaperData}")`
+        : "";
+
+
+    wallpaperPreview.innerHTML =
+      hasWallpaper
+        ? "<span class=\"visually-hidden\">Selected wallpaper preview</span>"
+        : "<span>Choose a photo from this device.<br>It stays private and local to Momo.</span>";
+
+  }
+
+
+  if (
+    removeWallpaperButton
+  ) {
+
+    removeWallpaperButton.hidden =
+      !hasWallpaper;
+
+  }
+
+
+  if (
+    wallpaperToggle
+  ) {
+
+    wallpaperToggle.disabled =
+      !hasWallpaper;
+
+
+    wallpaperToggle.checked =
+      hasWallpaper &&
+      Boolean(
+        appearancePreferences.wallpaperEnabled
+      );
+
+  }
+
+
+  if (
+    wallpaperStatus
+  ) {
+
+    wallpaperStatus.textContent =
+      hasWallpaper &&
+      appearancePreferences.wallpaperEnabled
+        ? "On"
+        : "Off";
+
+  }
+
+
+  overlayStrengthOptions
+    ?.querySelectorAll(
+      "[data-overlay-choice]"
+    )
+    .forEach(
+      (button) => {
+
+        button.classList.toggle(
+          "active",
+          button.dataset
+            .overlayChoice ===
+            appearancePreferences.overlay
+        );
+
+      }
+    );
+
+}
+
+
+async function saveAppearancePreferences() {
+
+  await putRecord(
+    STORES.settings,
+    {
+      key:
+        APPEARANCE_SETTING_KEY,
+      value: {
+        ...appearancePreferences
+      },
+      updatedAt:
+        new Date()
+          .toISOString()
+    }
+  );
+
+}
+
+
+function openAppearanceModal() {
+
+  if (
+    !appearanceModal
+  ) {
+
+    return;
+
+  }
+
+
+  renderAppearanceControls();
+
+
+  appearanceModal.hidden =
+    false;
+
+
+  document.body.classList.add(
+    "drawer-open"
+  );
+
+}
+
+
+function closeAppearanceModal() {
+
+  if (
+    appearanceModal
+  ) {
+
+    appearanceModal.hidden =
+      true;
+
+  }
+
+
+  document.body.classList.remove(
+    "drawer-open"
+  );
+
+}
+
+
+appearanceButton?.addEventListener(
+  "click",
+  openAppearanceModal
+);
+
+
+closeAppearanceModalButton
+  ?.addEventListener(
+    "click",
+    closeAppearanceModal
+  );
+
+
+doneAppearanceButton
+  ?.addEventListener(
+    "click",
+    closeAppearanceModal
+  );
+
+
+appearanceModal?.addEventListener(
+  "click",
+  (event) => {
+
+    if (
+      event.target ===
+      appearanceModal
+    ) {
+
+      closeAppearanceModal();
+
+    }
+
+  }
+);
+
+
+appearanceThemeOptions
+  ?.addEventListener(
+    "click",
+    async (
+      event
+    ) => {
+
+      const button =
+        event.target.closest(
+          "[data-theme-choice]"
+        );
+
+
+      if (
+        !button
+      ) {
+
+        return;
+
+      }
+
+
+      const theme =
+        button.dataset
+          .themeChoice;
+
+
+      if (
+        !THEME_LABELS[
+          theme
+        ]
+      ) {
+
+        return;
+
+      }
+
+
+      appearancePreferences.theme =
+        theme;
+
+
+      applyAppearance();
+
+
+      try {
+
+        await saveAppearancePreferences();
+
+      } catch (
+        error
+      ) {
+
+        console.error(
+          "Could not save appearance:",
+          error
+        );
+
+
+        showToast(
+          "Could not save theme."
+        );
+
+      }
+
+    }
+  );
+
+
+chooseWallpaperButton
+  ?.addEventListener(
+    "click",
+    () => {
+
+      wallpaperInput?.click();
+
+    }
+  );
+
+
+wallpaperInput?.addEventListener(
+  "change",
+  async () => {
+
+    const file =
+      wallpaperInput.files?.[
+        0
+      ];
+
+
+    if (
+      !file
+    ) {
+
+      return;
+
+    }
+
+
+    if (
+      !file.type.startsWith(
+        "image/"
+      )
+    ) {
+
+      showToast(
+        "Please choose an image."
+      );
+
+
+      wallpaperInput.value =
+        "";
+
+
+      return;
+
+    }
+
+
+    try {
+
+      const compressed =
+        await compressExpensePhoto(
+          file
+        );
+
+
+      appearancePreferences.wallpaperData =
+        compressed;
+
+
+      appearancePreferences.wallpaperEnabled =
+        true;
+
+
+      applyAppearance();
+
+
+      await saveAppearancePreferences();
+
+
+      showToast(
+        "Wallpaper saved"
+      );
+
+    } catch (
+      error
+    ) {
+
+      console.error(
+        "Could not save wallpaper:",
+        error
+      );
+
+
+      showToast(
+        "Could not use that photo."
+      );
+
+    } finally {
+
+      wallpaperInput.value =
+        "";
+
+    }
+
+  }
+);
+
+
+removeWallpaperButton
+  ?.addEventListener(
+    "click",
+    async () => {
+
+      appearancePreferences.wallpaperData =
+        "";
+
+
+      appearancePreferences.wallpaperEnabled =
+        false;
+
+
+      applyAppearance();
+
+
+      try {
+
+        await saveAppearancePreferences();
+
+
+        showToast(
+          "Wallpaper removed"
+        );
+
+      } catch (
+        error
+      ) {
+
+        console.error(
+          "Could not remove wallpaper:",
+          error
+        );
+
+      }
+
+    }
+  );
+
+
+wallpaperToggle?.addEventListener(
+  "change",
+  async () => {
+
+    appearancePreferences.wallpaperEnabled =
+      Boolean(
+        wallpaperToggle.checked
+      );
+
+
+    applyAppearance();
+
+
+    try {
+
+      await saveAppearancePreferences();
+
+    } catch (
+      error
+    ) {
+
+      console.error(
+        "Could not save wallpaper setting:",
+        error
+      );
+
+    }
+
+  }
+);
+
+
+overlayStrengthOptions
+  ?.addEventListener(
+    "click",
+    async (
+      event
+    ) => {
+
+      const button =
+        event.target.closest(
+          "[data-overlay-choice]"
+        );
+
+
+      if (
+        !button
+      ) {
+
+        return;
+
+      }
+
+
+      const overlay =
+        button.dataset
+          .overlayChoice;
+
+
+      if (
+        ![
+          "light",
+          "medium",
+          "strong"
+        ].includes(
+          overlay
+        )
+      ) {
+
+        return;
+
+      }
+
+
+      appearancePreferences.overlay =
+        overlay;
+
+
+      applyAppearance();
+
+
+      try {
+
+        await saveAppearancePreferences();
+
+      } catch (
+        error
+      ) {
+
+        console.error(
+          "Could not save overlay:",
+          error
+        );
+
+      }
+
+    }
+  );
+
+
+resetAppearanceButton
+  ?.addEventListener(
+    "click",
+    async () => {
+
+      appearancePreferences = {
+        ...APPEARANCE_DEFAULTS
+      };
+
+
+      applyAppearance();
+
+
+      try {
+
+        await saveAppearancePreferences();
+
+
+        showToast(
+          "Appearance reset"
+        );
+
+      } catch (
+        error
+      ) {
+
+        console.error(
+          "Could not reset appearance:",
+          error
+        );
+
+      }
+
+    }
+  );
 
 
 // ========================================
@@ -8382,6 +9157,26 @@ function openExpenseEditor(
 // FAVORITES / QUICK ADD
 // ========================================
 
+async function saveFavoriteExpenses() {
+
+  await putRecord(
+    STORES.settings,
+    {
+      key:
+        "favorite_expenses",
+
+      value:
+        favoriteExpenses,
+
+      updatedAt:
+        new Date()
+          .toISOString()
+    }
+  );
+
+}
+
+
 const favoriteQuickAddSection =
   document.getElementById(
     "favoriteQuickAddSection"
@@ -8874,10 +9669,15 @@ favoriteQuickAddList?.addEventListener(
     }
 
 
-    await deleteRecord(
-      STORES.favorites,
-      favorite.id
-    );
+    favoriteExpenses =
+      favoriteExpenses.filter(
+        (item) =>
+          item.id !==
+          favorite.id
+      );
+
+
+    await saveFavoriteExpenses();
 
 
     await loadAppData();
@@ -8987,10 +9787,12 @@ saveFavoriteButton?.addEventListener(
     };
 
 
-    await putRecord(
-      STORES.favorites,
+    favoriteExpenses.push(
       favorite
     );
+
+
+    await saveFavoriteExpenses();
 
 
     await loadAppData();
@@ -17400,6 +18202,7 @@ async function buildMomoBackup() {
       MOMO_BACKUP_VERSION,
 
     databaseVersion:
+      db?.version ||
       DB_VERSION,
 
     appName:
@@ -18182,16 +18985,6 @@ async function restoreMomoBackup(
 
 
   await restoreRecords(
-    STORES.favorites,
-    Array.isArray(
-      data.favoriteExpenses
-    )
-      ? data.favoriteExpenses
-      : []
-  );
-
-
-  await restoreRecords(
     STORES.settings,
     Array.isArray(
       data.settings
@@ -18199,6 +18992,21 @@ async function restoreMomoBackup(
       ? data.settings
       : []
   );
+
+
+  if (
+    Array.isArray(
+      data.favoriteExpenses
+    )
+  ) {
+
+    favoriteExpenses =
+      data.favoriteExpenses;
+
+
+    await saveFavoriteExpenses();
+
+  }
 
 
   const preferences =
@@ -18686,6 +19494,9 @@ async function initializeApp() {
 
 
     await loadAppData();
+
+
+    applyAppearance();
 
 
     if (

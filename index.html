@@ -42,12 +42,13 @@
       </div>
 
       <button
-        class="icon-btn"
+        id="appearanceButton"
+        class="icon-btn appearance-header-btn"
         type="button"
-        data-nav="add"
-        aria-label="Add expense"
+        aria-label="Customize Momo appearance"
+        aria-haspopup="dialog"
       >
-        ＋
+        ✿
       </button>
     </header>
 
@@ -1691,6 +1692,157 @@
         <small>Calendar</small>
       </button>
     </nav>
+
+
+
+    <!-- ========================================
+         APPEARANCE / PERSONALIZATION MODAL
+    ========================================= -->
+    <div
+      id="appearanceModal"
+      class="modal-backdrop appearance-backdrop"
+      hidden
+    >
+      <section
+        class="modal-card appearance-modal-card"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="appearanceModalTitle"
+      >
+        <div class="modal-header appearance-modal-header">
+          <div>
+            <p class="eyebrow">Personalize</p>
+            <h2 id="appearanceModalTitle">Appearance</h2>
+          </div>
+
+          <button
+            id="closeAppearanceModal"
+            class="icon-btn soft appearance-close-btn"
+            type="button"
+            aria-label="Close appearance settings"
+          >
+            ×
+          </button>
+        </div>
+
+        <section class="appearance-section">
+          <div class="appearance-section-heading">
+            <h3>Color Theme</h3>
+            <span id="appearanceThemeName">Peach Pink</span>
+          </div>
+
+          <div
+            id="appearanceThemeOptions"
+            class="theme-option-list"
+            role="radiogroup"
+            aria-label="Color theme"
+          >
+            <button class="theme-option active" type="button" data-theme-choice="peach" role="radio" aria-checked="true">
+              <span class="theme-swatch theme-swatch-peach"></span>
+              <strong>Peach Pink</strong>
+              <span class="theme-check">✓</span>
+            </button>
+
+            <button class="theme-option" type="button" data-theme-choice="lavender" role="radio" aria-checked="false">
+              <span class="theme-swatch theme-swatch-lavender"></span>
+              <strong>Lavender Purple</strong>
+              <span class="theme-check">✓</span>
+            </button>
+
+            <button class="theme-option" type="button" data-theme-choice="sky" role="radio" aria-checked="false">
+              <span class="theme-swatch theme-swatch-sky"></span>
+              <strong>Sky Blue</strong>
+              <span class="theme-check">✓</span>
+            </button>
+
+            <button class="theme-option" type="button" data-theme-choice="mint" role="radio" aria-checked="false">
+              <span class="theme-swatch theme-swatch-mint"></span>
+              <strong>Mint Green</strong>
+              <span class="theme-check">✓</span>
+            </button>
+
+            <button class="theme-option" type="button" data-theme-choice="butter" role="radio" aria-checked="false">
+              <span class="theme-swatch theme-swatch-butter"></span>
+              <strong>Soft Yellow</strong>
+              <span class="theme-check">✓</span>
+            </button>
+          </div>
+        </section>
+
+        <section class="appearance-section">
+          <div class="appearance-section-heading">
+            <h3>Custom Wallpaper</h3>
+            <span id="wallpaperStatus">Off</span>
+          </div>
+
+          <div id="wallpaperPreview" class="wallpaper-preview">
+            <span>Choose a photo from this device.<br>It stays private and local to Momo.</span>
+          </div>
+
+          <input
+            id="wallpaperInput"
+            class="visually-hidden"
+            type="file"
+            accept="image/*"
+          >
+
+          <div class="wallpaper-actions">
+            <button
+              id="chooseWallpaperButton"
+              class="secondary-button appearance-action-btn"
+              type="button"
+            >
+              Choose Photo
+            </button>
+
+            <button
+              id="removeWallpaperButton"
+              class="secondary-button appearance-action-btn"
+              type="button"
+              hidden
+            >
+              Remove Photo
+            </button>
+          </div>
+
+          <label class="wallpaper-toggle-row">
+            <span>
+              <strong>Wallpaper</strong>
+              <small>Turn the saved photo background on or off.</small>
+            </span>
+
+            <input id="wallpaperToggle" type="checkbox">
+            <span class="appearance-switch" aria-hidden="true"></span>
+          </label>
+
+          <div class="overlay-strength-block">
+            <strong>Overlay strength</strong>
+
+            <div id="overlayStrengthOptions" class="overlay-strength-options">
+              <button type="button" data-overlay-choice="light">Light</button>
+              <button type="button" data-overlay-choice="medium" class="active">Medium</button>
+              <button type="button" data-overlay-choice="strong">Strong</button>
+            </div>
+          </div>
+        </section>
+
+        <button
+          id="resetAppearanceButton"
+          class="secondary-button reset-appearance-btn"
+          type="button"
+        >
+          Reset Appearance
+        </button>
+
+        <button
+          id="doneAppearanceButton"
+          class="primary-button appearance-done-btn"
+          type="button"
+        >
+          Done
+        </button>
+      </section>
+    </div>
 
 
     <!-- ========================================
