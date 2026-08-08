@@ -34821,18 +34821,164 @@ window.addEventListener(
 // INITIALIZE
 // ========================================
 
+function waitForDatabaseRetry(
+  delay
+) {
+
+  return new Promise(
+    (resolve) => {
+
+      setTimeout(
+        resolve,
+        delay
+      );
+
+    }
+  );
+
+}
+
+
+async function openDatabaseWithRetry(
+  attempts =
+    3
+) {
+
+  let lastError =
+    null;
+
+
+  for (
+    let attempt = 1;
+    attempt <= attempts;
+    attempt++
+  ) {
+
+    try {
+
+      if (
+        db
+      ) {
+
+        try {
+
+          db.close();
+
+        } catch (
+          closeError
+        ) {
+
+          console.warn(
+            "Could not close the previous Momo database connection:",
+            closeError
+          );
+
+        }
+
+
+        db =
+          null;
+
+      }
+
+
+      return await openDatabase();
+
+    } catch (
+      error
+    ) {
+
+      lastError =
+        error;
+
+
+      console.warn(
+        `Momo database open attempt ${attempt} of ${attempts} failed:`,
+        error
+      );
+
+
+      if (
+        attempt <
+        attempts
+      ) {
+
+        await waitForDatabaseRetry(
+          attempt *
+            350
+        );
+
+      }
+
+    }
+
+  }
+
+
+  throw (
+    lastError ||
+    new Error(
+      "Momo could not open IndexedDB."
+    )
+  );
+
+}
+
+
 async function initializeApp() {
 
   try {
 
-    await openDatabase();
+    await openDatabaseWithRetry();
 
+  } catch (
+    error
+  ) {
+
+    console.error(
+      "Momo could not open its local database:",
+      error
+    );
+
+
+    showToast(
+      "Momo could not open its local database. Please close and reopen the app."
+    );
+
+
+    return;
+
+  }
+
+
+  try {
 
     await performCleanStartIfNeeded();
 
 
     await loadAppData();
 
+  } catch (
+    error
+  ) {
+
+    console.error(
+      "Momo could not load its saved data:",
+      error
+    );
+
+
+    showToast(
+      "Momo opened, but its saved data could not finish loading."
+    );
+
+
+    return;
+
+  }
+
+
+  try {
 
     applyAppearance();
 
@@ -34868,13 +35014,13 @@ async function initializeApp() {
   ) {
 
     console.error(
-      "Momo could not initialize:",
+      "Momo opened, but part of the interface could not initialize:",
       error
     );
 
 
     showToast(
-      "Momo could not open its local database."
+      "Momo opened, but part of the interface could not finish loading."
     );
 
   }
