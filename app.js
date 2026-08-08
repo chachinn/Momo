@@ -1,6 +1,6 @@
 // ========================================
 // MOMO
-// Build: 20260808-5
+// Build: 20260808-7
 // CLEAN FOUNDATION + FUNCTIONAL TRIPS
 // ========================================
 
@@ -3876,6 +3876,11 @@ function showScreen(
     top: 0,
     behavior: "smooth"
   });
+
+
+  maybeShowFirstUseTip(
+    name
+  );
 
 }
 
@@ -32987,6 +32992,1281 @@ document.addEventListener(
 );
 
 
+
+// ========================================
+// MOMO GUIDE + ONBOARDING
+// ========================================
+
+const MOMO_TUTORIAL_KEYS = {
+  welcomeComplete:
+    "momo_welcome_tour_complete_v1",
+
+  firstUsePrefix:
+    "momo_first_use_tip_v1_"
+};
+
+
+const MOMO_HELP_TOPICS = {
+  "first-expense": {
+    emoji: "💸",
+    title: "Add your first expense",
+    intro: "An expense is the basic building block of Momo. Add as much detail as is useful to you — most extra fields are optional.",
+    steps: [
+      "Tap Add in the bottom navigation.",
+      "Enter the amount and choose the currency.",
+      "Add a title, category, payment method, date, and any optional details you want.",
+      "Attach a receipt photo if you want a visual record.",
+      "Tap the check mark or Save to store the expense on this device."
+    ],
+    tip: "For something you buy often, save it as a Quick Add template so the next entry takes fewer taps."
+  },
+
+  income: {
+    emoji: "💰",
+    title: "Add monthly income",
+    intro: "Monthly income gives the Home snapshot extra context. It is stored locally and does not connect to a bank account.",
+    steps: [
+      "Go to Home.",
+      "Tap the Income card or Add income.",
+      "Enter the income amount for the selected month.",
+      "Save it and return to the snapshot."
+    ],
+    tip: "Income is month-specific, so you can keep historical months separate."
+  },
+
+  budgets: {
+    emoji: "♡",
+    title: "Use Budgets",
+    short: "Budgets let you set a spending limit and compare it with the expenses assigned to that budget.",
+    intro: "Use budgets to give spending a limit without changing how your expenses are stored.",
+    steps: [
+      "Open Budgets from the bottom navigation or menu.",
+      "Tap + to create a budget.",
+      "Choose the amount, period, category, and other available budget details.",
+      "When adding an expense, assign it to the matching budget when appropriate.",
+      "Return to Budgets to see budgeted, spent, and remaining amounts."
+    ],
+    tip: "Editing or deleting an assigned expense updates the budget totals automatically."
+  },
+
+  receipts: {
+    emoji: "📷",
+    title: "Receipt photos",
+    intro: "Receipt photos stay with the expense so you can keep a visual record of a purchase.",
+    steps: [
+      "While adding or editing an expense, tap Add Photo.",
+      "Choose a photo from your device.",
+      "Save the expense.",
+      "Open the expense later to see the photo, or use Receipt Gallery from the menu to browse all receipt photos."
+    ],
+    tip: "Receipt photos are local data, so include them in your regular Momo backups."
+  },
+
+  "quick-add": {
+    emoji: "⚡",
+    title: "Quick Add templates",
+    short: "Quick Add remembers repeat expense details and prefills the form — but deliberately leaves the amount blank.",
+    intro: "Quick Add is for purchases you make repeatedly, such as Grab, coffee, or a regular shop.",
+    steps: [
+      "Create or edit an expense with the details you commonly reuse.",
+      "Save it as a Quick Add template using the available template action.",
+      "Next time, open Add Expense and tap that template near the top.",
+      "Momo prefills remembered details such as category, payment method, merchant, tags, trip, or notes.",
+      "Enter the new amount and save the expense normally."
+    ],
+    tip: "The amount is intentionally not saved in a template, so an old price cannot sneak into a new expense."
+  },
+
+  search: {
+    emoji: "⌕",
+    title: "Search & filter expenses",
+    intro: "Use Activity when your expense history gets long. Search and filters can narrow the list without changing any data.",
+    steps: [
+      "Open Activity from the menu.",
+      "Type a merchant, trip, category, payment method, tag, or other useful term in search.",
+      "Add filters such as date, category, payment method, trip, amount range, tags, or receipt status when needed.",
+      "Tap an expense result to open its full details.",
+      "Clear the search or filters to return to the full history."
+    ],
+    tip: "Try a simple real-world term first — for example Grab, Japan, cash, or food."
+  },
+
+  savings: {
+    emoji: "🌱",
+    title: "Savings Goals",
+    short: "Savings Goals track money you are setting aside without counting it as an expense.",
+    intro: "Use a goal for something you want to save toward while keeping savings separate from spending totals.",
+    steps: [
+      "Open Savings Goals from the menu.",
+      "Tap + and create a goal with a target amount.",
+      "Add contributions as you set money aside.",
+      "Open the goal later to review its progress.",
+      "Edit the goal if the target changes."
+    ],
+    tip: "Savings Goals are tracking tools inside Momo; they do not move money between real accounts."
+  },
+
+  trips: {
+    emoji: "✈️",
+    title: "Create & use a trip",
+    short: "Trips keep travel dates, spending, budgets, shopping, planning, and related tools grouped around one adventure.",
+    intro: "Create a trip before or during travel, then assign relevant expenses to it as you spend.",
+    steps: [
+      "Open Trips and tap +.",
+      "Give the trip a name and choose its start and end dates.",
+      "Add the available trip budget or currency details you want to track.",
+      "When logging travel purchases, assign those expenses to the trip.",
+      "Open the Trip Dashboard to review spending and use its related travel tools."
+    ],
+    tip: "Keeping expenses attached to the correct trip makes the travel totals and trip-specific tools much more useful."
+  },
+
+  converter: {
+    emoji: "💱",
+    title: "Currency Converter",
+    intro: "The converter works as both a currency tool and a tiny travel calculator.",
+    steps: [
+      "Open Currency Converter from the menu or the converter inside Trips.",
+      "Choose the two currencies.",
+      "Enter one amount, or type a calculation such as 500 + 890 + 1200.",
+      "Momo totals the original expression and shows the converted result.",
+      "Swap or change currencies whenever you need another comparison."
+    ],
+    tip: "The smaller original-currency total is useful when adding several prices while shopping."
+  },
+
+  shopping: {
+    emoji: "🛍️",
+    title: "Things I Want to Buy",
+    intro: "Each trip can keep its own shopping list, separate from your actual expense history.",
+    steps: [
+      "Open the Trip Dashboard for the trip you are planning.",
+      "Find Things I Want to Buy and add an item.",
+      "Add a target price, store or location, photo, or other available details.",
+      "Mark the item bought when you purchase it and update the actual price if needed.",
+      "Use the shopping summary to compare target and actual purchased totals."
+    ],
+    tip: "Shopping lists belong to individual trips, so a Japan list stays separate from another adventure."
+  },
+
+  settlement: {
+    emoji: "🤝",
+    title: "Travel Settlement",
+    short: "Travel Settlement records shared trip costs locally and works out a simple way for people to settle what they owe.",
+    intro: "Use this when different people paid for shared things during a trip. Nobody else needs to have Momo.",
+    steps: [
+      "Open Travel Settlement from the menu.",
+      "Choose the trip you want to settle.",
+      "Add the people involved.",
+      "Record shared expenses, who paid, and the relevant shares.",
+      "Review balances and Momo's suggested settlement transfers.",
+      "Record payments as people settle up."
+    ],
+    tip: "Settlement data is local to your Momo and is included in the full backup system."
+  },
+
+  recurring: {
+    emoji: "↻",
+    title: "Recurring Expenses",
+    short: "Recurring Expenses keep subscriptions and regular payments visible without storing banking credentials.",
+    intro: "Use this area as a local tracker for costs that repeat on a schedule.",
+    steps: [
+      "Open Recurring Expenses from the menu.",
+      "Tap + and enter the recurring item's details.",
+      "Choose its frequency and next due date.",
+      "Save it to include it in recurring summaries and due-date tracking.",
+      "Edit or remove the recurring item when the real-world payment changes or ends."
+    ],
+    tip: "Recurring tracking is separate from connecting a bank or card account — Momo remains local."
+  },
+
+  planned: {
+    emoji: "☆",
+    title: "Planned Expenses",
+    short: "Planned Expenses let you save something you expect to buy without counting it as money already spent.",
+    intro: "This is useful for future purchases, travel plans, or anything you want visible before it becomes a real expense.",
+    steps: [
+      "Open Planned Expenses from the menu.",
+      "Tap + and enter the item, target amount, date, category, trip, or notes you need.",
+      "Keep it in Planned while it is only an intention.",
+      "When you actually buy it, use the purchase/convert action to turn it into an expense.",
+      "Review Purchased when you want to see plans that became real spending."
+    ],
+    tip: "Keeping planned items separate prevents future purchases from inflating today's spending totals."
+  },
+
+  calendar: {
+    emoji: "▦",
+    title: "Calendar",
+    intro: "Calendar gives dated money activity another way to be viewed, especially when timing matters.",
+    steps: [
+      "Open Calendar from the bottom navigation.",
+      "Move to the month or date you want to review.",
+      "Use the dated entries shown there to understand when activity happened.",
+      "Open the relevant item when you need its full details."
+    ],
+    tip: "Calendar is a view of your Momo data — changing screens does not duplicate the underlying records."
+  },
+
+  reports: {
+    emoji: "◔",
+    title: "Reports",
+    short: "Reports summarize the expenses already in Momo so you can see patterns by period and scope.",
+    intro: "Use Reports when you want a wider view of where your money went rather than one individual transaction.",
+    steps: [
+      "Open Reports from the menu.",
+      "Choose a period such as this month, last month, this year, or a custom range.",
+      "Adjust the available scope or filters when you want a narrower view.",
+      "Review totals, category breakdowns, and trend information.",
+      "Change the period to compare a different slice of your spending."
+    ],
+    tip: "Reports are calculated from your existing local expense data, so edits to expenses flow through to the summaries."
+  },
+
+  appearance: {
+    emoji: "✿",
+    title: "Themes & wallpaper",
+    intro: "Appearance lets you change Momo's color personality or place your own photo behind the interface.",
+    steps: [
+      "Tap the flower icon in the top-right corner.",
+      "Choose Peach Pink, Sakura Pink, Lavender Purple, Sky Blue, Mint Green, or Soft Yellow.",
+      "Optionally choose a wallpaper from your device.",
+      "Position and zoom the wallpaper in the crop screen, then apply it.",
+      "Adjust the overlay strength if you want more or less separation between the photo and Momo's cards."
+    ],
+    tip: "Appearance preferences are local and are included in Momo's full backup."
+  },
+
+  backup: {
+    emoji: "⇩",
+    title: "Backup & Restore",
+    intro: "A full Momo backup protects the local data that lives on this device, including photos and app settings.",
+    steps: [
+      "Open Backup & Export from the menu.",
+      "Tap Export Momo Backup and keep the downloaded JSON somewhere safe.",
+      "To restore later, choose a Momo backup file from the Restore section.",
+      "Review Momo's validation and restore summary before confirming.",
+      "Momo creates a safety backup of the device's current data before destructive restoration begins."
+    ],
+    tip: "Make a fresh backup periodically, especially before major device changes or if you keep many receipt photos."
+  },
+
+  offline: {
+    emoji: "☁",
+    title: "Using Momo offline",
+    intro: "Momo is designed as an installable PWA whose personal data is stored locally on your device.",
+    steps: [
+      "Open Momo online at least once so the app shell is available to the installed PWA.",
+      "Install Momo to your Home Screen if you want the app-like experience.",
+      "Use your existing local expenses, trips, budgets, and other stored information even without a connection.",
+      "When internet returns, normal app-file updates can be fetched again."
+    ],
+    tip: "Offline storage is convenient, but it makes your own backup file especially important."
+  }
+};
+
+
+const MOMO_FIRST_USE_SCREENS = {
+  budgets: "budgets",
+  trips: "trips",
+  recurring: "recurring",
+  planned: "planned",
+  savings: "savings",
+  settlement: "settlement",
+  reports: "reports"
+};
+
+
+const welcomeTour =
+  document.getElementById(
+    "welcomeTour"
+  );
+
+const welcomeTourSlides =
+  Array.from(
+    document.querySelectorAll(
+      "[data-tutorial-slide]"
+    )
+  );
+
+const welcomeTourDots =
+  Array.from(
+    document.querySelectorAll(
+      "[data-tour-dot]"
+    )
+  );
+
+const welcomeTourBack =
+  document.getElementById(
+    "welcomeTourBack"
+  );
+
+const welcomeTourNext =
+  document.getElementById(
+    "welcomeTourNext"
+  );
+
+const skipWelcomeTour =
+  document.getElementById(
+    "skipWelcomeTour"
+  );
+
+const replayWelcomeTour =
+  document.getElementById(
+    "replayWelcomeTour"
+  );
+
+const contextTipModal =
+  document.getElementById(
+    "contextTipModal"
+  );
+
+const contextTipEmoji =
+  document.getElementById(
+    "contextTipEmoji"
+  );
+
+const contextTipTitle =
+  document.getElementById(
+    "contextTipTitle"
+  );
+
+const contextTipCopy =
+  document.getElementById(
+    "contextTipCopy"
+  );
+
+const contextTipGotIt =
+  document.getElementById(
+    "contextTipGotIt"
+  );
+
+const contextTipShowHow =
+  document.getElementById(
+    "contextTipShowHow"
+  );
+
+const helpTopicModal =
+  document.getElementById(
+    "helpTopicModal"
+  );
+
+const helpTopicTitle =
+  document.getElementById(
+    "helpTopicTitle"
+  );
+
+const helpTopicEmoji =
+  document.getElementById(
+    "helpTopicEmoji"
+  );
+
+const helpTopicIntro =
+  document.getElementById(
+    "helpTopicIntro"
+  );
+
+const helpTopicSteps =
+  document.getElementById(
+    "helpTopicSteps"
+  );
+
+const helpTopicTip =
+  document.getElementById(
+    "helpTopicTip"
+  );
+
+const closeHelpTopicButton =
+  document.getElementById(
+    "closeHelpTopic"
+  );
+
+const doneHelpTopicButton =
+  document.getElementById(
+    "doneHelpTopic"
+  );
+
+
+let welcomeTourIndex =
+  0;
+
+let welcomeTourTouchStartX =
+  null;
+
+let activeContextTopic =
+  "";
+
+
+function setTutorialBodyLock(
+  locked
+) {
+
+  document.body.classList.toggle(
+    "tutorial-open",
+    Boolean(
+      locked
+    )
+  );
+
+}
+
+
+function renderWelcomeTour() {
+
+  const maxIndex =
+    Math.max(
+      0,
+      welcomeTourSlides.length - 1
+    );
+
+
+  welcomeTourIndex =
+    Math.min(
+      Math.max(
+        0,
+        welcomeTourIndex
+      ),
+      maxIndex
+    );
+
+
+  welcomeTourSlides.forEach(
+    (slide, index) => {
+
+      slide.classList.toggle(
+        "active",
+        index ===
+          welcomeTourIndex
+      );
+
+    }
+  );
+
+
+  welcomeTourDots.forEach(
+    (dot, index) => {
+
+      const active =
+        index ===
+        welcomeTourIndex;
+
+
+      dot.classList.toggle(
+        "active",
+        active
+      );
+
+
+      dot.setAttribute(
+        "aria-current",
+        active
+          ? "step"
+          : "false"
+      );
+
+    }
+  );
+
+
+  if (
+    welcomeTourBack
+  ) {
+
+    welcomeTourBack.hidden =
+      welcomeTourIndex ===
+      0;
+
+  }
+
+
+  if (
+    welcomeTourNext
+  ) {
+
+    welcomeTourNext.textContent =
+      welcomeTourIndex ===
+        maxIndex
+        ? "Start using Momo 🍑"
+        : "Next";
+
+  }
+
+}
+
+
+function openWelcomeTour() {
+
+  if (
+    !welcomeTour
+  ) {
+
+    return;
+
+  }
+
+
+  closeDrawer();
+
+
+  welcomeTourIndex =
+    0;
+
+
+  renderWelcomeTour();
+
+
+  welcomeTour.hidden =
+    false;
+
+
+  setTutorialBodyLock(
+    true
+  );
+
+}
+
+
+function closeWelcomeTour(
+  markComplete =
+    true
+) {
+
+  if (
+    welcomeTour
+  ) {
+
+    welcomeTour.hidden =
+      true;
+
+  }
+
+
+  if (
+    markComplete
+  ) {
+
+    localStorage.setItem(
+      MOMO_TUTORIAL_KEYS
+        .welcomeComplete,
+      "yes"
+    );
+
+  }
+
+
+  setTutorialBodyLock(
+    false
+  );
+
+}
+
+
+function maybeOpenWelcomeTour() {
+
+  const completed =
+    localStorage.getItem(
+      MOMO_TUTORIAL_KEYS
+        .welcomeComplete
+    ) ===
+    "yes";
+
+
+  if (
+    !completed
+  ) {
+
+    setTimeout(
+      openWelcomeTour,
+      180
+    );
+
+  }
+
+}
+
+
+welcomeTourBack
+  ?.addEventListener(
+    "click",
+    () => {
+
+      welcomeTourIndex -=
+        1;
+
+
+      renderWelcomeTour();
+
+    }
+  );
+
+
+welcomeTourNext
+  ?.addEventListener(
+    "click",
+    () => {
+
+      if (
+        welcomeTourIndex >=
+        welcomeTourSlides.length - 1
+      ) {
+
+        closeWelcomeTour(
+          true
+        );
+
+        return;
+
+      }
+
+
+      welcomeTourIndex +=
+        1;
+
+
+      renderWelcomeTour();
+
+    }
+  );
+
+
+skipWelcomeTour
+  ?.addEventListener(
+    "click",
+    () => {
+
+      closeWelcomeTour(
+        true
+      );
+
+    }
+  );
+
+
+replayWelcomeTour
+  ?.addEventListener(
+    "click",
+    openWelcomeTour
+  );
+
+
+welcomeTourDots.forEach(
+  (dot) => {
+
+    dot.addEventListener(
+      "click",
+      () => {
+
+        const nextIndex =
+          Number(
+            dot.dataset
+              .tourDot
+          );
+
+
+        if (
+          Number.isFinite(
+            nextIndex
+          )
+        ) {
+
+          welcomeTourIndex =
+            nextIndex;
+
+
+          renderWelcomeTour();
+
+        }
+
+      }
+    );
+
+  }
+);
+
+
+welcomeTour
+  ?.addEventListener(
+    "touchstart",
+    (event) => {
+
+      welcomeTourTouchStartX =
+        event.touches?.[0]
+          ?.clientX ??
+        null;
+
+    },
+    {
+      passive: true
+    }
+  );
+
+
+welcomeTour
+  ?.addEventListener(
+    "touchend",
+    (event) => {
+
+      if (
+        welcomeTourTouchStartX ===
+        null
+      ) {
+
+        return;
+
+      }
+
+
+      const endX =
+        event.changedTouches?.[0]
+          ?.clientX ??
+        welcomeTourTouchStartX;
+
+
+      const delta =
+        endX -
+        welcomeTourTouchStartX;
+
+
+      welcomeTourTouchStartX =
+        null;
+
+
+      if (
+        Math.abs(
+          delta
+        ) <
+        52
+      ) {
+
+        return;
+
+      }
+
+
+      if (
+        delta <
+        0 &&
+        welcomeTourIndex <
+          welcomeTourSlides.length - 1
+      ) {
+
+        welcomeTourIndex +=
+          1;
+
+      } else if (
+        delta >
+        0 &&
+        welcomeTourIndex >
+          0
+      ) {
+
+        welcomeTourIndex -=
+          1;
+
+      }
+
+
+      renderWelcomeTour();
+
+    },
+    {
+      passive: true
+    }
+  );
+
+
+function closeHelpTopic() {
+
+  if (
+    helpTopicModal
+  ) {
+
+    helpTopicModal.hidden =
+      true;
+
+  }
+
+
+  if (
+    contextTipModal?.hidden !==
+    false &&
+    welcomeTour?.hidden !==
+    false
+  ) {
+
+    setTutorialBodyLock(
+      false
+    );
+
+  }
+
+}
+
+
+function openHelpTopic(
+  topicKey
+) {
+
+  const topic =
+    MOMO_HELP_TOPICS[
+      topicKey
+    ];
+
+
+  if (
+    !topic ||
+    !helpTopicModal
+  ) {
+
+    return;
+
+  }
+
+
+  if (
+    helpTopicTitle
+  ) {
+
+    helpTopicTitle.textContent =
+      topic.title;
+
+  }
+
+
+  if (
+    helpTopicEmoji
+  ) {
+
+    helpTopicEmoji.textContent =
+      topic.emoji ||
+      "🍑";
+
+  }
+
+
+  if (
+    helpTopicIntro
+  ) {
+
+    helpTopicIntro.textContent =
+      topic.intro ||
+      "";
+
+  }
+
+
+  if (
+    helpTopicSteps
+  ) {
+
+    helpTopicSteps.innerHTML =
+      "";
+
+
+    (
+      topic.steps ||
+      []
+    ).forEach(
+      (step) => {
+
+        const item =
+          document.createElement(
+            "li"
+          );
+
+
+        item.textContent =
+          step;
+
+
+        helpTopicSteps.appendChild(
+          item
+        );
+
+      }
+    );
+
+  }
+
+
+  if (
+    helpTopicTip
+  ) {
+
+    const tipCopy =
+      helpTopicTip.querySelector(
+        "p"
+      );
+
+
+    helpTopicTip.hidden =
+      !topic.tip;
+
+
+    if (
+      tipCopy
+    ) {
+
+      tipCopy.textContent =
+        topic.tip ||
+        "";
+
+    }
+
+  }
+
+
+  helpTopicModal.hidden =
+    false;
+
+
+  setTutorialBodyLock(
+    true
+  );
+
+}
+
+
+closeHelpTopicButton
+  ?.addEventListener(
+    "click",
+    closeHelpTopic
+  );
+
+
+doneHelpTopicButton
+  ?.addEventListener(
+    "click",
+    closeHelpTopic
+  );
+
+
+helpTopicModal
+  ?.addEventListener(
+    "click",
+    (event) => {
+
+      if (
+        event.target ===
+        helpTopicModal
+      ) {
+
+        closeHelpTopic();
+
+      }
+
+    }
+  );
+
+
+document.addEventListener(
+  "click",
+  (event) => {
+
+    const helpButton =
+      event.target.closest(
+        "[data-help-topic], [data-guide-topic]"
+      );
+
+
+    if (
+      !helpButton
+    ) {
+
+      return;
+
+    }
+
+
+    const topic =
+      helpButton.dataset
+        .helpTopic ||
+      helpButton.dataset
+        .guideTopic;
+
+
+    openHelpTopic(
+      topic
+    );
+
+  }
+);
+
+
+function closeContextTip(
+  markSeen =
+    true
+) {
+
+  if (
+    markSeen &&
+    activeContextTopic
+  ) {
+
+    localStorage.setItem(
+      MOMO_TUTORIAL_KEYS
+        .firstUsePrefix +
+        activeContextTopic,
+      "yes"
+    );
+
+  }
+
+
+  activeContextTopic =
+    "";
+
+
+  if (
+    contextTipModal
+  ) {
+
+    contextTipModal.hidden =
+      true;
+
+  }
+
+
+  if (
+    helpTopicModal?.hidden !==
+    false &&
+    welcomeTour?.hidden !==
+    false
+  ) {
+
+    setTutorialBodyLock(
+      false
+    );
+
+  }
+
+}
+
+
+function maybeShowFirstUseTip(
+  screenName
+) {
+
+  const topicKey =
+    MOMO_FIRST_USE_SCREENS[
+      screenName
+    ];
+
+
+  if (
+    !topicKey ||
+    !contextTipModal
+  ) {
+
+    return;
+
+  }
+
+
+  if (
+    localStorage.getItem(
+      MOMO_TUTORIAL_KEYS
+        .welcomeComplete
+    ) !==
+    "yes"
+  ) {
+
+    return;
+
+  }
+
+
+  const seenKey =
+    MOMO_TUTORIAL_KEYS
+      .firstUsePrefix +
+    topicKey;
+
+
+  if (
+    localStorage.getItem(
+      seenKey
+    ) ===
+    "yes"
+  ) {
+
+    return;
+
+  }
+
+
+  const topic =
+    MOMO_HELP_TOPICS[
+      topicKey
+    ];
+
+
+  if (
+    !topic
+  ) {
+
+    return;
+
+  }
+
+
+  activeContextTopic =
+    topicKey;
+
+
+  if (
+    contextTipEmoji
+  ) {
+
+    contextTipEmoji.textContent =
+      topic.emoji ||
+      "🍑";
+
+  }
+
+
+  if (
+    contextTipTitle
+  ) {
+
+    contextTipTitle.textContent =
+      topic.title;
+
+  }
+
+
+  if (
+    contextTipCopy
+  ) {
+
+    contextTipCopy.textContent =
+      topic.short ||
+      topic.intro ||
+      "";
+
+  }
+
+
+  setTimeout(
+    () => {
+
+      if (
+        activeContextTopic ===
+        topicKey
+      ) {
+
+        contextTipModal.hidden =
+          false;
+
+
+        setTutorialBodyLock(
+          true
+        );
+
+      }
+
+    },
+    320
+  );
+
+}
+
+
+contextTipGotIt
+  ?.addEventListener(
+    "click",
+    () => {
+
+      closeContextTip(
+        true
+      );
+
+    }
+  );
+
+
+contextTipShowHow
+  ?.addEventListener(
+    "click",
+    () => {
+
+      const topic =
+        activeContextTopic;
+
+
+      closeContextTip(
+        true
+      );
+
+
+      openHelpTopic(
+        topic
+      );
+
+    }
+  );
+
+
+contextTipModal
+  ?.addEventListener(
+    "click",
+    (event) => {
+
+      if (
+        event.target ===
+        contextTipModal
+      ) {
+
+        closeContextTip(
+          true
+        );
+
+      }
+
+    }
+  );
+
+
+window.addEventListener(
+  "keydown",
+  (event) => {
+
+    if (
+      event.key !==
+      "Escape"
+    ) {
+
+      return;
+
+    }
+
+
+    if (
+      helpTopicModal?.hidden ===
+      false
+    ) {
+
+      closeHelpTopic();
+
+      return;
+
+    }
+
+
+    if (
+      contextTipModal?.hidden ===
+      false
+    ) {
+
+      closeContextTip(
+        true
+      );
+
+    }
+
+  }
+);
+
+
 // ========================================
 // INITIALIZE
 // ========================================
@@ -33024,6 +34304,9 @@ async function initializeApp() {
 
 
     renderAll();
+
+
+    maybeOpenWelcomeTour();
 
 
     console.log(

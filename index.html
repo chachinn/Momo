@@ -15,7 +15,7 @@
   <meta name="apple-mobile-web-app-title" content="Momo">
 
   <title>Momo — Spending Diary</title>
-  <meta name="momo-app-version" content="20260808-6">
+  <meta name="momo-app-version" content="20260808-7">
 
   <link rel="manifest" href="manifest.json">
   <link rel="apple-touch-icon" href="icon-192.png">
@@ -245,6 +245,23 @@
         </button>
       </div>
 
+      <div class="drawer-section">
+        <p class="drawer-label">Help</p>
+
+        <button
+          class="drawer-item"
+          type="button"
+          data-drawer-nav="guide"
+        >
+          <span class="drawer-icon">?</span>
+          <span class="drawer-copy">
+            <strong>Momo Guide</strong>
+            <small>Quick how-tos, tips, and the welcome tour.</small>
+          </span>
+          <span class="drawer-arrow">›</span>
+        </button>
+      </div>
+
       <div class="drawer-footer">
         <span>🍑</span>
         <p>
@@ -432,14 +449,25 @@
             </p>
           </div>
 
-          <button
-            id="addBudgetButton"
-            class="round-add-btn"
-            type="button"
-            aria-label="Add budget"
-          >
-            ＋
-          </button>
+          <div class="page-heading-actions">
+            <button
+              class="context-help-btn"
+              type="button"
+              data-help-topic="budgets"
+              aria-label="How budgets work"
+            >
+              ?
+            </button>
+
+            <button
+              id="addBudgetButton"
+              class="round-add-btn"
+              type="button"
+              aria-label="Add budget"
+            >
+              ＋
+            </button>
+          </div>
         </div>
 
         <div class="budget-summary-card">
@@ -791,7 +819,17 @@
               <p class="eyebrow">Templates</p>
               <h2>Quick Add</h2>
             </div>
-            <span class="favorite-quick-hint">Tap to prefill</span>
+            <div class="favorite-quick-tools">
+              <span class="favorite-quick-hint">Tap to prefill</span>
+              <button
+                class="context-help-btn context-help-btn-small"
+                type="button"
+                data-help-topic="quick-add"
+                aria-label="How Quick Add works"
+              >
+                ?
+              </button>
+            </div>
           </div>
 
           <div
@@ -1118,14 +1156,25 @@
             </p>
           </div>
 
-          <button
-            id="addTripButton"
-            class="round-add-btn"
-            type="button"
-            aria-label="Add trip"
-          >
-            ＋
-          </button>
+          <div class="page-heading-actions">
+            <button
+              class="context-help-btn"
+              type="button"
+              data-help-topic="trips"
+              aria-label="How trips work"
+            >
+              ?
+            </button>
+
+            <button
+              id="addTripButton"
+              class="round-add-btn"
+              type="button"
+              aria-label="Add trip"
+            >
+              ＋
+            </button>
+          </div>
         </div>
 
         <div id="tripList"></div>
@@ -1372,6 +1421,15 @@
               Track shared costs locally and see the simplest way to settle up.
             </p>
           </div>
+
+          <button
+            class="context-help-btn"
+            type="button"
+            data-help-topic="settlement"
+            aria-label="How Travel Settlement works"
+          >
+            ?
+          </button>
         </div>
 
         <section class="card settlement-trip-picker">
@@ -1639,14 +1697,25 @@
             </p>
           </div>
 
-          <button
-            id="addRecurringButton"
-            class="round-add-btn"
-            type="button"
-            aria-label="Add recurring expense"
-          >
-            ＋
-          </button>
+          <div class="page-heading-actions">
+            <button
+              class="context-help-btn"
+              type="button"
+              data-help-topic="recurring"
+              aria-label="How recurring expenses work"
+            >
+              ?
+            </button>
+
+            <button
+              id="addRecurringButton"
+              class="round-add-btn"
+              type="button"
+              aria-label="Add recurring expense"
+            >
+              ＋
+            </button>
+          </div>
         </div>
 
         <div class="recurring-summary-grid">
@@ -1700,14 +1769,25 @@
             </p>
           </div>
 
-          <button
-            id="addPlannedExpenseButton"
-            class="round-add-btn"
-            type="button"
-            aria-label="Add planned expense"
-          >
-            ＋
-          </button>
+          <div class="page-heading-actions">
+            <button
+              class="context-help-btn"
+              type="button"
+              data-help-topic="planned"
+              aria-label="How planned expenses work"
+            >
+              ?
+            </button>
+
+            <button
+              id="addPlannedExpenseButton"
+              class="round-add-btn"
+              type="button"
+              aria-label="Add planned expense"
+            >
+              ＋
+            </button>
+          </div>
         </div>
 
         <div class="planned-summary-grid">
@@ -1782,14 +1862,25 @@
             </p>
           </div>
 
-          <button
-            id="addSavingsGoalButton"
-            class="round-add-btn"
-            type="button"
-            aria-label="Add savings goal"
-          >
-            ＋
-          </button>
+          <div class="page-heading-actions">
+            <button
+              class="context-help-btn"
+              type="button"
+              data-help-topic="savings"
+              aria-label="How savings goals work"
+            >
+              ?
+            </button>
+
+            <button
+              id="addSavingsGoalButton"
+              class="round-add-btn"
+              type="button"
+              aria-label="Add savings goal"
+            >
+              ＋
+            </button>
+          </div>
         </div>
 
         <section class="savings-summary-card">
@@ -2050,6 +2141,15 @@
               See where your money went without turning Momo into a banking dashboard.
             </p>
           </div>
+
+          <button
+            class="context-help-btn"
+            type="button"
+            data-help-topic="reports"
+            aria-label="How reports work"
+          >
+            ?
+          </button>
         </div>
 
         <section class="card report-controls-card">
@@ -2258,6 +2358,140 @@
         </section>
       </section>
 
+
+      <!-- MOMO GUIDE -->
+      <section
+        class="screen momo-guide-screen"
+        data-screen="guide"
+      >
+        <div class="page-heading">
+          <div>
+            <p class="eyebrow">A little help from Momo</p>
+            <h1>Momo Guide</h1>
+            <p class="page-description">
+              Quick how-tos for spending, saving, trips, planning, and protecting your data.
+            </p>
+          </div>
+        </div>
+
+        <section class="guide-hero-card">
+          <div class="guide-hero-peach" aria-hidden="true">🍑</div>
+          <div>
+            <p class="section-kicker">MEET MOMO</p>
+            <h2>Need the tour again?</h2>
+            <p>
+              Replay the short introduction whenever you want. Your data and tutorial progress stay untouched.
+            </p>
+          </div>
+          <button id="replayWelcomeTour" class="primary-button guide-replay-btn" type="button">
+            Replay Welcome Tour
+          </button>
+        </section>
+
+        <div class="guide-groups">
+          <details class="guide-group" open>
+            <summary>
+              <span class="guide-group-icon">🍑</span>
+              <span><strong>Getting Started</strong><small>Your first entries in Momo</small></span>
+              <i>⌄</i>
+            </summary>
+            <div class="guide-link-list">
+              <button class="guide-link" type="button" data-guide-topic="first-expense"><span>💸</span><div><strong>Add your first expense</strong><small>Record a purchase and its details.</small></div><b>›</b></button>
+              <button class="guide-link" type="button" data-guide-topic="income"><span>💰</span><div><strong>Add monthly income</strong><small>Give your Money Snapshot more context.</small></div><b>›</b></button>
+              <button class="guide-link" type="button" data-guide-topic="budgets"><span>♡</span><div><strong>Create a budget</strong><small>Set a spending limit and follow it.</small></div><b>›</b></button>
+            </div>
+          </details>
+
+          <details class="guide-group">
+            <summary>
+              <span class="guide-group-icon">🧾</span>
+              <span><strong>Expenses</strong><small>Capture, find, and reuse entries</small></span>
+              <i>⌄</i>
+            </summary>
+            <div class="guide-link-list">
+              <button class="guide-link" type="button" data-guide-topic="receipts"><span>📷</span><div><strong>Receipt photos</strong><small>Attach and browse purchase photos.</small></div><b>›</b></button>
+              <button class="guide-link" type="button" data-guide-topic="quick-add"><span>⚡</span><div><strong>Quick Add templates</strong><small>Prefill repeat purchases without saving an amount.</small></div><b>›</b></button>
+              <button class="guide-link" type="button" data-guide-topic="search"><span>⌕</span><div><strong>Search & filters</strong><small>Find an expense later in seconds.</small></div><b>›</b></button>
+            </div>
+          </details>
+
+          <details class="guide-group">
+            <summary>
+              <span class="guide-group-icon">🌱</span>
+              <span><strong>Budgets & Savings</strong><small>Plan without turning Momo into a bank</small></span>
+              <i>⌄</i>
+            </summary>
+            <div class="guide-link-list">
+              <button class="guide-link" type="button" data-guide-topic="budgets"><span>♡</span><div><strong>Budgets</strong><small>See budgeted, spent, and remaining amounts.</small></div><b>›</b></button>
+              <button class="guide-link" type="button" data-guide-topic="savings"><span>🌱</span><div><strong>Savings Goals</strong><small>Track money set aside separately from spending.</small></div><b>›</b></button>
+            </div>
+          </details>
+
+          <details class="guide-group">
+            <summary>
+              <span class="guide-group-icon">✈️</span>
+              <span><strong>Trips</strong><small>Travel budgets, purchases, and shared costs</small></span>
+              <i>⌄</i>
+            </summary>
+            <div class="guide-link-list">
+              <button class="guide-link" type="button" data-guide-topic="trips"><span>✈️</span><div><strong>Create & use a trip</strong><small>Keep travel spending grouped together.</small></div><b>›</b></button>
+              <button class="guide-link" type="button" data-guide-topic="converter"><span>💱</span><div><strong>Currency Converter</strong><small>Convert a number or a whole calculation.</small></div><b>›</b></button>
+              <button class="guide-link" type="button" data-guide-topic="shopping"><span>🛍️</span><div><strong>Things I Want to Buy</strong><small>Plan and track trip shopping separately.</small></div><b>›</b></button>
+              <button class="guide-link" type="button" data-guide-topic="settlement"><span>🤝</span><div><strong>Travel Settlement</strong><small>Work out who owes whom after shared costs.</small></div><b>›</b></button>
+            </div>
+          </details>
+
+          <details class="guide-group">
+            <summary>
+              <span class="guide-group-icon">☆</span>
+              <span><strong>Planning</strong><small>Future and repeating money</small></span>
+              <i>⌄</i>
+            </summary>
+            <div class="guide-link-list">
+              <button class="guide-link" type="button" data-guide-topic="recurring"><span>↻</span><div><strong>Recurring Expenses</strong><small>Keep subscriptions and regular costs visible.</small></div><b>›</b></button>
+              <button class="guide-link" type="button" data-guide-topic="planned"><span>☆</span><div><strong>Planned Expenses</strong><small>Save future purchases before they count as spent.</small></div><b>›</b></button>
+              <button class="guide-link" type="button" data-guide-topic="calendar"><span>▦</span><div><strong>Calendar</strong><small>View dated money activity in one place.</small></div><b>›</b></button>
+            </div>
+          </details>
+
+          <details class="guide-group">
+            <summary>
+              <span class="guide-group-icon">◔</span>
+              <span><strong>Understand Your Money</strong><small>Turn your entries into a useful picture</small></span>
+              <i>⌄</i>
+            </summary>
+            <div class="guide-link-list">
+              <button class="guide-link" type="button" data-guide-topic="reports"><span>◔</span><div><strong>Reports</strong><small>Review categories, periods, and spending patterns.</small></div><b>›</b></button>
+            </div>
+          </details>
+
+          <details class="guide-group">
+            <summary>
+              <span class="guide-group-icon">🌸</span>
+              <span><strong>Personalize Momo</strong><small>Make the app feel like yours</small></span>
+              <i>⌄</i>
+            </summary>
+            <div class="guide-link-list">
+              <button class="guide-link" type="button" data-guide-topic="appearance"><span>✿</span><div><strong>Themes & wallpaper</strong><small>Change colors and use your own background.</small></div><b>›</b></button>
+            </div>
+          </details>
+
+          <details class="guide-group">
+            <summary>
+              <span class="guide-group-icon">☁️</span>
+              <span><strong>Protect Your Data</strong><small>Backups, restore, export, and offline use</small></span>
+              <i>⌄</i>
+            </summary>
+            <div class="guide-link-list">
+              <button class="guide-link" type="button" data-guide-topic="backup"><span>⇩</span><div><strong>Backup & Restore</strong><small>Create a complete local safety copy.</small></div><b>›</b></button>
+              <button class="guide-link" type="button" data-guide-topic="offline"><span>☁</span><div><strong>Using Momo offline</strong><small>Your local data remains available without a connection.</small></div><b>›</b></button>
+            </div>
+          </details>
+        </div>
+
+        <p class="guide-footer-note">🍑 Momo stores your personal app data locally on this device unless you choose to export it.</p>
+      </section>
+
     </main>
 
 
@@ -2314,6 +2548,126 @@
         <small>Calendar</small>
       </button>
     </nav>
+
+
+
+    <!-- ========================================
+         MEET MOMO — FIRST-LAUNCH TOUR
+    ========================================= -->
+    <div id="welcomeTour" class="tutorial-overlay" hidden>
+      <section class="tutorial-shell" role="dialog" aria-modal="true" aria-labelledby="welcomeTourTitle">
+        <div class="tutorial-topbar">
+          <div class="tutorial-mini-brand"><span>🍑</span><strong>momo</strong></div>
+          <button id="skipWelcomeTour" class="tutorial-skip-btn" type="button">Skip for now</button>
+        </div>
+
+        <div id="welcomeTourTrack" class="tutorial-track">
+          <article class="tutorial-slide active" data-tutorial-slide="0">
+            <div class="tutorial-art tutorial-art-welcome"><span class="tutorial-big-peach">🍑</span><i>✦</i><i>✿</i></div>
+            <p class="tutorial-kicker">HELLO, PEACH</p>
+            <h2 id="welcomeTourTitle">Your money,<br>your way.</h2>
+            <p>Momo keeps spending, saving, trips, and everyday money in one soft little place.</p>
+          </article>
+
+          <article class="tutorial-slide" data-tutorial-slide="1">
+            <div class="tutorial-art">
+              <div class="tutorial-fake-expense"><span>🍙</span><div><strong>FamilyMart</strong><small>Food & Drinks · Receipt attached</small></div><b>¥1,280</b></div>
+              <div class="tutorial-fake-expense secondary"><span>🚕</span><div><strong>Grab</strong><small>Transportation · GCash</small></div><b>₱185</b></div>
+            </div>
+            <p class="tutorial-kicker">TRACK WHAT YOU SPEND</p>
+            <h2>Every purchase has a place.</h2>
+            <p>Add expenses, choose how you paid, attach receipts, organize purchases, and find them again later.</p>
+          </article>
+
+          <article class="tutorial-slide" data-tutorial-slide="2">
+            <div class="tutorial-art">
+              <div class="tutorial-fake-snapshot"><small>MONTHLY SNAPSHOT</small><strong>₱12,480</strong><div><span style="width:58%"></span></div><p>58% of your budget used</p></div>
+            </div>
+            <p class="tutorial-kicker">SEE THE BIGGER PICTURE</p>
+            <h2>Plan gently. Know more.</h2>
+            <p>Set budgets, add monthly income, follow savings goals, and see useful spending patterns without turning Momo into a bank.</p>
+          </article>
+
+          <article class="tutorial-slide" data-tutorial-slide="3">
+            <div class="tutorial-art">
+              <div class="tutorial-fake-trip"><span>🇯🇵</span><div><small>NEXT ADVENTURE</small><strong>Tokyo · October 2026</strong><p>¥42,850 spent · travel tools together</p></div></div>
+            </div>
+            <p class="tutorial-kicker">TAKE MOMO TRAVELING</p>
+            <h2>Going somewhere?<br>Bring Momo.</h2>
+            <p>Create a trip, track foreign-currency spending, plan purchases, keep a shopping list, and settle shared expenses.</p>
+          </article>
+
+          <article class="tutorial-slide" data-tutorial-slide="4">
+            <div class="tutorial-art tutorial-feature-cloud">
+              <span>⚡ Quick Add</span><span>🧠 Merchant Memory</span><span>↻ Recurring</span><span>☆ Planned</span><span>⌕ Smart Search</span>
+            </div>
+            <p class="tutorial-kicker">MOMO REMEMBERS</p>
+            <h2>The more you use it,<br>the easier it gets.</h2>
+            <p>Templates, merchant suggestions, planning tools, and search help cut down repetitive work.</p>
+          </article>
+
+          <article class="tutorial-slide" data-tutorial-slide="5">
+            <div class="tutorial-art tutorial-theme-art">
+              <div class="tutorial-theme-orbs" aria-hidden="true"><i class="peach"></i><i class="sakura"></i><i class="lavender"></i><i class="sky"></i><i class="mint"></i><i class="butter"></i></div>
+              <div class="tutorial-wallpaper-card">✿<span>your wallpaper</span></div>
+            </div>
+            <p class="tutorial-kicker">MAKE MOMO YOURS</p>
+            <h2>Your Momo,<br>your colors.</h2>
+            <p>Choose a theme, add your own wallpaper, and make your money space feel like yours. Your data stays local and can be backed up anytime.</p>
+          </article>
+        </div>
+
+        <div class="tutorial-footer">
+          <div id="welcomeTourDots" class="tutorial-dots" aria-label="Tour progress">
+            <button class="active" type="button" data-tour-dot="0" aria-label="Slide 1"></button>
+            <button type="button" data-tour-dot="1" aria-label="Slide 2"></button>
+            <button type="button" data-tour-dot="2" aria-label="Slide 3"></button>
+            <button type="button" data-tour-dot="3" aria-label="Slide 4"></button>
+            <button type="button" data-tour-dot="4" aria-label="Slide 5"></button>
+            <button type="button" data-tour-dot="5" aria-label="Slide 6"></button>
+          </div>
+
+          <div class="tutorial-actions">
+            <button id="welcomeTourBack" class="secondary-button tutorial-back-btn" type="button" hidden>Back</button>
+            <button id="welcomeTourNext" class="primary-button tutorial-next-btn" type="button">Next</button>
+          </div>
+        </div>
+      </section>
+    </div>
+
+
+    <!-- FIRST-USE CONTEXT TIP -->
+    <div id="contextTipModal" class="modal-backdrop tutorial-tip-backdrop" hidden>
+      <section class="tutorial-tip-sheet" role="dialog" aria-modal="true" aria-labelledby="contextTipTitle">
+        <div id="contextTipEmoji" class="tutorial-tip-emoji">🍑</div>
+        <p class="eyebrow">A little Momo tip</p>
+        <h2 id="contextTipTitle">Good to know</h2>
+        <p id="contextTipCopy"></p>
+        <div class="tutorial-tip-actions">
+          <button id="contextTipGotIt" class="secondary-button" type="button">Got it</button>
+          <button id="contextTipShowHow" class="primary-button" type="button">Show me how</button>
+        </div>
+      </section>
+    </div>
+
+
+    <!-- DETAILED HELP TOPIC -->
+    <div id="helpTopicModal" class="modal-backdrop help-topic-backdrop" hidden>
+      <section class="help-topic-sheet" role="dialog" aria-modal="true" aria-labelledby="helpTopicTitle">
+        <div class="help-topic-header">
+          <div>
+            <p id="helpTopicKicker" class="eyebrow">Momo Guide</p>
+            <h2 id="helpTopicTitle">How it works</h2>
+          </div>
+          <button id="closeHelpTopic" class="icon-btn soft" type="button" aria-label="Close guide">×</button>
+        </div>
+        <div id="helpTopicEmoji" class="help-topic-emoji">🍑</div>
+        <p id="helpTopicIntro" class="help-topic-intro"></p>
+        <ol id="helpTopicSteps" class="help-topic-steps"></ol>
+        <div id="helpTopicTip" class="help-topic-tip" hidden><span>🍑</span><div><strong>Momo tip</strong><p></p></div></div>
+        <button id="doneHelpTopic" class="primary-button help-topic-done" type="button">Got it</button>
+      </section>
+    </div>
 
 
 
