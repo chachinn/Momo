@@ -1,0 +1,17 @@
+{
+  "name": "Momo — Spending Diary",
+  "short_name": "Momo",
+  "description": "A personal spending, budgeting, credit card and travel expense diary.",
+  "start_url": "./index.html",
+  "scope": "./",
+  "display": "standalone",
+  "background_color": "#fff9f7",
+  "theme_color": "#fff9f7",
+  "orientation": "portrait-primary",
+  "lang": "en",
+  "categories": [
+    "finance",
+    "lifestyle",
+    "travel"
+  ]
+}
