@@ -10,7 +10,7 @@
 
 const DB_NAME = "momo_database";
 
-const DB_VERSION = 2;
+const DB_VERSION = 3;
 
 
 const STORES = {
@@ -25,6 +25,8 @@ const STORES = {
 
 
   recurring: "recurring",
+
+  planned: "planned",
 
   settings: "settings"
 
@@ -50,6 +52,17 @@ let cards = [];
 let recurringExpenses = [];
 
 
+let plannedExpenses = [];
+
+
+let plannedPendingDelete =
+  null;
+
+
+let pendingPlannedConversionId =
+  "";
+
+
 let activeBudgetFilter =
   "all";
 
@@ -63,6 +76,14 @@ let tripPendingDelete =
 
 
 let expensePendingDelete =
+  null;
+
+
+let recurringPendingDelete =
+  null;
+
+
+let pendingBackupRestore =
   null;
 
 
@@ -369,6 +390,52 @@ function openDatabase() {
               STORES.recurring,
               {
                 keyPath: "id"
+              }
+            );
+
+          }
+
+
+          // PLANNED EXPENSES
+
+          if (
+            !database.objectStoreNames.contains(
+              STORES.planned
+            )
+          ) {
+
+            const store =
+              database.createObjectStore(
+                STORES.planned,
+                {
+                  keyPath: "id"
+                }
+              );
+
+
+            store.createIndex(
+              "targetDate",
+              "targetDate",
+              {
+                unique: false
+              }
+            );
+
+
+            store.createIndex(
+              "tripId",
+              "tripId",
+              {
+                unique: false
+              }
+            );
+
+
+            store.createIndex(
+              "status",
+              "status",
+              {
+                unique: false
               }
             );
 
@@ -684,6 +751,10 @@ async function performCleanStartIfNeeded() {
 
     clearStore(
       STORES.recurring
+    ),
+
+    clearStore(
+      STORES.planned
     )
 
   ]);
@@ -713,7 +784,9 @@ async function loadAppData() {
 
     cards,
 
-    recurringExpenses
+    recurringExpenses,
+
+    plannedExpenses
 
   ] = await Promise.all([
 
@@ -735,6 +808,10 @@ async function loadAppData() {
 
     getAllRecords(
       STORES.recurring
+    ),
+
+    getAllRecords(
+      STORES.planned
     )
 
   ]);
@@ -783,6 +860,41 @@ async function loadAppData() {
         ) -
         new Date(
           b.startDate
+        )
+      );
+
+    }
+  );
+
+
+  plannedExpenses.sort(
+    (
+      a,
+      b
+    ) => {
+
+      const dateA =
+        a.targetDate ||
+        "9999-12-31";
+
+
+      const dateB =
+        b.targetDate ||
+        "9999-12-31";
+
+
+      return (
+        dateA.localeCompare(
+          dateB
+        ) ||
+        String(
+          a.createdAt ||
+          ""
+        ).localeCompare(
+          String(
+            b.createdAt ||
+            ""
+          )
         )
       );
 
@@ -1797,6 +1909,36 @@ function showScreen(
   }
 
 
+  if (
+    name ===
+    "recurring"
+  ) {
+
+    renderRecurringExpenses();
+
+  }
+
+
+  if (
+    name ===
+    "backup"
+  ) {
+
+    renderBackupStatus();
+
+  }
+
+
+  if (
+    name ===
+    "planned"
+  ) {
+
+    renderPlannedExpenses();
+
+  }
+
+
   window.scrollTo({
     top: 0,
     behavior: "smooth"
@@ -2177,6 +2319,298 @@ converterAmountB?.addEventListener(
   "input",
   updateConverterFromB
 );
+
+
+// ========================================
+// CONVERTER OPERATOR BAR
+// ========================================
+
+function getConverterInputBySide(
+  side
+) {
+
+  return (
+    side ===
+    "B"
+      ? converterAmountB
+      : converterAmountA
+  );
+
+}
+
+
+function updateConverterBySide(
+  side
+) {
+
+  if (
+    side ===
+    "B"
+  ) {
+
+    updateConverterFromB();
+
+  } else {
+
+    updateConverterFromA();
+
+  }
+
+}
+
+
+function insertIntoConverterInput(
+  input,
+  value
+) {
+
+  if (
+    !input
+  ) {
+
+    return;
+
+  }
+
+
+  const start =
+    input.selectionStart ??
+    input.value.length;
+
+
+  const end =
+    input.selectionEnd ??
+    start;
+
+
+  const before =
+    input.value.slice(
+      0,
+      start
+    );
+
+
+  const after =
+    input.value.slice(
+      end
+    );
+
+
+  input.value =
+    `${before}${value}${after}`;
+
+
+  const nextPosition =
+    start +
+    value.length;
+
+
+  input.focus();
+
+
+  input.setSelectionRange(
+    nextPosition,
+    nextPosition
+  );
+
+}
+
+
+function backspaceConverterInput(
+  input
+) {
+
+  if (
+    !input
+  ) {
+
+    return;
+
+  }
+
+
+  const start =
+    input.selectionStart ??
+    input.value.length;
+
+
+  const end =
+    input.selectionEnd ??
+    start;
+
+
+  if (
+    start !==
+    end
+  ) {
+
+    input.value =
+      input.value.slice(
+        0,
+        start
+      ) +
+      input.value.slice(
+        end
+      );
+
+
+    input.focus();
+
+
+    input.setSelectionRange(
+      start,
+      start
+    );
+
+
+    return;
+
+  }
+
+
+  if (
+    start <=
+    0
+  ) {
+
+    input.focus();
+
+    return;
+
+  }
+
+
+  const nextPosition =
+    start -
+    1;
+
+
+  input.value =
+    input.value.slice(
+      0,
+      nextPosition
+    ) +
+    input.value.slice(
+      start
+    );
+
+
+  input.focus();
+
+
+  input.setSelectionRange(
+    nextPosition,
+    nextPosition
+  );
+
+}
+
+
+document
+  .querySelectorAll(
+    ".calculator-operator-bar"
+  )
+  .forEach(
+    (bar) => {
+
+      bar.addEventListener(
+        "pointerdown",
+        (event) => {
+
+          /*
+            Prevent iOS from moving focus away from
+            the amount field when an operator is tapped.
+          */
+
+          if (
+            event.target.closest(
+              "button"
+            )
+          ) {
+
+            event.preventDefault();
+
+          }
+
+        }
+      );
+
+
+      bar.addEventListener(
+        "click",
+        (event) => {
+
+          const button =
+            event.target.closest(
+              "button"
+            );
+
+
+          if (
+            !button
+          ) {
+
+            return;
+
+          }
+
+
+          const side =
+            bar.dataset
+              .calculatorTarget ||
+            "A";
+
+
+          const input =
+            getConverterInputBySide(
+              side
+            );
+
+
+          if (
+            button.dataset
+              .calcAction ===
+            "backspace"
+          ) {
+
+            backspaceConverterInput(
+              input
+            );
+
+          } else {
+
+            const value =
+              button.dataset
+                .calcValue;
+
+
+            if (
+              value
+            ) {
+
+              insertIntoConverterInput(
+                input,
+                value
+              );
+
+            }
+
+          }
+
+
+          converterEditingSide =
+            side;
+
+
+          updateConverterBySide(
+            side
+          );
+
+        }
+      );
+
+    }
+  );
 
 
 function handleConverterCurrencyChange() {
@@ -5582,6 +6016,16 @@ function resetExpenseForm() {
     "";
 
 
+  if (
+    !openingExpenseEditor
+  ) {
+
+    pendingPlannedConversionId =
+      "";
+
+  }
+
+
   expenseForm?.reset();
 
 
@@ -5945,6 +6389,52 @@ expenseForm?.addEventListener(
       STORES.expenses,
       expense
     );
+
+
+    if (
+      pendingPlannedConversionId
+    ) {
+
+      const planned =
+        plannedExpenses.find(
+          (item) =>
+            item.id ===
+            pendingPlannedConversionId
+        );
+
+
+      if (
+        planned
+      ) {
+
+        await putRecord(
+          STORES.planned,
+          {
+            ...planned,
+
+            status:
+              "purchased",
+
+            convertedExpenseId:
+              expense.id,
+
+            purchasedAt:
+              new Date()
+                .toISOString(),
+
+            updatedAt:
+              new Date()
+                .toISOString()
+          }
+        );
+
+      }
+
+
+      pendingPlannedConversionId =
+        "";
+
+    }
 
 
     await loadAppData();
@@ -7585,14 +8075,6 @@ function renderHomeSummary() {
   );
 
 
-  setText(
-    "reportMonthTotal",
-    formatPHP(
-      spent
-    )
-  );
-
-
   if (
     hasBudget
   ) {
@@ -7719,29 +8201,1279 @@ function renderHomeSummary() {
 
 
 // ========================================
-// REPORT SUMMARY
+// REPORTS 2.0
 // ========================================
 
-function renderReportSummary() {
+let reportPeriod =
+  "this_month";
 
-  const report =
-    document.getElementById(
-      "reportMonthTotal"
+
+let reportScope =
+  "all";
+
+
+const reportDateFrom =
+  document.getElementById(
+    "reportDateFrom"
+  );
+
+
+const reportDateTo =
+  document.getElementById(
+    "reportDateTo"
+  );
+
+
+const reportCustomDates =
+  document.getElementById(
+    "reportCustomDates"
+  );
+
+
+const reportTripPickerWrap =
+  document.getElementById(
+    "reportTripPickerWrap"
+  );
+
+
+const reportTripPicker =
+  document.getElementById(
+    "reportTripPicker"
+  );
+
+
+function dateToKey(
+  date
+) {
+
+  const year =
+    date.getFullYear();
+
+
+  const month =
+    String(
+      date.getMonth() + 1
+    ).padStart(
+      2,
+      "0"
+    );
+
+
+  const day =
+    String(
+      date.getDate()
+    ).padStart(
+      2,
+      "0"
+    );
+
+
+  return `${year}-${month}-${day}`;
+
+}
+
+
+function getReportDateRange() {
+
+  const today =
+    new Date();
+
+
+  const year =
+    today.getFullYear();
+
+
+  const month =
+    today.getMonth();
+
+
+  if (
+    reportPeriod ===
+    "last_month"
+  ) {
+
+    const start =
+      new Date(
+        year,
+        month - 1,
+        1
+      );
+
+
+    const end =
+      new Date(
+        year,
+        month,
+        0
+      );
+
+
+    return {
+      start:
+        dateToKey(
+          start
+        ),
+
+      end:
+        dateToKey(
+          end
+        ),
+
+      label:
+        new Intl.DateTimeFormat(
+          "en-US",
+          {
+            month:
+              "long",
+
+            year:
+              "numeric"
+          }
+        ).format(
+          start
+        )
+    };
+
+  }
+
+
+  if (
+    reportPeriod ===
+    "this_year"
+  ) {
+
+    return {
+      start:
+        `${year}-01-01`,
+
+      end:
+        getTodayString(),
+
+      label:
+        String(
+          year
+        )
+    };
+
+  }
+
+
+  if (
+    reportPeriod ===
+    "custom"
+  ) {
+
+    const from =
+      reportDateFrom?.value ||
+      "";
+
+
+    const to =
+      reportDateTo?.value ||
+      "";
+
+
+    return {
+      start:
+        from,
+
+      end:
+        to,
+
+      label:
+        from &&
+        to
+
+          ? `${formatShortDate(
+              from
+            )} – ${formatShortDate(
+              to
+            )}`
+
+          : "Custom"
+    };
+
+  }
+
+
+  return {
+    start:
+      `${year}-${String(
+        month + 1
+      ).padStart(
+        2,
+        "0"
+      )}-01`,
+
+    end:
+      getTodayString(),
+
+    label:
+      new Intl.DateTimeFormat(
+        "en-US",
+        {
+          month:
+            "long",
+
+          year:
+            "numeric"
+        }
+      ).format(
+        today
+      )
+  };
+
+}
+
+
+function getReportRangeDayCount(
+  range
+) {
+
+  if (
+    !range.start ||
+    !range.end
+  ) {
+
+    return 0;
+
+  }
+
+
+  const start =
+    createLocalDate(
+      range.start
+    );
+
+
+  const end =
+    createLocalDate(
+      range.end
     );
 
 
   if (
-    report
+    !start ||
+    !end ||
+    end <
+    start
   ) {
 
-    report.textContent =
-      formatPHP(
-        getMonthlySpent()
-      );
+    return 0;
+
+  }
+
+
+  return (
+    Math.floor(
+      (
+        end -
+        start
+      ) /
+      86400000
+    ) +
+    1
+  );
+
+}
+
+
+function populateReportTripPicker() {
+
+  if (
+    !reportTripPicker
+  ) {
+
+    return;
+
+  }
+
+
+  const current =
+    reportTripPicker.value;
+
+
+  reportTripPicker.innerHTML = `
+
+    <option value="">
+      Choose a trip
+    </option>
+
+    ${trips
+
+      .map(
+        (trip) => `
+
+          <option
+            value="${escapeHTML(
+              trip.id
+            )}"
+          >
+            ${escapeHTML(
+              trip.name
+            )}
+          </option>
+
+        `
+      )
+
+      .join("")}
+
+  `;
+
+
+  if (
+    current &&
+    trips.some(
+      (trip) =>
+        trip.id ===
+        current
+    )
+  ) {
+
+    reportTripPicker.value =
+      current;
+
+  } else if (
+    reportScope ===
+      "trip" &&
+    trips.length
+  ) {
+
+    reportTripPicker.value =
+      trips[
+        0
+      ].id;
 
   }
 
 }
+
+
+function getReportExpenses() {
+
+  const range =
+    getReportDateRange();
+
+
+  if (
+    !range.start ||
+    !range.end ||
+    range.end <
+      range.start
+  ) {
+
+    return [];
+
+  }
+
+
+  const selectedTripId =
+    reportTripPicker?.value ||
+    "";
+
+
+  return expenses.filter(
+    (expense) => {
+
+      const date =
+        expense.date ||
+        (
+          expense.createdAt
+            ? expense.createdAt.slice(
+                0,
+                10
+              )
+            : ""
+        );
+
+
+      if (
+        !date ||
+        date <
+          range.start ||
+        date >
+          range.end
+      ) {
+
+        return false;
+
+      }
+
+
+      if (
+        reportScope ===
+        "personal"
+      ) {
+
+        return !expense.tripId;
+
+      }
+
+
+      if (
+        reportScope ===
+        "trip"
+      ) {
+
+        return (
+          Boolean(
+            selectedTripId
+          ) &&
+          expense.tripId ===
+            selectedTripId
+        );
+
+      }
+
+
+      return true;
+
+    }
+  );
+
+}
+
+
+function sumExpensesPHP(
+  items
+) {
+
+  return items.reduce(
+    (
+      total,
+      expense
+    ) => {
+
+      return (
+        total +
+        convertCurrency(
+          expense.amount,
+          expense.currency,
+          "PHP"
+        )
+      );
+
+    },
+    0
+  );
+
+}
+
+
+function groupReportExpenses(
+  items,
+  keyGetter
+) {
+
+  const groups =
+    new Map();
+
+
+  items.forEach(
+    (expense) => {
+
+      const key =
+        keyGetter(
+          expense
+        ) ||
+        "Other";
+
+
+      const amount =
+        convertCurrency(
+          expense.amount,
+          expense.currency,
+          "PHP"
+        );
+
+
+      groups.set(
+        key,
+        (
+          groups.get(
+            key
+          ) ||
+          0
+        ) +
+        amount
+      );
+
+    }
+  );
+
+
+  return Array.from(
+    groups.entries()
+  )
+
+    .map(
+      (
+        [
+          label,
+          amount
+        ]
+      ) => ({
+        label,
+        amount
+      })
+    )
+
+    .sort(
+      (
+        a,
+        b
+      ) =>
+        b.amount -
+        a.amount
+    );
+
+}
+
+
+function renderReportBars(
+  container,
+  groups,
+  total
+) {
+
+  if (
+    !container
+  ) {
+
+    return;
+
+  }
+
+
+  if (
+    groups.length ===
+    0
+  ) {
+
+    container.innerHTML = `
+
+      <div class="report-mini-empty">
+        Nothing to break down yet.
+      </div>
+
+    `;
+
+
+    return;
+
+  }
+
+
+  container.innerHTML =
+    groups
+
+      .map(
+        (
+          group,
+          index
+        ) => {
+
+          const percent =
+            total >
+            0
+
+              ? (
+                  group.amount /
+                  total
+                ) *
+                100
+
+              : 0;
+
+
+          return `
+
+            <div class="report-bar-item">
+
+              <div class="report-bar-top">
+
+                <div class="report-bar-label">
+
+                  <span class="report-bar-rank">
+                    ${index + 1}
+                  </span>
+
+                  <strong>
+                    ${escapeHTML(
+                      group.label
+                    )}
+                  </strong>
+
+                </div>
+
+
+                <div class="report-bar-value">
+
+                  <strong>
+                    ${formatPHP(
+                      group.amount
+                    )}
+                  </strong>
+
+                  <span>
+                    ${percent.toFixed(
+                      percent >=
+                      10
+                        ? 0
+                        : 1
+                    )}%
+                  </span>
+
+                </div>
+
+              </div>
+
+
+              <div class="report-bar-track">
+
+                <div
+                  class="report-bar-fill"
+                  style="width:${Math.min(
+                    percent,
+                    100
+                  )}%"
+                ></div>
+
+              </div>
+
+            </div>
+
+          `;
+
+        }
+      )
+
+      .join("");
+
+}
+
+
+function getReportScopeFilteredExpenses(
+  sourceExpenses
+) {
+
+  const selectedTripId =
+    reportTripPicker?.value ||
+    "";
+
+
+  return sourceExpenses.filter(
+    (expense) => {
+
+      if (
+        reportScope ===
+        "personal"
+      ) {
+
+        return !expense.tripId;
+
+      }
+
+
+      if (
+        reportScope ===
+        "trip"
+      ) {
+
+        return (
+          Boolean(
+            selectedTripId
+          ) &&
+          expense.tripId ===
+            selectedTripId
+        );
+
+      }
+
+
+      return true;
+
+    }
+  );
+
+}
+
+
+function getLastSixMonths() {
+
+  const today =
+    new Date();
+
+
+  const months =
+    [];
+
+
+  for (
+    let offset = 5;
+    offset >= 0;
+    offset--
+  ) {
+
+    const date =
+      new Date(
+        today.getFullYear(),
+        today.getMonth() -
+          offset,
+        1
+      );
+
+
+    months.push({
+      key:
+        `${date.getFullYear()}-${String(
+          date.getMonth() + 1
+        ).padStart(
+          2,
+          "0"
+        )}`,
+
+      label:
+        new Intl.DateTimeFormat(
+          "en-US",
+          {
+            month:
+              "short"
+          }
+        ).format(
+          date
+        )
+    });
+
+  }
+
+
+  return months;
+
+}
+
+
+function renderReportTrend() {
+
+  const container =
+    document.getElementById(
+      "reportMonthlyTrend"
+    );
+
+
+  if (
+    !container
+  ) {
+
+    return;
+
+  }
+
+
+  const scopedExpenses =
+    getReportScopeFilteredExpenses(
+      expenses
+    );
+
+
+  const months =
+    getLastSixMonths();
+
+
+  const data =
+    months.map(
+      (month) => {
+
+        const monthExpenses =
+          scopedExpenses.filter(
+            (expense) => {
+
+              const date =
+                expense.date ||
+                (
+                  expense.createdAt
+                    ? expense.createdAt.slice(
+                        0,
+                        10
+                      )
+                    : ""
+                );
+
+
+              return date.startsWith(
+                month.key
+              );
+
+            }
+          );
+
+
+        return {
+          ...month,
+
+          total:
+            sumExpensesPHP(
+              monthExpenses
+            )
+        };
+
+      }
+    );
+
+
+  const maximum =
+    Math.max(
+      ...data.map(
+        (item) =>
+          item.total
+      ),
+      0
+    );
+
+
+  container.innerHTML =
+    data
+
+      .map(
+        (item) => {
+
+          const height =
+            maximum >
+            0
+
+              ? Math.max(
+                  (
+                    item.total /
+                    maximum
+                  ) *
+                    100,
+                  item.total >
+                    0
+                    ? 8
+                    : 0
+                )
+
+              : 0;
+
+
+          return `
+
+            <div class="report-trend-column">
+
+              <div class="report-trend-value">
+                ${item.total >
+                  0
+                    ? formatCalendarDayTotal(
+                        item.total
+                      )
+                    : ""}
+              </div>
+
+              <div class="report-trend-track">
+
+                <div
+                  class="report-trend-fill"
+                  style="height:${height}%"
+                ></div>
+
+              </div>
+
+              <span>
+                ${escapeHTML(
+                  item.label
+                )}
+              </span>
+
+            </div>
+
+          `;
+
+        }
+      )
+
+      .join("");
+
+}
+
+
+function renderReportSummary() {
+
+  populateReportTripPicker();
+
+
+  if (
+    reportCustomDates
+  ) {
+
+    reportCustomDates.hidden =
+      reportPeriod !==
+      "custom";
+
+  }
+
+
+  if (
+    reportTripPickerWrap
+  ) {
+
+    reportTripPickerWrap.hidden =
+      reportScope !==
+      "trip";
+
+  }
+
+
+  const range =
+    getReportDateRange();
+
+
+  const reportExpenses =
+    getReportExpenses();
+
+
+  const total =
+    sumExpensesPHP(
+      reportExpenses
+    );
+
+
+  const dayCount =
+    getReportRangeDayCount(
+      range
+    );
+
+
+  const averageDaily =
+    dayCount >
+    0
+
+      ? total /
+        dayCount
+
+      : 0;
+
+
+  const biggest =
+    reportExpenses
+
+      .map(
+        (expense) => ({
+          expense,
+
+          amountPHP:
+            convertCurrency(
+              expense.amount,
+              expense.currency,
+              "PHP"
+            )
+        })
+      )
+
+      .sort(
+        (
+          a,
+          b
+        ) =>
+          b.amountPHP -
+          a.amountPHP
+      )[
+        0
+      ];
+
+
+  const setText =
+    (
+      id,
+      value
+    ) => {
+
+      const element =
+        document.getElementById(
+          id
+        );
+
+
+      if (
+        element
+      ) {
+
+        element.textContent =
+          value;
+
+      }
+
+    };
+
+
+  setText(
+    "reportTotalSpending",
+    formatPHP(
+      total
+    )
+  );
+
+
+  setText(
+    "reportExpenseCount",
+    String(
+      reportExpenses.length
+    )
+  );
+
+
+  setText(
+    "reportAverageDaily",
+    formatPHP(
+      averageDaily
+    )
+  );
+
+
+  setText(
+    "reportDaysLabel",
+    `${dayCount} ${
+      dayCount ===
+      1
+        ? "day"
+        : "days"
+    }`
+  );
+
+
+  setText(
+    "reportBiggestExpense",
+    biggest
+      ? formatPHP(
+          biggest.amountPHP
+        )
+      : "₱0.00"
+  );
+
+
+  setText(
+    "reportBiggestExpenseTitle",
+    biggest
+      ? biggest.expense.title ||
+        "Expense"
+      : "No expenses yet"
+  );
+
+
+  setText(
+    "reportPeriodLabel",
+    range.label
+  );
+
+
+  const categoryGroups =
+    groupReportExpenses(
+      reportExpenses,
+      (expense) =>
+        expense.category ||
+        "Other"
+    );
+
+
+  const paymentGroups =
+    groupReportExpenses(
+      reportExpenses,
+      (expense) =>
+        expense.paymentMethod ||
+        "Other"
+    );
+
+
+  setText(
+    "reportCategoryCount",
+    `${categoryGroups.length} ${
+      categoryGroups.length ===
+      1
+        ? "category"
+        : "categories"
+    }`
+  );
+
+
+  renderReportBars(
+    document.getElementById(
+      "reportCategoryBreakdown"
+    ),
+    categoryGroups,
+    total
+  );
+
+
+  renderReportBars(
+    document.getElementById(
+      "reportPaymentBreakdown"
+    ),
+    paymentGroups,
+    total
+  );
+
+
+  renderReportTrend();
+
+
+  const emptyState =
+    document.getElementById(
+      "reportEmptyState"
+    );
+
+
+  if (
+    emptyState
+  ) {
+
+    emptyState.hidden =
+      reportExpenses.length !==
+      0;
+
+  }
+
+}
+
+
+document
+  .querySelectorAll(
+    "[data-report-period]"
+  )
+  .forEach(
+    (button) => {
+
+      button.addEventListener(
+        "click",
+        () => {
+
+          reportPeriod =
+            button.dataset
+              .reportPeriod;
+
+
+          document
+            .querySelectorAll(
+              "[data-report-period]"
+            )
+            .forEach(
+              (item) =>
+                item.classList.toggle(
+                  "active",
+                  item ===
+                    button
+                )
+            );
+
+
+          if (
+            reportPeriod ===
+            "custom"
+          ) {
+
+            const today =
+              getTodayString();
+
+
+            if (
+              reportDateFrom &&
+              !reportDateFrom.value
+            ) {
+
+              reportDateFrom.value =
+                today.slice(
+                  0,
+                  8
+                ) +
+                "01";
+
+            }
+
+
+            if (
+              reportDateTo &&
+              !reportDateTo.value
+            ) {
+
+              reportDateTo.value =
+                today;
+
+            }
+
+          }
+
+
+          renderReportSummary();
+
+        }
+      );
+
+    }
+  );
+
+
+document
+  .querySelectorAll(
+    "[data-report-scope]"
+  )
+  .forEach(
+    (button) => {
+
+      button.addEventListener(
+        "click",
+        () => {
+
+          reportScope =
+            button.dataset
+              .reportScope;
+
+
+          document
+            .querySelectorAll(
+              "[data-report-scope]"
+            )
+            .forEach(
+              (item) =>
+                item.classList.toggle(
+                  "active",
+                  item ===
+                    button
+                )
+            );
+
+
+          renderReportSummary();
+
+        }
+      );
+
+    }
+  );
+
+
+[
+  reportDateFrom,
+  reportDateTo,
+  reportTripPicker
+]
+
+  .filter(
+    Boolean
+  )
+
+  .forEach(
+    (control) => {
+
+      control.addEventListener(
+        "change",
+        () => {
+
+          renderReportSummary();
+
+        }
+      );
+
+    }
+  );
 
 
 // ========================================
@@ -8379,6 +10111,3784 @@ document
   );
 
 
+
+// ========================================
+// RECURRING EXPENSES
+// ========================================
+
+const recurringModal =
+  document.getElementById(
+    "recurringModal"
+  );
+
+
+const recurringForm =
+  document.getElementById(
+    "recurringForm"
+  );
+
+
+const recurringId =
+  document.getElementById(
+    "recurringId"
+  );
+
+
+const recurringName =
+  document.getElementById(
+    "recurringName"
+  );
+
+
+const recurringAmount =
+  document.getElementById(
+    "recurringAmount"
+  );
+
+
+const recurringCurrency =
+  document.getElementById(
+    "recurringCurrency"
+  );
+
+
+const recurringCategory =
+  document.getElementById(
+    "recurringCategory"
+  );
+
+
+const recurringPaymentMethod =
+  document.getElementById(
+    "recurringPaymentMethod"
+  );
+
+
+const recurringFrequency =
+  document.getElementById(
+    "recurringFrequency"
+  );
+
+
+const recurringNextDueDate =
+  document.getElementById(
+    "recurringNextDueDate"
+  );
+
+
+const recurringEndDate =
+  document.getElementById(
+    "recurringEndDate"
+  );
+
+
+const recurringNotes =
+  document.getElementById(
+    "recurringNotes"
+  );
+
+
+function getDaysInMonth(
+  year,
+  monthIndex
+) {
+
+  return new Date(
+    year,
+    monthIndex + 1,
+    0
+  ).getDate();
+
+}
+
+
+function addMonthsClamped(
+  dateString,
+  months
+) {
+
+  const date =
+    createLocalDate(
+      dateString
+    );
+
+
+  if (
+    !date
+  ) {
+
+    return "";
+
+  }
+
+
+  const originalDay =
+    date.getDate();
+
+
+  const targetMonthStart =
+    new Date(
+      date.getFullYear(),
+      date.getMonth() + months,
+      1
+    );
+
+
+  const day =
+    Math.min(
+      originalDay,
+      getDaysInMonth(
+        targetMonthStart.getFullYear(),
+        targetMonthStart.getMonth()
+      )
+    );
+
+
+  const next =
+    new Date(
+      targetMonthStart.getFullYear(),
+      targetMonthStart.getMonth(),
+      day
+    );
+
+
+  const year =
+    next.getFullYear();
+
+
+  const month =
+    String(
+      next.getMonth() + 1
+    ).padStart(
+      2,
+      "0"
+    );
+
+
+  const dateDay =
+    String(
+      next.getDate()
+    ).padStart(
+      2,
+      "0"
+    );
+
+
+  return `${year}-${month}-${dateDay}`;
+
+}
+
+
+function addDaysToDateString(
+  dateString,
+  days
+) {
+
+  const date =
+    createLocalDate(
+      dateString
+    );
+
+
+  if (
+    !date
+  ) {
+
+    return "";
+
+  }
+
+
+  date.setDate(
+    date.getDate() +
+    days
+  );
+
+
+  const year =
+    date.getFullYear();
+
+
+  const month =
+    String(
+      date.getMonth() + 1
+    ).padStart(
+      2,
+      "0"
+    );
+
+
+  const day =
+    String(
+      date.getDate()
+    ).padStart(
+      2,
+      "0"
+    );
+
+
+  return `${year}-${month}-${day}`;
+
+}
+
+
+function getNextRecurringDate(
+  dateString,
+  frequency
+) {
+
+  switch (
+    frequency
+  ) {
+
+    case "weekly":
+      return addDaysToDateString(
+        dateString,
+        7
+      );
+
+
+    case "quarterly":
+      return addMonthsClamped(
+        dateString,
+        3
+      );
+
+
+    case "yearly":
+      return addMonthsClamped(
+        dateString,
+        12
+      );
+
+
+    case "monthly":
+    default:
+      return addMonthsClamped(
+        dateString,
+        1
+      );
+
+  }
+
+}
+
+
+function getRecurringFrequencyLabel(
+  frequency
+) {
+
+  const labels = {
+
+    weekly:
+      "Weekly",
+
+    monthly:
+      "Monthly",
+
+    quarterly:
+      "Quarterly",
+
+    yearly:
+      "Yearly"
+
+  };
+
+
+  return (
+    labels[
+      frequency
+    ] ||
+    "Monthly"
+  );
+
+}
+
+
+function isRecurringActive(
+  recurring
+) {
+
+  if (
+    recurring.active ===
+    false
+  ) {
+
+    return false;
+
+  }
+
+
+  if (
+    recurring.endDate &&
+    recurring.nextDueDate >
+      recurring.endDate
+  ) {
+
+    return false;
+
+  }
+
+
+  return true;
+
+}
+
+
+function getRecurringStatus(
+  recurring
+) {
+
+  if (
+    !isRecurringActive(
+      recurring
+    )
+  ) {
+
+    return {
+      label:
+        "Ended",
+
+      className:
+        "ended"
+    };
+
+  }
+
+
+  const today =
+    getTodayString();
+
+
+  if (
+    recurring.nextDueDate <
+    today
+  ) {
+
+    return {
+      label:
+        "Overdue",
+
+      className:
+        "overdue"
+    };
+
+  }
+
+
+  const sevenDaysFromToday =
+    addDaysToDateString(
+      today,
+      7
+    );
+
+
+  if (
+    recurring.nextDueDate <=
+    sevenDaysFromToday
+  ) {
+
+    return {
+      label:
+        "Due soon",
+
+      className:
+        "due-soon"
+    };
+
+  }
+
+
+  return {
+    label:
+      "Upcoming",
+
+    className:
+      "upcoming"
+  };
+
+}
+
+
+function getRecurringMonthlyFactor(
+  frequency
+) {
+
+  switch (
+    frequency
+  ) {
+
+    case "weekly":
+      return 52 / 12;
+
+
+    case "quarterly":
+      return 1 / 3;
+
+
+    case "yearly":
+      return 1 / 12;
+
+
+    case "monthly":
+    default:
+      return 1;
+
+  }
+
+}
+
+
+function getRecurringMonthlyEstimatePHP() {
+
+  return recurringExpenses.reduce(
+    (
+      total,
+      recurring
+    ) => {
+
+      if (
+        !isRecurringActive(
+          recurring
+        )
+      ) {
+
+        return total;
+
+      }
+
+
+      const amountPHP =
+        convertCurrency(
+          recurring.amount,
+          recurring.currency,
+          "PHP"
+        );
+
+
+      return (
+        total +
+        amountPHP *
+        getRecurringMonthlyFactor(
+          recurring.frequency
+        )
+      );
+
+    },
+    0
+  );
+
+}
+
+
+function openRecurringModal(
+  recurring =
+    null
+) {
+
+  if (
+    !recurringModal ||
+    !recurringForm
+  ) {
+
+    return;
+
+  }
+
+
+  recurringModal.hidden =
+    false;
+
+
+  if (
+    recurring
+  ) {
+
+    document
+      .getElementById(
+        "recurringModalTitle"
+      )
+      .textContent =
+      "Edit Recurring Expense";
+
+
+    recurringId.value =
+      recurring.id;
+
+
+    recurringName.value =
+      recurring.name ||
+      "";
+
+
+    recurringAmount.value =
+      recurring.amount ??
+      "";
+
+
+    recurringCurrency.value =
+      recurring.currency ||
+      "PHP";
+
+
+    recurringCategory.value =
+      recurring.category ||
+      "Bills";
+
+
+    recurringPaymentMethod.value =
+      recurring.paymentMethod ||
+      "Credit Card";
+
+
+    recurringFrequency.value =
+      recurring.frequency ||
+      "monthly";
+
+
+    recurringNextDueDate.value =
+      recurring.nextDueDate ||
+      getTodayString();
+
+
+    recurringEndDate.value =
+      recurring.endDate ||
+      "";
+
+
+    recurringNotes.value =
+      recurring.notes ||
+      "";
+
+  } else {
+
+    recurringForm.reset();
+
+
+    document
+      .getElementById(
+        "recurringModalTitle"
+      )
+      .textContent =
+      "Add Recurring Expense";
+
+
+    recurringId.value =
+      "";
+
+
+    recurringCurrency.value =
+      "PHP";
+
+
+    recurringCategory.value =
+      "Bills";
+
+
+    recurringPaymentMethod.value =
+      "Credit Card";
+
+
+    recurringFrequency.value =
+      "monthly";
+
+
+    recurringNextDueDate.value =
+      getTodayString();
+
+
+    recurringEndDate.value =
+      "";
+
+  }
+
+}
+
+
+function closeRecurringModal() {
+
+  if (
+    recurringModal
+  ) {
+
+    recurringModal.hidden =
+      true;
+
+  }
+
+}
+
+
+document
+  .getElementById(
+    "addRecurringButton"
+  )
+  ?.addEventListener(
+    "click",
+    () => {
+
+      openRecurringModal();
+
+    }
+  );
+
+
+document
+  .getElementById(
+    "closeRecurringModal"
+  )
+  ?.addEventListener(
+    "click",
+    closeRecurringModal
+  );
+
+
+recurringModal?.addEventListener(
+  "click",
+  (event) => {
+
+    if (
+      event.target ===
+      recurringModal
+    ) {
+
+      closeRecurringModal();
+
+    }
+
+  }
+);
+
+
+recurringForm?.addEventListener(
+  "submit",
+  async (
+    event
+  ) => {
+
+    event.preventDefault();
+
+
+    if (
+      recurringEndDate.value &&
+      recurringEndDate.value <
+        recurringNextDueDate.value
+    ) {
+
+      showToast(
+        "End date can't be before the next due date."
+      );
+
+
+      return;
+
+    }
+
+
+    const existingId =
+      recurringId.value;
+
+
+    const previous =
+      recurringExpenses.find(
+        (item) =>
+          item.id ===
+          existingId
+      );
+
+
+    const recurring = {
+
+      id:
+        existingId ||
+        generateId(
+          "recurring"
+        ),
+
+      name:
+        recurringName.value
+          .trim(),
+
+      amount:
+        Number(
+          recurringAmount.value
+        ),
+
+      currency:
+        recurringCurrency.value,
+
+      category:
+        recurringCategory.value,
+
+      paymentMethod:
+        recurringPaymentMethod.value,
+
+      frequency:
+        recurringFrequency.value,
+
+      nextDueDate:
+        recurringNextDueDate.value,
+
+      endDate:
+        recurringEndDate.value,
+
+      notes:
+        recurringNotes.value
+          .trim(),
+
+      active:
+        previous?.active ??
+        true,
+
+      createdAt:
+        previous?.createdAt ||
+        new Date()
+          .toISOString(),
+
+      updatedAt:
+        new Date()
+          .toISOString()
+
+    };
+
+
+    await putRecord(
+      STORES.recurring,
+      recurring
+    );
+
+
+    await loadAppData();
+
+
+    closeRecurringModal();
+
+
+    renderAll();
+
+
+    showToast(
+      existingId
+        ? "Recurring expense updated ✨"
+        : "Recurring expense added ↻"
+    );
+
+  }
+);
+
+
+function createRecurringCardHTML(
+  recurring
+) {
+
+  const status =
+    getRecurringStatus(
+      recurring
+    );
+
+
+  return `
+
+    <article class="recurring-card">
+
+      <div class="recurring-card-top">
+
+        <div class="recurring-icon">
+          ${getCategoryEmoji(
+            recurring.category
+          )}
+        </div>
+
+
+        <div class="recurring-card-copy">
+
+          <div class="recurring-title-row">
+
+            <h3>
+              ${escapeHTML(
+                recurring.name
+              )}
+            </h3>
+
+            <span
+              class="recurring-status ${status.className}"
+            >
+              ${escapeHTML(
+                status.label
+              )}
+            </span>
+
+          </div>
+
+
+          <p>
+            ${escapeHTML(
+              recurring.category
+            )}
+            ·
+            ${escapeHTML(
+              recurring.paymentMethod
+            )}
+          </p>
+
+        </div>
+
+      </div>
+
+
+      <div class="recurring-amount-row">
+
+        <div>
+
+          <span>
+            Amount
+          </span>
+
+          <strong>
+            ${formatCurrency(
+              recurring.amount,
+              recurring.currency
+            )}
+          </strong>
+
+        </div>
+
+
+        <div>
+
+          <span>
+            Frequency
+          </span>
+
+          <strong>
+            ${escapeHTML(
+              getRecurringFrequencyLabel(
+                recurring.frequency
+              )
+            )}
+          </strong>
+
+        </div>
+
+
+        <div>
+
+          <span>
+            Next due
+          </span>
+
+          <strong>
+            ${formatShortDate(
+              recurring.nextDueDate
+            )}
+          </strong>
+
+        </div>
+
+      </div>
+
+
+      ${
+        recurring.notes
+
+          ? `
+
+              <p class="recurring-notes">
+                ${escapeHTML(
+                  recurring.notes
+                )}
+              </p>
+
+            `
+
+          : ""
+      }
+
+
+      <div class="recurring-card-actions">
+
+        <button
+          class="secondary-btn log-recurring-expense"
+          type="button"
+          data-recurring-id="${escapeHTML(
+            recurring.id
+          )}"
+          ${!isRecurringActive(recurring)
+            ? "disabled"
+            : ""}
+        >
+          ＋ Log Expense
+        </button>
+
+
+        <button
+          class="tiny-icon-btn edit-recurring"
+          type="button"
+          data-recurring-id="${escapeHTML(
+            recurring.id
+          )}"
+          aria-label="Edit recurring expense"
+        >
+          ✎
+        </button>
+
+
+        <button
+          class="tiny-icon-btn delete-recurring"
+          type="button"
+          data-recurring-id="${escapeHTML(
+            recurring.id
+          )}"
+          aria-label="Delete recurring expense"
+        >
+          🗑
+        </button>
+
+      </div>
+
+    </article>
+
+  `;
+
+}
+
+
+function renderRecurringExpenses() {
+
+  const list =
+    document.getElementById(
+      "recurringList"
+    );
+
+
+  const empty =
+    document.getElementById(
+      "recurringEmpty"
+    );
+
+
+  if (
+    !list ||
+    !empty
+  ) {
+
+    return;
+
+  }
+
+
+  const sorted =
+    [...recurringExpenses]
+      .sort(
+        (
+          a,
+          b
+        ) => {
+
+          return (
+            String(
+              a.nextDueDate ||
+              ""
+            ).localeCompare(
+              String(
+                b.nextDueDate ||
+                ""
+              )
+            )
+          );
+
+        }
+      );
+
+
+  const active =
+    sorted.filter(
+      isRecurringActive
+    );
+
+
+  const today =
+    getTodayString();
+
+
+  const dueSoonLimit =
+    addDaysToDateString(
+      today,
+      7
+    );
+
+
+  const dueSoon =
+    active.filter(
+      (recurring) =>
+        recurring.nextDueDate <=
+          dueSoonLimit
+    );
+
+
+  const activeCount =
+    document.getElementById(
+      "recurringActiveCount"
+    );
+
+
+  const dueSoonCount =
+    document.getElementById(
+      "recurringDueSoonCount"
+    );
+
+
+  const monthlyEstimate =
+    document.getElementById(
+      "recurringMonthlyEstimate"
+    );
+
+
+  if (
+    activeCount
+  ) {
+
+    activeCount.textContent =
+      String(
+        active.length
+      );
+
+  }
+
+
+  if (
+    dueSoonCount
+  ) {
+
+    dueSoonCount.textContent =
+      String(
+        dueSoon.length
+      );
+
+  }
+
+
+  if (
+    monthlyEstimate
+  ) {
+
+    monthlyEstimate.textContent =
+      formatPHP(
+        getRecurringMonthlyEstimatePHP()
+      );
+
+  }
+
+
+  if (
+    sorted.length ===
+    0
+  ) {
+
+    list.innerHTML =
+      "";
+
+
+    empty.style.display =
+      "block";
+
+
+    return;
+
+  }
+
+
+  empty.style.display =
+    "none";
+
+
+  list.innerHTML =
+    sorted
+
+      .map(
+        createRecurringCardHTML
+      )
+
+      .join("");
+
+
+  attachRecurringActions();
+
+}
+
+
+function attachRecurringActions() {
+
+  document
+    .querySelectorAll(
+      ".edit-recurring"
+    )
+    .forEach(
+      (button) => {
+
+        button.addEventListener(
+          "click",
+          () => {
+
+            const recurring =
+              recurringExpenses.find(
+                (item) =>
+                  item.id ===
+                  button.dataset
+                    .recurringId
+              );
+
+
+            if (
+              recurring
+            ) {
+
+              openRecurringModal(
+                recurring
+              );
+
+            }
+
+          }
+        );
+
+      }
+    );
+
+
+  document
+    .querySelectorAll(
+      ".delete-recurring"
+    )
+    .forEach(
+      (button) => {
+
+        button.addEventListener(
+          "click",
+          () => {
+
+            recurringPendingDelete =
+              button.dataset
+                .recurringId;
+
+
+            document
+              .getElementById(
+                "deleteRecurringModal"
+              )
+              .hidden =
+              false;
+
+          }
+        );
+
+      }
+    );
+
+
+  document
+    .querySelectorAll(
+      ".log-recurring-expense"
+    )
+    .forEach(
+      (button) => {
+
+        button.addEventListener(
+          "click",
+          async () => {
+
+            const recurring =
+              recurringExpenses.find(
+                (item) =>
+                  item.id ===
+                  button.dataset
+                    .recurringId
+              );
+
+
+            if (
+              !recurring ||
+              !isRecurringActive(
+                recurring
+              )
+            ) {
+
+              return;
+
+            }
+
+
+            const expense = {
+
+              id:
+                generateId(
+                  "expense"
+                ),
+
+              title:
+                recurring.name,
+
+              amount:
+                Number(
+                  recurring.amount ||
+                  0
+                ),
+
+              currency:
+                recurring.currency,
+
+              category:
+                recurring.category,
+
+              budgetId:
+                "",
+
+              budgetName:
+                "",
+
+              paymentMethod:
+                recurring.paymentMethod,
+
+              date:
+                getTodayString(),
+
+              location:
+                "",
+
+              notes:
+                recurring.notes ||
+                "",
+
+              photo:
+                "",
+
+              tripId:
+                "",
+
+              sourceRecurringId:
+                recurring.id,
+
+              createdAt:
+                new Date()
+                  .toISOString(),
+
+              updatedAt:
+                new Date()
+                  .toISOString()
+
+            };
+
+
+            await putRecord(
+              STORES.expenses,
+              expense
+            );
+
+
+            const nextDate =
+              getNextRecurringDate(
+                recurring.nextDueDate,
+                recurring.frequency
+              );
+
+
+            const updatedRecurring = {
+              ...recurring,
+
+              nextDueDate:
+                nextDate,
+
+              active:
+                !(
+                  recurring.endDate &&
+                  nextDate >
+                    recurring.endDate
+                ),
+
+              updatedAt:
+                new Date()
+                  .toISOString()
+            };
+
+
+            await putRecord(
+              STORES.recurring,
+              updatedRecurring
+            );
+
+
+            await loadAppData();
+
+
+            renderAll();
+
+
+            showToast(
+              "Expense logged and next due date updated ✨"
+            );
+
+          }
+        );
+
+      }
+    );
+
+}
+
+
+document
+  .getElementById(
+    "cancelDeleteRecurring"
+  )
+  ?.addEventListener(
+    "click",
+    () => {
+
+      recurringPendingDelete =
+        null;
+
+
+      document
+        .getElementById(
+          "deleteRecurringModal"
+        )
+        .hidden =
+        true;
+
+    }
+  );
+
+
+document
+  .getElementById(
+    "confirmDeleteRecurring"
+  )
+  ?.addEventListener(
+    "click",
+    async () => {
+
+      if (
+        !recurringPendingDelete
+      ) {
+
+        return;
+
+      }
+
+
+      await deleteRecord(
+        STORES.recurring,
+        recurringPendingDelete
+      );
+
+
+      recurringPendingDelete =
+        null;
+
+
+      document
+        .getElementById(
+          "deleteRecurringModal"
+        )
+        .hidden =
+        true;
+
+
+      await loadAppData();
+
+
+      renderAll();
+
+
+      showToast(
+        "Recurring expense deleted"
+      );
+
+    }
+  );
+
+
+document
+  .getElementById(
+    "deleteRecurringModal"
+  )
+  ?.addEventListener(
+    "click",
+    (event) => {
+
+      if (
+        event.target.id ===
+        "deleteRecurringModal"
+      ) {
+
+        recurringPendingDelete =
+          null;
+
+
+        event.currentTarget.hidden =
+          true;
+
+      }
+
+    }
+  );
+
+
+
+
+// ========================================
+// PLANNED EXPENSES
+// ========================================
+
+let plannedExpenseFilter =
+  "planned";
+
+
+const plannedExpenseModal =
+  document.getElementById(
+    "plannedExpenseModal"
+  );
+
+
+const plannedExpenseForm =
+  document.getElementById(
+    "plannedExpenseForm"
+  );
+
+
+const plannedExpenseId =
+  document.getElementById(
+    "plannedExpenseId"
+  );
+
+
+const plannedExpenseTitle =
+  document.getElementById(
+    "plannedExpenseTitle"
+  );
+
+
+const plannedExpenseAmount =
+  document.getElementById(
+    "plannedExpenseAmount"
+  );
+
+
+const plannedExpenseCurrency =
+  document.getElementById(
+    "plannedExpenseCurrency"
+  );
+
+
+const plannedExpenseCategory =
+  document.getElementById(
+    "plannedExpenseCategory"
+  );
+
+
+const plannedExpenseTrip =
+  document.getElementById(
+    "plannedExpenseTrip"
+  );
+
+
+const plannedExpenseTargetDate =
+  document.getElementById(
+    "plannedExpenseTargetDate"
+  );
+
+
+const plannedExpenseNotes =
+  document.getElementById(
+    "plannedExpenseNotes"
+  );
+
+
+function populatePlannedTripDropdown() {
+
+  if (
+    !plannedExpenseTrip
+  ) {
+
+    return;
+
+  }
+
+
+  const current =
+    plannedExpenseTrip.value;
+
+
+  plannedExpenseTrip.innerHTML = `
+
+    <option value="">
+      Personal / No Trip
+    </option>
+
+    ${trips
+
+      .map(
+        (trip) => `
+
+          <option
+            value="${escapeHTML(
+              trip.id
+            )}"
+          >
+            ${escapeHTML(
+              trip.name
+            )}
+          </option>
+
+        `
+      )
+
+      .join("")}
+
+  `;
+
+
+  if (
+    current &&
+    trips.some(
+      (trip) =>
+        trip.id ===
+        current
+    )
+  ) {
+
+    plannedExpenseTrip.value =
+      current;
+
+  }
+
+}
+
+
+function openPlannedExpenseModal(
+  planned =
+    null
+) {
+
+  if (
+    !plannedExpenseModal ||
+    !plannedExpenseForm
+  ) {
+
+    return;
+
+  }
+
+
+  populatePlannedTripDropdown();
+
+
+  plannedExpenseModal.hidden =
+    false;
+
+
+  if (
+    planned
+  ) {
+
+    document
+      .getElementById(
+        "plannedExpenseModalTitle"
+      )
+      .textContent =
+      "Edit Planned Expense";
+
+
+    plannedExpenseId.value =
+      planned.id;
+
+
+    plannedExpenseTitle.value =
+      planned.title ||
+      "";
+
+
+    plannedExpenseAmount.value =
+      planned.amount ??
+      "";
+
+
+    plannedExpenseCurrency.value =
+      planned.currency ||
+      "PHP";
+
+
+    plannedExpenseCategory.value =
+      planned.category ||
+      "Shopping";
+
+
+    plannedExpenseTrip.value =
+      planned.tripId ||
+      "";
+
+
+    plannedExpenseTargetDate.value =
+      planned.targetDate ||
+      "";
+
+
+    plannedExpenseNotes.value =
+      planned.notes ||
+      "";
+
+  } else {
+
+    plannedExpenseForm.reset();
+
+
+    document
+      .getElementById(
+        "plannedExpenseModalTitle"
+      )
+      .textContent =
+      "Add Planned Expense";
+
+
+    plannedExpenseId.value =
+      "";
+
+
+    plannedExpenseCurrency.value =
+      "PHP";
+
+
+    plannedExpenseCategory.value =
+      "Shopping";
+
+
+    plannedExpenseTrip.value =
+      "";
+
+  }
+
+}
+
+
+function closePlannedExpenseModal() {
+
+  if (
+    plannedExpenseModal
+  ) {
+
+    plannedExpenseModal.hidden =
+      true;
+
+  }
+
+}
+
+
+document
+  .getElementById(
+    "addPlannedExpenseButton"
+  )
+  ?.addEventListener(
+    "click",
+    () => {
+
+      openPlannedExpenseModal();
+
+    }
+  );
+
+
+document
+  .getElementById(
+    "closePlannedExpenseModal"
+  )
+  ?.addEventListener(
+    "click",
+    closePlannedExpenseModal
+  );
+
+
+plannedExpenseModal?.addEventListener(
+  "click",
+  (event) => {
+
+    if (
+      event.target ===
+      plannedExpenseModal
+    ) {
+
+      closePlannedExpenseModal();
+
+    }
+
+  }
+);
+
+
+plannedExpenseForm?.addEventListener(
+  "submit",
+  async (
+    event
+  ) => {
+
+    event.preventDefault();
+
+
+    const existingId =
+      plannedExpenseId.value;
+
+
+    const previous =
+      plannedExpenses.find(
+        (item) =>
+          item.id ===
+          existingId
+      );
+
+
+    const planned = {
+
+      id:
+        existingId ||
+        generateId(
+          "planned"
+        ),
+
+      title:
+        plannedExpenseTitle.value
+          .trim(),
+
+      amount:
+        Number(
+          plannedExpenseAmount.value
+        ),
+
+      currency:
+        plannedExpenseCurrency.value,
+
+      category:
+        plannedExpenseCategory.value,
+
+      tripId:
+        plannedExpenseTrip.value,
+
+      targetDate:
+        plannedExpenseTargetDate.value,
+
+      notes:
+        plannedExpenseNotes.value
+          .trim(),
+
+      status:
+        previous?.status ||
+        "planned",
+
+      convertedExpenseId:
+        previous?.convertedExpenseId ||
+        "",
+
+      purchasedAt:
+        previous?.purchasedAt ||
+        "",
+
+      createdAt:
+        previous?.createdAt ||
+        new Date()
+          .toISOString(),
+
+      updatedAt:
+        new Date()
+          .toISOString()
+
+    };
+
+
+    await putRecord(
+      STORES.planned,
+      planned
+    );
+
+
+    await loadAppData();
+
+
+    closePlannedExpenseModal();
+
+
+    renderAll();
+
+
+    showToast(
+      existingId
+        ? "Planned expense updated ✨"
+        : "Planned expense added ☆"
+    );
+
+  }
+);
+
+
+function getPlannedTripName(
+  planned
+) {
+
+  if (
+    !planned.tripId
+  ) {
+
+    return "Personal";
+
+  }
+
+
+  const trip =
+    trips.find(
+      (item) =>
+        item.id ===
+        planned.tripId
+    );
+
+
+  return (
+    trip?.name ||
+    "Trip"
+  );
+
+}
+
+
+function getPlannedTotalPHP() {
+
+  return plannedExpenses
+
+    .filter(
+      (item) =>
+        item.status ===
+        "planned"
+    )
+
+    .reduce(
+      (
+        total,
+        item
+      ) => {
+
+        return (
+          total +
+          convertCurrency(
+            item.amount,
+            item.currency,
+            "PHP"
+          )
+        );
+
+      },
+      0
+    );
+
+}
+
+
+function createPlannedExpenseCardHTML(
+  planned
+) {
+
+  const isPurchased =
+    planned.status ===
+    "purchased";
+
+
+  return `
+
+    <article
+      class="planned-expense-card ${
+        isPurchased
+          ? "is-purchased"
+          : ""
+      }"
+    >
+
+      <div class="planned-expense-top">
+
+        <div class="planned-expense-icon">
+          ${getCategoryEmoji(
+            planned.category
+          )}
+        </div>
+
+
+        <div class="planned-expense-copy">
+
+          <div class="planned-expense-title-row">
+
+            <h3>
+              ${escapeHTML(
+                planned.title
+              )}
+            </h3>
+
+            <span
+              class="planned-status ${
+                isPurchased
+                  ? "purchased"
+                  : "planned"
+              }"
+            >
+              ${
+                isPurchased
+                  ? "Purchased"
+                  : "Planned"
+              }
+            </span>
+
+          </div>
+
+
+          <p>
+
+            ${escapeHTML(
+              planned.category
+            )}
+
+            ·
+
+            ${escapeHTML(
+              getPlannedTripName(
+                planned
+              )
+            )}
+
+          </p>
+
+        </div>
+
+      </div>
+
+
+      <div class="planned-expense-values">
+
+        <div>
+
+          <span>
+            Expected
+          </span>
+
+          <strong>
+            ${formatCurrency(
+              planned.amount,
+              planned.currency
+            )}
+          </strong>
+
+        </div>
+
+
+        <div>
+
+          <span>
+            Target date
+          </span>
+
+          <strong>
+            ${
+              planned.targetDate
+                ? formatShortDate(
+                    planned.targetDate
+                  )
+                : "Anytime"
+            }
+          </strong>
+
+        </div>
+
+      </div>
+
+
+      ${
+        planned.notes
+
+          ? `
+
+              <p class="planned-expense-notes">
+                ${escapeHTML(
+                  planned.notes
+                )}
+              </p>
+
+            `
+
+          : ""
+      }
+
+
+      <div class="planned-expense-actions">
+
+        ${
+          !isPurchased
+
+            ? `
+
+                <button
+                  class="secondary-btn convert-planned-expense"
+                  type="button"
+                  data-planned-id="${escapeHTML(
+                    planned.id
+                  )}"
+                >
+                  ＋ Move to Expense
+                </button>
+
+              `
+
+            : `
+
+                <div class="planned-purchased-note">
+                  ✓ Added to expenses
+                </div>
+
+              `
+        }
+
+
+        <button
+          class="tiny-icon-btn edit-planned-expense"
+          type="button"
+          data-planned-id="${escapeHTML(
+            planned.id
+          )}"
+          aria-label="Edit planned expense"
+        >
+          ✎
+        </button>
+
+
+        <button
+          class="tiny-icon-btn delete-planned-expense"
+          type="button"
+          data-planned-id="${escapeHTML(
+            planned.id
+          )}"
+          aria-label="Delete planned expense"
+        >
+          🗑
+        </button>
+
+      </div>
+
+    </article>
+
+  `;
+
+}
+
+
+function renderPlannedExpenses() {
+
+  const list =
+    document.getElementById(
+      "plannedExpenseList"
+    );
+
+
+  const empty =
+    document.getElementById(
+      "plannedExpenseEmpty"
+    );
+
+
+  if (
+    !list ||
+    !empty
+  ) {
+
+    return;
+
+  }
+
+
+  populatePlannedTripDropdown();
+
+
+  const active =
+    plannedExpenses.filter(
+      (item) =>
+        item.status ===
+        "planned"
+    );
+
+
+  const purchased =
+    plannedExpenses.filter(
+      (item) =>
+        item.status ===
+        "purchased"
+    );
+
+
+  const totalElement =
+    document.getElementById(
+      "plannedTotalAmount"
+    );
+
+
+  const activeCount =
+    document.getElementById(
+      "plannedActiveCount"
+    );
+
+
+  const purchasedCount =
+    document.getElementById(
+      "plannedPurchasedCount"
+    );
+
+
+  if (
+    totalElement
+  ) {
+
+    totalElement.textContent =
+      formatPHP(
+        getPlannedTotalPHP()
+      );
+
+  }
+
+
+  if (
+    activeCount
+  ) {
+
+    activeCount.textContent =
+      `${active.length} ${
+        active.length ===
+        1
+          ? "item"
+          : "items"
+      }`;
+
+  }
+
+
+  if (
+    purchasedCount
+  ) {
+
+    purchasedCount.textContent =
+      String(
+        purchased.length
+      );
+
+  }
+
+
+  let filtered =
+    plannedExpenses;
+
+
+  if (
+    plannedExpenseFilter !==
+    "all"
+  ) {
+
+    filtered =
+      plannedExpenses.filter(
+        (item) =>
+          item.status ===
+          plannedExpenseFilter
+      );
+
+  }
+
+
+  if (
+    filtered.length ===
+    0
+  ) {
+
+    list.innerHTML =
+      "";
+
+
+    empty.style.display =
+      "block";
+
+
+    const title =
+      empty.querySelector(
+        "h3"
+      );
+
+
+    const copy =
+      empty.querySelector(
+        "p"
+      );
+
+
+    if (
+      title
+    ) {
+
+      title.textContent =
+        plannedExpenses.length
+          ? "Nothing in this view"
+          : "No planned expenses yet";
+
+    }
+
+
+    if (
+      copy
+    ) {
+
+      copy.textContent =
+        plannedExpenses.length
+          ? "Try another filter."
+          : "Add something you may want to buy later.";
+
+    }
+
+
+    return;
+
+  }
+
+
+  empty.style.display =
+    "none";
+
+
+  list.innerHTML =
+    filtered
+
+      .map(
+        createPlannedExpenseCardHTML
+      )
+
+      .join("");
+
+
+  attachPlannedExpenseActions();
+
+}
+
+
+document
+  .querySelectorAll(
+    "[data-planned-filter]"
+  )
+  .forEach(
+    (button) => {
+
+      button.addEventListener(
+        "click",
+        () => {
+
+          plannedExpenseFilter =
+            button.dataset
+              .plannedFilter;
+
+
+          document
+            .querySelectorAll(
+              "[data-planned-filter]"
+            )
+            .forEach(
+              (item) =>
+                item.classList.toggle(
+                  "active",
+                  item ===
+                    button
+                )
+            );
+
+
+          renderPlannedExpenses();
+
+        }
+      );
+
+    }
+  );
+
+
+function attachPlannedExpenseActions() {
+
+  document
+    .querySelectorAll(
+      ".edit-planned-expense"
+    )
+    .forEach(
+      (button) => {
+
+        button.addEventListener(
+          "click",
+          () => {
+
+            const planned =
+              plannedExpenses.find(
+                (item) =>
+                  item.id ===
+                  button.dataset
+                    .plannedId
+              );
+
+
+            if (
+              planned
+            ) {
+
+              openPlannedExpenseModal(
+                planned
+              );
+
+            }
+
+          }
+        );
+
+      }
+    );
+
+
+  document
+    .querySelectorAll(
+      ".delete-planned-expense"
+    )
+    .forEach(
+      (button) => {
+
+        button.addEventListener(
+          "click",
+          () => {
+
+            plannedPendingDelete =
+              button.dataset
+                .plannedId;
+
+
+            document
+              .getElementById(
+                "deletePlannedExpenseModal"
+              )
+              .hidden =
+              false;
+
+          }
+        );
+
+      }
+    );
+
+
+  document
+    .querySelectorAll(
+      ".convert-planned-expense"
+    )
+    .forEach(
+      (button) => {
+
+        button.addEventListener(
+          "click",
+          () => {
+
+            const planned =
+              plannedExpenses.find(
+                (item) =>
+                  item.id ===
+                  button.dataset
+                    .plannedId
+              );
+
+
+            if (
+              !planned
+            ) {
+
+              return;
+
+            }
+
+
+            pendingPlannedConversionId =
+              planned.id;
+
+
+            openingExpenseEditor =
+              true;
+
+
+            showScreen(
+              "add"
+            );
+
+
+            resetExpenseForm();
+
+
+            setExpenseFormMode(
+              "add"
+            );
+
+
+            document
+              .getElementById(
+                "expenseTitle"
+              )
+              .value =
+              planned.title ||
+              "";
+
+
+            amountInput.value =
+              planned.amount ??
+              "";
+
+
+            currencySelect.value =
+              planned.currency ||
+              "PHP";
+
+
+            expenseCategory.value =
+              planned.category ||
+              "Shopping";
+
+
+            if (
+              expenseTrip
+            ) {
+
+              expenseTrip.value =
+                planned.tripId ||
+                "";
+
+            }
+
+
+            document
+              .getElementById(
+                "expenseNotes"
+              )
+              .value =
+              planned.notes ||
+              "";
+
+
+            expenseDate.value =
+              planned.targetDate ||
+              getTodayString();
+
+
+            updateExpenseConversion();
+
+
+            showToast(
+              "Planned item loaded. Add payment details, then save."
+            );
+
+          }
+        );
+
+      }
+    );
+
+}
+
+
+document
+  .getElementById(
+    "cancelDeletePlannedExpense"
+  )
+  ?.addEventListener(
+    "click",
+    () => {
+
+      plannedPendingDelete =
+        null;
+
+
+      document
+        .getElementById(
+          "deletePlannedExpenseModal"
+        )
+        .hidden =
+        true;
+
+    }
+  );
+
+
+document
+  .getElementById(
+    "confirmDeletePlannedExpense"
+  )
+  ?.addEventListener(
+    "click",
+    async () => {
+
+      if (
+        !plannedPendingDelete
+      ) {
+
+        return;
+
+      }
+
+
+      await deleteRecord(
+        STORES.planned,
+        plannedPendingDelete
+      );
+
+
+      plannedPendingDelete =
+        null;
+
+
+      document
+        .getElementById(
+          "deletePlannedExpenseModal"
+        )
+        .hidden =
+        true;
+
+
+      await loadAppData();
+
+
+      renderAll();
+
+
+      showToast(
+        "Planned expense deleted"
+      );
+
+    }
+  );
+
+
+document
+  .getElementById(
+    "deletePlannedExpenseModal"
+  )
+  ?.addEventListener(
+    "click",
+    (event) => {
+
+      if (
+        event.target.id ===
+        "deletePlannedExpenseModal"
+      ) {
+
+        plannedPendingDelete =
+          null;
+
+
+        event.currentTarget.hidden =
+          true;
+
+      }
+
+    }
+  );
+
+
+// ========================================
+// BACKUP & EXPORT
+// ========================================
+
+const MOMO_BACKUP_FORMAT =
+  "momo-backup";
+
+
+const MOMO_BACKUP_VERSION =
+  1;
+
+
+const importMomoBackupFile =
+  document.getElementById(
+    "importMomoBackupFile"
+  );
+
+
+const restoreBackupModal =
+  document.getElementById(
+    "restoreBackupModal"
+  );
+
+
+function formatBackupFileDate(
+  date =
+    new Date()
+) {
+
+  const year =
+    date.getFullYear();
+
+
+  const month =
+    String(
+      date.getMonth() + 1
+    ).padStart(
+      2,
+      "0"
+    );
+
+
+  const day =
+    String(
+      date.getDate()
+    ).padStart(
+      2,
+      "0"
+    );
+
+
+  const hour =
+    String(
+      date.getHours()
+    ).padStart(
+      2,
+      "0"
+    );
+
+
+  const minute =
+    String(
+      date.getMinutes()
+    ).padStart(
+      2,
+      "0"
+    );
+
+
+  return `${year}-${month}-${day}_${hour}-${minute}`;
+
+}
+
+
+function downloadTextFile(
+  filename,
+  content,
+  mimeType
+) {
+
+  const blob =
+    new Blob(
+      [
+        content
+      ],
+      {
+        type:
+          mimeType
+      }
+    );
+
+
+  const url =
+    URL.createObjectURL(
+      blob
+    );
+
+
+  const link =
+    document.createElement(
+      "a"
+    );
+
+
+  link.href =
+    url;
+
+
+  link.download =
+    filename;
+
+
+  document.body.appendChild(
+    link
+  );
+
+
+  link.click();
+
+
+  link.remove();
+
+
+  setTimeout(
+    () => {
+
+      URL.revokeObjectURL(
+        url
+      );
+
+    },
+    1000
+  );
+
+}
+
+
+async function buildMomoBackup() {
+
+  const settings =
+    await getAllRecords(
+      STORES.settings
+    );
+
+
+  const backup = {
+
+    format:
+      MOMO_BACKUP_FORMAT,
+
+    backupVersion:
+      MOMO_BACKUP_VERSION,
+
+    databaseVersion:
+      DB_VERSION,
+
+    appName:
+      "Momo",
+
+    exportedAt:
+      new Date()
+        .toISOString(),
+
+    data: {
+
+      expenses:
+        expenses,
+
+      budgets:
+        budgets,
+
+      trips:
+        trips,
+
+      cards:
+        cards,
+
+      recurringExpenses:
+        recurringExpenses,
+
+      plannedExpenses:
+        plannedExpenses,
+
+      settings:
+        settings
+
+    },
+
+    preferences: {
+
+      converterCurrencyA:
+        localStorage.getItem(
+          LOCAL_KEYS.converterA
+        ) ||
+        "",
+
+      converterCurrencyB:
+        localStorage.getItem(
+          LOCAL_KEYS.converterB
+        ) ||
+        ""
+
+    }
+
+  };
+
+
+  return backup;
+
+}
+
+
+document
+  .getElementById(
+    "exportMomoBackup"
+  )
+  ?.addEventListener(
+    "click",
+    async () => {
+
+      try {
+
+        const backup =
+          await buildMomoBackup();
+
+
+        const json =
+          JSON.stringify(
+            backup,
+            null,
+            2
+          );
+
+
+        downloadTextFile(
+          `momo-backup-${formatBackupFileDate()}.json`,
+          json,
+          "application/json"
+        );
+
+
+        showToast(
+          "Momo backup exported ✨"
+        );
+
+      } catch (
+        error
+      ) {
+
+        console.error(
+          "Backup export failed:",
+          error
+        );
+
+
+        showToast(
+          "Could not export backup."
+        );
+
+      }
+
+    }
+  );
+
+
+function csvEscape(
+  value
+) {
+
+  if (
+    value ===
+    null ||
+    value ===
+    undefined
+  ) {
+
+    return "";
+
+  }
+
+
+  const text =
+    String(
+      value
+    );
+
+
+  if (
+    /[",\n\r]/.test(
+      text
+    )
+  ) {
+
+    return `"${text.replaceAll(
+      '"',
+      '""'
+    )}"`;
+
+  }
+
+
+  return text;
+
+}
+
+
+function createExpenseCSV() {
+
+  const headers = [
+
+    "Date",
+    "Title",
+    "Amount",
+    "Currency",
+    "PHP Equivalent",
+    "Category",
+    "Payment Method",
+    "Budget",
+    "Trip",
+    "Location / Store",
+    "Notes",
+    "Photo Attached",
+    "Created At",
+    "Updated At"
+
+  ];
+
+
+  const rows =
+    expenses.map(
+      (expense) => {
+
+        const phpEquivalent =
+          convertCurrency(
+            expense.amount,
+            expense.currency,
+            "PHP"
+          );
+
+
+        return [
+
+          expense.date ||
+            "",
+
+          expense.title ||
+            "",
+
+          Number(
+            expense.amount ||
+            0
+          ),
+
+          expense.currency ||
+            "PHP",
+
+          Number(
+            phpEquivalent.toFixed(
+              2
+            )
+          ),
+
+          expense.category ||
+            "",
+
+          expense.paymentMethod ||
+            "",
+
+          getExpenseBudgetName(
+            expense
+          ),
+
+          getExpenseTripName(
+            expense
+          ),
+
+          expense.location ||
+            "",
+
+          expense.notes ||
+            "",
+
+          expense.photo
+            ? "Yes"
+            : "No",
+
+          expense.createdAt ||
+            "",
+
+          expense.updatedAt ||
+            ""
+
+        ];
+
+      }
+    );
+
+
+  return [
+
+    headers,
+    ...rows
+
+  ]
+
+    .map(
+      (row) =>
+        row
+          .map(
+            csvEscape
+          )
+          .join(
+            ","
+          )
+    )
+
+    .join(
+      "\r\n"
+    );
+
+}
+
+
+document
+  .getElementById(
+    "exportExpensesCSV"
+  )
+  ?.addEventListener(
+    "click",
+    () => {
+
+      if (
+        expenses.length ===
+        0
+      ) {
+
+        showToast(
+          "No expenses to export yet."
+        );
+
+
+        return;
+
+      }
+
+
+      const csv =
+        createExpenseCSV();
+
+
+      downloadTextFile(
+        `momo-expenses-${formatBackupFileDate()}.csv`,
+        `\uFEFF${csv}`,
+        "text/csv;charset=utf-8"
+      );
+
+
+      showToast(
+        "Expense CSV exported ✨"
+      );
+
+    }
+  );
+
+
+document
+  .getElementById(
+    "chooseMomoBackup"
+  )
+  ?.addEventListener(
+    "click",
+    () => {
+
+      if (
+        importMomoBackupFile
+      ) {
+
+        importMomoBackupFile.value =
+          "";
+
+
+        importMomoBackupFile.click();
+
+      }
+
+    }
+  );
+
+
+function isPlainObject(
+  value
+) {
+
+  return (
+    value !==
+      null &&
+    typeof value ===
+      "object" &&
+    !Array.isArray(
+      value
+    )
+  );
+
+}
+
+
+function validateMomoBackup(
+  backup
+) {
+
+  if (
+    !isPlainObject(
+      backup
+    )
+  ) {
+
+    return {
+      valid:
+        false,
+
+      message:
+        "That file is not a valid Momo backup."
+    };
+
+  }
+
+
+  if (
+    backup.format !==
+    MOMO_BACKUP_FORMAT
+  ) {
+
+    return {
+      valid:
+        false,
+
+      message:
+        "This is not a Momo backup file."
+    };
+
+  }
+
+
+  if (
+    Number(
+      backup.backupVersion
+    ) >
+    MOMO_BACKUP_VERSION
+  ) {
+
+    return {
+      valid:
+        false,
+
+      message:
+        "This backup was created by a newer Momo backup format."
+    };
+
+  }
+
+
+  if (
+    !isPlainObject(
+      backup.data
+    )
+  ) {
+
+    return {
+      valid:
+        false,
+
+      message:
+        "Backup data is missing."
+    };
+
+  }
+
+
+  const requiredArrays = [
+
+    "expenses",
+    "budgets",
+    "trips",
+    "recurringExpenses",
+    "plannedExpenses"
+
+  ];
+
+
+  const invalidArray =
+    requiredArrays.find(
+      (key) =>
+        !Array.isArray(
+          backup.data[
+            key
+          ]
+        )
+    );
+
+
+  if (
+    invalidArray
+  ) {
+
+    return {
+      valid:
+        false,
+
+      message:
+        "The backup is incomplete or damaged."
+    };
+
+  }
+
+
+  return {
+    valid:
+      true,
+
+    message:
+      ""
+  };
+
+}
+
+
+function getBackupRestoreSummaryHTML(
+  backup
+) {
+
+  const data =
+    backup.data;
+
+
+  const exportedAt =
+    backup.exportedAt
+      ? new Date(
+          backup.exportedAt
+        )
+      : null;
+
+
+  const exportedText =
+    exportedAt &&
+    !Number.isNaN(
+      exportedAt.getTime()
+    )
+
+      ? new Intl.DateTimeFormat(
+          "en-US",
+          {
+            dateStyle:
+              "medium",
+
+            timeStyle:
+              "short"
+          }
+        ).format(
+          exportedAt
+        )
+
+      : "Unknown";
+
+
+  return `
+
+    <div class="restore-summary-date">
+
+      <span>
+        Backup created
+      </span>
+
+      <strong>
+        ${escapeHTML(
+          exportedText
+        )}
+      </strong>
+
+    </div>
+
+
+    <div class="restore-summary-grid">
+
+      <div>
+        <strong>
+          ${data.expenses.length}
+        </strong>
+        <span>Expenses</span>
+      </div>
+
+      <div>
+        <strong>
+          ${data.budgets.length}
+        </strong>
+        <span>Budgets</span>
+      </div>
+
+      <div>
+        <strong>
+          ${data.trips.length}
+        </strong>
+        <span>Trips</span>
+      </div>
+
+      <div>
+        <strong>
+          ${data.recurringExpenses.length}
+        </strong>
+        <span>Recurring</span>
+      </div>
+
+      <div>
+        <strong>
+          ${data.plannedExpenses.length}
+        </strong>
+        <span>Planned</span>
+      </div>
+
+    </div>
+
+  `;
+
+}
+
+
+importMomoBackupFile?.addEventListener(
+  "change",
+  async () => {
+
+    const file =
+      importMomoBackupFile.files?.[
+        0
+      ];
+
+
+    if (
+      !file
+    ) {
+
+      return;
+
+    }
+
+
+    try {
+
+      const text =
+        await file.text();
+
+
+      const backup =
+        JSON.parse(
+          text
+        );
+
+
+      const validation =
+        validateMomoBackup(
+          backup
+        );
+
+
+      if (
+        !validation.valid
+      ) {
+
+        pendingBackupRestore =
+          null;
+
+
+        showToast(
+          validation.message
+        );
+
+
+        return;
+
+      }
+
+
+      pendingBackupRestore =
+        backup;
+
+
+      const summary =
+        document.getElementById(
+          "restoreBackupSummary"
+        );
+
+
+      if (
+        summary
+      ) {
+
+        summary.innerHTML =
+          getBackupRestoreSummaryHTML(
+            backup
+          );
+
+      }
+
+
+      if (
+        restoreBackupModal
+      ) {
+
+        restoreBackupModal.hidden =
+          false;
+
+      }
+
+    } catch (
+      error
+    ) {
+
+      console.error(
+        "Backup import failed:",
+        error
+      );
+
+
+      pendingBackupRestore =
+        null;
+
+
+      showToast(
+        "Could not read that backup file."
+      );
+
+    }
+
+  }
+);
+
+
+async function restoreRecords(
+  storeName,
+  records
+) {
+
+  await clearStore(
+    storeName
+  );
+
+
+  for (
+    const record of records
+  ) {
+
+    if (
+      !isPlainObject(
+        record
+      )
+    ) {
+
+      continue;
+
+    }
+
+
+    await putRecord(
+      storeName,
+      record
+    );
+
+  }
+
+}
+
+
+async function restoreMomoBackup(
+  backup
+) {
+
+  const data =
+    backup.data;
+
+
+  await restoreRecords(
+    STORES.expenses,
+    data.expenses ||
+      []
+  );
+
+
+  await restoreRecords(
+    STORES.budgets,
+    data.budgets ||
+      []
+  );
+
+
+  await restoreRecords(
+    STORES.trips,
+    data.trips ||
+      []
+  );
+
+
+  await restoreRecords(
+    STORES.cards,
+    Array.isArray(
+      data.cards
+    )
+      ? data.cards
+      : []
+  );
+
+
+  await restoreRecords(
+    STORES.recurring,
+    data.recurringExpenses ||
+      []
+  );
+
+
+  await restoreRecords(
+    STORES.planned,
+    data.plannedExpenses ||
+      []
+  );
+
+
+  await restoreRecords(
+    STORES.settings,
+    Array.isArray(
+      data.settings
+    )
+      ? data.settings
+      : []
+  );
+
+
+  const preferences =
+    isPlainObject(
+      backup.preferences
+    )
+      ? backup.preferences
+      : {};
+
+
+  if (
+    preferences.converterCurrencyA
+  ) {
+
+    localStorage.setItem(
+      LOCAL_KEYS.converterA,
+      preferences.converterCurrencyA
+    );
+
+  } else {
+
+    localStorage.removeItem(
+      LOCAL_KEYS.converterA
+    );
+
+  }
+
+
+  if (
+    preferences.converterCurrencyB
+  ) {
+
+    localStorage.setItem(
+      LOCAL_KEYS.converterB,
+      preferences.converterCurrencyB
+    );
+
+  } else {
+
+    localStorage.removeItem(
+      LOCAL_KEYS.converterB
+    );
+
+  }
+
+
+  await loadAppData();
+
+
+  renderAll();
+
+
+  initializeConverterCurrencies();
+
+}
+
+
+document
+  .getElementById(
+    "cancelRestoreBackup"
+  )
+  ?.addEventListener(
+    "click",
+    () => {
+
+      pendingBackupRestore =
+        null;
+
+
+      if (
+        restoreBackupModal
+      ) {
+
+        restoreBackupModal.hidden =
+          true;
+
+      }
+
+    }
+  );
+
+
+document
+  .getElementById(
+    "confirmRestoreBackup"
+  )
+  ?.addEventListener(
+    "click",
+    async () => {
+
+      if (
+        !pendingBackupRestore
+      ) {
+
+        return;
+
+      }
+
+
+      const restoreButton =
+        document.getElementById(
+          "confirmRestoreBackup"
+        );
+
+
+      if (
+        restoreButton
+      ) {
+
+        restoreButton.disabled =
+          true;
+
+      }
+
+
+      try {
+
+        const backup =
+          pendingBackupRestore;
+
+
+        await restoreMomoBackup(
+          backup
+        );
+
+
+        pendingBackupRestore =
+          null;
+
+
+        if (
+          restoreBackupModal
+        ) {
+
+          restoreBackupModal.hidden =
+            true;
+
+        }
+
+
+        renderBackupStatus();
+
+
+        showToast(
+          "Momo backup restored ✨"
+        );
+
+      } catch (
+        error
+      ) {
+
+        console.error(
+          "Backup restore failed:",
+          error
+        );
+
+
+        showToast(
+          "Restore failed. Your backup file was not deleted."
+        );
+
+      } finally {
+
+        if (
+          restoreButton
+        ) {
+
+          restoreButton.disabled =
+            false;
+
+        }
+
+      }
+
+    }
+  );
+
+
+restoreBackupModal?.addEventListener(
+  "click",
+  (event) => {
+
+    if (
+      event.target ===
+      restoreBackupModal
+    ) {
+
+      pendingBackupRestore =
+        null;
+
+
+      restoreBackupModal.hidden =
+        true;
+
+    }
+
+  }
+);
+
+
+function renderBackupStatus() {
+
+  const mappings = [
+
+    [
+      "backupExpenseCount",
+      expenses.length
+    ],
+
+    [
+      "backupBudgetCount",
+      budgets.length
+    ],
+
+    [
+      "backupTripCount",
+      trips.length
+    ],
+
+    [
+      "backupRecurringCount",
+      recurringExpenses.length
+    ],
+
+    [
+      "backupPlannedCount",
+      plannedExpenses.length
+    ]
+
+  ];
+
+
+  mappings.forEach(
+    (
+      [
+        id,
+        value
+      ]
+    ) => {
+
+      const element =
+        document.getElementById(
+          id
+        );
+
+
+      if (
+        element
+      ) {
+
+        element.textContent =
+          String(
+            value
+          );
+
+      }
+
+    }
+  );
+
+}
+
+
 // ========================================
 // RENDER EVERYTHING
 // ========================================
@@ -8392,6 +13902,12 @@ function renderAll() {
   renderTransactions();
 
   renderCalendar();
+
+  renderRecurringExpenses();
+
+  renderPlannedExpenses();
+
+  renderBackupStatus();
 
   renderHomeSummary();
 
@@ -8492,7 +14008,81 @@ document.addEventListener(
     }
 
 
+    if (
+      recurringModal
+    ) {
+
+      recurringModal.hidden =
+        true;
+
+    }
+
+
+    const deleteRecurringModal =
+      document.getElementById(
+        "deleteRecurringModal"
+      );
+
+
+    if (
+      deleteRecurringModal
+    ) {
+
+      deleteRecurringModal.hidden =
+        true;
+
+    }
+
+
+    if (
+      restoreBackupModal
+    ) {
+
+      restoreBackupModal.hidden =
+        true;
+
+    }
+
+
+    if (
+      plannedExpenseModal
+    ) {
+
+      plannedExpenseModal.hidden =
+        true;
+
+    }
+
+
+    const deletePlannedExpenseModal =
+      document.getElementById(
+        "deletePlannedExpenseModal"
+      );
+
+
+    if (
+      deletePlannedExpenseModal
+    ) {
+
+      deletePlannedExpenseModal.hidden =
+        true;
+
+    }
+
+
     expensePendingDelete =
+      null;
+
+
+    recurringPendingDelete =
+      null;
+
+
+    pendingBackupRestore =
+      null;
+
+
+    plannedPendingDelete =
       null;
 
   }

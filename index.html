@@ -127,6 +127,45 @@
           </span>
           <span class="drawer-arrow">›</span>
         </button>
+
+        <button
+          class="drawer-item"
+          type="button"
+          data-drawer-nav="recurring"
+        >
+          <span class="drawer-icon">↻</span>
+          <span class="drawer-copy">
+            <strong>Recurring Expenses</strong>
+            <small>Keep track of subscriptions and regular payments.</small>
+          </span>
+          <span class="drawer-arrow">›</span>
+        </button>
+
+        <button
+          class="drawer-item"
+          type="button"
+          data-drawer-nav="planned"
+        >
+          <span class="drawer-icon">☆</span>
+          <span class="drawer-copy">
+            <strong>Planned Expenses</strong>
+            <small>Save future purchases without counting them as spent.</small>
+          </span>
+          <span class="drawer-arrow">›</span>
+        </button>
+
+        <button
+          class="drawer-item"
+          type="button"
+          data-drawer-nav="backup"
+        >
+          <span class="drawer-icon">⇩</span>
+          <span class="drawer-copy">
+            <strong>Backup & Export</strong>
+            <small>Protect your Momo data or export expenses to CSV.</small>
+          </span>
+          <span class="drawer-arrow">›</span>
+        </button>
       </div>
 
       <div class="drawer-section">
@@ -367,6 +406,26 @@
           </div>
         </div>
 
+        <section
+          id="budgetAlertsPanel"
+          class="budget-alerts-panel"
+          hidden
+        >
+          <div class="budget-alerts-heading">
+            <div>
+              <p class="eyebrow">Heads up</p>
+              <h2>Budget Alerts</h2>
+            </div>
+
+            <span id="budgetAlertsCount">0</span>
+          </div>
+
+          <div
+            id="budgetAlertsList"
+            class="budget-alerts-list"
+          ></div>
+        </section>
+
         <div class="budget-filter-row">
           <button
             class="budget-filter active"
@@ -469,11 +528,34 @@
               <span>Payment</span>
               <select id="activityPaymentFilter"><option value="">All payment methods</option></select>
             </label>
+            <label>
+              <span>Currency</span>
+              <select id="activityCurrencyFilter"><option value="">All currencies</option></select>
+            </label>
+            <label>
+              <span>Sort</span>
+              <select id="activitySortFilter">
+                <option value="newest">Newest first</option>
+                <option value="oldest">Oldest first</option>
+                <option value="highest">Highest amount</option>
+                <option value="lowest">Lowest amount</option>
+              </select>
+            </label>
+            <label>
+              <span>Receipt</span>
+              <select id="activityPhotoFilter">
+                <option value="">Any</option>
+                <option value="with">With photo</option>
+                <option value="without">Without photo</option>
+              </select>
+            </label>
           </div>
 
-          <div class="activity-date-grid">
+          <div class="activity-range-grid">
             <label><span>From</span><input id="activityDateFrom" type="date"></label>
             <label><span>To</span><input id="activityDateTo" type="date"></label>
+            <label><span>Min ₱</span><input id="activityMinAmount" type="number" inputmode="decimal" min="0" step="any" placeholder="0"></label>
+            <label><span>Max ₱</span><input id="activityMaxAmount" type="number" inputmode="decimal" min="0" step="any" placeholder="Any"></label>
           </div>
 
           <div class="activity-filter-footer">
@@ -776,6 +858,28 @@
               <span>Total</span>
               <strong id="converterTotalA">¥0</strong>
             </div>
+
+            <div
+              class="calculator-operator-bar"
+              data-calculator-target="A"
+              aria-label="Calculator operators"
+            >
+              <button type="button" data-calc-value="+">＋</button>
+              <button type="button" data-calc-value="-">−</button>
+              <button type="button" data-calc-value="×">×</button>
+              <button type="button" data-calc-value="÷">÷</button>
+              <button type="button" data-calc-value="(">(</button>
+              <button type="button" data-calc-value=")">)</button>
+              <button
+                type="button"
+                class="calculator-backspace"
+                data-calc-action="backspace"
+                aria-label="Backspace"
+              >
+                ⌫
+              </button>
+            </div>
+
           </div>
 
           <div class="converter-swap-row">
@@ -840,6 +944,28 @@
               <span>Total</span>
               <strong id="converterTotalB">₱0.00</strong>
             </div>
+
+            <div
+              class="calculator-operator-bar"
+              data-calculator-target="B"
+              aria-label="Calculator operators"
+            >
+              <button type="button" data-calc-value="+">＋</button>
+              <button type="button" data-calc-value="-">−</button>
+              <button type="button" data-calc-value="×">×</button>
+              <button type="button" data-calc-value="÷">÷</button>
+              <button type="button" data-calc-value="(">(</button>
+              <button type="button" data-calc-value=")">)</button>
+              <button
+                type="button"
+                class="calculator-backspace"
+                data-calc-action="backspace"
+                aria-label="Backspace"
+              >
+                ⌫
+              </button>
+            </div>
+
           </div>
 
           <div class="converter-rate">
@@ -976,6 +1102,284 @@
       </section>
 
 
+
+      <!-- RECURRING EXPENSES -->
+      <section
+        class="screen"
+        data-screen="recurring"
+      >
+        <div class="page-heading compact">
+          <div>
+            <p class="eyebrow">Regular payments</p>
+            <h1>Recurring Expenses</h1>
+            <p class="page-description">
+              Track subscriptions and repeating costs without storing account details.
+            </p>
+          </div>
+
+          <button
+            id="addRecurringButton"
+            class="round-add-btn"
+            type="button"
+            aria-label="Add recurring expense"
+          >
+            ＋
+          </button>
+        </div>
+
+        <div class="recurring-summary-grid">
+          <section class="card recurring-summary-card">
+            <span>Active</span>
+            <strong id="recurringActiveCount">0</strong>
+          </section>
+
+          <section class="card recurring-summary-card">
+            <span>Due soon</span>
+            <strong id="recurringDueSoonCount">0</strong>
+          </section>
+
+          <section class="card recurring-summary-card recurring-summary-wide">
+            <span>Est. monthly</span>
+            <strong id="recurringMonthlyEstimate">₱0.00</strong>
+          </section>
+        </div>
+
+        <div
+          id="recurringList"
+          class="recurring-list"
+        ></div>
+
+        <div
+          id="recurringEmpty"
+          class="empty-panel"
+        >
+          <span class="empty-icon">↻</span>
+          <h3>No recurring expenses yet</h3>
+          <p>
+            Add subscriptions, bills, or other repeating expenses here.
+          </p>
+        </div>
+      </section>
+
+
+
+
+      <!-- PLANNED EXPENSES -->
+      <section
+        class="screen"
+        data-screen="planned"
+      >
+        <div class="page-heading compact">
+          <div>
+            <p class="eyebrow">Wishlist & planning</p>
+            <h1>Planned Expenses</h1>
+            <p class="page-description">
+              Save things you expect to buy without adding them to your spending yet.
+            </p>
+          </div>
+
+          <button
+            id="addPlannedExpenseButton"
+            class="round-add-btn"
+            type="button"
+            aria-label="Add planned expense"
+          >
+            ＋
+          </button>
+        </div>
+
+        <div class="planned-summary-grid">
+          <section class="card planned-summary-card planned-summary-primary">
+            <span>Still Planned</span>
+            <strong id="plannedTotalAmount">₱0.00</strong>
+            <small id="plannedActiveCount">0 items</small>
+          </section>
+
+          <section class="card planned-summary-card">
+            <span>Purchased</span>
+            <strong id="plannedPurchasedCount">0</strong>
+            <small>converted to expenses</small>
+          </section>
+        </div>
+
+        <div class="planned-filter-row">
+          <button
+            class="planned-filter active"
+            type="button"
+            data-planned-filter="planned"
+          >
+            Planned
+          </button>
+
+          <button
+            class="planned-filter"
+            type="button"
+            data-planned-filter="purchased"
+          >
+            Purchased
+          </button>
+
+          <button
+            class="planned-filter"
+            type="button"
+            data-planned-filter="all"
+          >
+            All
+          </button>
+        </div>
+
+        <div
+          id="plannedExpenseList"
+          class="planned-expense-list"
+        ></div>
+
+        <div
+          id="plannedExpenseEmpty"
+          class="empty-panel"
+        >
+          <span class="empty-icon">☆</span>
+          <h3>No planned expenses yet</h3>
+          <p>
+            Add something you may want to buy later.
+          </p>
+        </div>
+      </section>
+
+
+      <!-- BACKUP & EXPORT -->
+      <section
+        class="screen"
+        data-screen="backup"
+      >
+        <div class="page-heading">
+          <div>
+            <p class="eyebrow">Data safety</p>
+            <h1>Backup & Export</h1>
+            <p class="page-description">
+              Your Momo data stays on your device unless you choose to export it.
+            </p>
+          </div>
+        </div>
+
+        <section class="card backup-hero-card">
+          <div class="backup-hero-icon">
+            ☁
+          </div>
+
+          <div>
+            <p class="eyebrow">Full backup</p>
+            <h2>Protect your Momo data</h2>
+            <p>
+              Creates one Momo backup file containing your expenses, budgets, trips,
+              recurring expenses, settings, links, and attached photos.
+            </p>
+          </div>
+
+          <button
+            id="exportMomoBackup"
+            class="primary-btn backup-primary-action"
+            type="button"
+          >
+            Export Momo Backup
+          </button>
+        </section>
+
+        <section class="card backup-section-card">
+          <div class="backup-section-heading">
+            <div>
+              <p class="eyebrow">Restore</p>
+              <h2>Import a backup</h2>
+            </div>
+
+            <span class="backup-pill">JSON</span>
+          </div>
+
+          <p class="backup-section-copy">
+            Choose a Momo backup file. Momo checks the file first and asks for confirmation before replacing your current local data.
+          </p>
+
+          <input
+            id="importMomoBackupFile"
+            type="file"
+            accept=".json,application/json"
+            hidden
+          >
+
+          <button
+            id="chooseMomoBackup"
+            class="secondary-btn backup-full-btn"
+            type="button"
+          >
+            Choose Backup File
+          </button>
+        </section>
+
+        <section class="card backup-section-card">
+          <div class="backup-section-heading">
+            <div>
+              <p class="eyebrow">Spreadsheet</p>
+              <h2>Expense CSV</h2>
+            </div>
+
+            <span class="backup-pill">CSV</span>
+          </div>
+
+          <p class="backup-section-copy">
+            Export your expense history as a spreadsheet-friendly CSV. Photos are not embedded in the CSV.
+          </p>
+
+          <button
+            id="exportExpensesCSV"
+            class="secondary-btn backup-full-btn"
+            type="button"
+          >
+            Export Expenses CSV
+          </button>
+        </section>
+
+        <section class="backup-data-note">
+          <span>🔒</span>
+          <p>
+            Momo does not upload these files anywhere. Export and restore happen locally in your browser.
+          </p>
+        </section>
+
+        <section
+          id="backupStatusCard"
+          class="card backup-status-card"
+        >
+          <span>Current local data</span>
+
+          <div class="backup-status-grid">
+            <div>
+              <strong id="backupExpenseCount">0</strong>
+              <small>Expenses</small>
+            </div>
+
+            <div>
+              <strong id="backupBudgetCount">0</strong>
+              <small>Budgets</small>
+            </div>
+
+            <div>
+              <strong id="backupTripCount">0</strong>
+              <small>Trips</small>
+            </div>
+
+            <div>
+              <strong id="backupRecurringCount">0</strong>
+              <small>Recurring</small>
+            </div>
+
+            <div>
+              <strong id="backupPlannedCount">0</strong>
+              <small>Planned</small>
+            </div>
+          </div>
+        </section>
+      </section>
+
+
       <!-- REPORTS -->
       <section
         class="screen"
@@ -986,20 +1390,214 @@
             <p class="eyebrow">Overview</p>
             <h1>Reports</h1>
             <p class="page-description">
-              A simple spending summary for now.
+              See where your money went without turning Momo into a banking dashboard.
             </p>
           </div>
         </div>
 
-        <section class="card monthly-card">
-          <p class="label">This Month</p>
-          <p
-            id="reportMonthTotal"
-            class="amount-lg"
+        <section class="card report-controls-card">
+          <div class="report-control-group">
+            <span class="report-control-label">Period</span>
+
+            <div class="report-chip-row" id="reportPeriodControls">
+              <button
+                class="report-chip active"
+                type="button"
+                data-report-period="this_month"
+              >
+                This Month
+              </button>
+
+              <button
+                class="report-chip"
+                type="button"
+                data-report-period="last_month"
+              >
+                Last Month
+              </button>
+
+              <button
+                class="report-chip"
+                type="button"
+                data-report-period="this_year"
+              >
+                This Year
+              </button>
+
+              <button
+                class="report-chip"
+                type="button"
+                data-report-period="custom"
+              >
+                Custom
+              </button>
+            </div>
+          </div>
+
+          <div
+            id="reportCustomDates"
+            class="report-custom-dates"
+            hidden
           >
-            ₱0.00
+            <label>
+              <span>From</span>
+              <input
+                id="reportDateFrom"
+                type="date"
+              >
+            </label>
+
+            <label>
+              <span>To</span>
+              <input
+                id="reportDateTo"
+                type="date"
+              >
+            </label>
+          </div>
+
+          <div class="report-control-group report-scope-group">
+            <span class="report-control-label">Scope</span>
+
+            <div class="report-chip-row" id="reportScopeControls">
+              <button
+                class="report-chip active"
+                type="button"
+                data-report-scope="all"
+              >
+                All
+              </button>
+
+              <button
+                class="report-chip"
+                type="button"
+                data-report-scope="personal"
+              >
+                Personal
+              </button>
+
+              <button
+                class="report-chip"
+                type="button"
+                data-report-scope="trip"
+              >
+                Trip
+              </button>
+            </div>
+          </div>
+
+          <label
+            id="reportTripPickerWrap"
+            class="report-trip-picker"
+            hidden
+          >
+            <span>Trip</span>
+
+            <select id="reportTripPicker">
+              <option value="">Choose a trip</option>
+            </select>
+          </label>
+        </section>
+
+        <section class="report-metric-grid">
+          <article class="card report-metric-card report-metric-primary">
+            <span>Total Spending</span>
+            <strong id="reportTotalSpending">₱0.00</strong>
+            <small id="reportPeriodLabel">This Month</small>
+          </article>
+
+          <article class="card report-metric-card">
+            <span>Expenses</span>
+            <strong id="reportExpenseCount">0</strong>
+            <small>transactions</small>
+          </article>
+
+          <article class="card report-metric-card">
+            <span>Average / Day</span>
+            <strong id="reportAverageDaily">₱0.00</strong>
+            <small id="reportDaysLabel">0 days</small>
+          </article>
+
+          <article class="card report-metric-card">
+            <span>Biggest Expense</span>
+            <strong id="reportBiggestExpense">₱0.00</strong>
+            <small id="reportBiggestExpenseTitle">No expenses yet</small>
+          </article>
+        </section>
+
+        <section class="card report-section-card spending-insights-card">
+          <div class="report-section-heading">
+            <div>
+              <p class="eyebrow">Momo noticed</p>
+              <h2>Spending Insights</h2>
+            </div>
+
+            <span id="spendingInsightsMeta" class="report-section-meta">This view</span>
+          </div>
+
+          <div
+            id="spendingInsightsList"
+            class="spending-insights-list"
+          ></div>
+        </section>
+
+
+        <section class="card report-section-card">
+          <div class="report-section-heading">
+            <div>
+              <p class="eyebrow">Breakdown</p>
+              <h2>By Category</h2>
+            </div>
+
+            <span id="reportCategoryCount" class="report-section-meta">0 categories</span>
+          </div>
+
+          <div
+            id="reportCategoryBreakdown"
+            class="report-bar-list"
+          ></div>
+        </section>
+
+        <section class="card report-section-card">
+          <div class="report-section-heading">
+            <div>
+              <p class="eyebrow">How you paid</p>
+              <h2>Payment Methods</h2>
+            </div>
+          </div>
+
+          <div
+            id="reportPaymentBreakdown"
+            class="report-bar-list"
+          ></div>
+        </section>
+
+        <section class="card report-section-card">
+          <div class="report-section-heading">
+            <div>
+              <p class="eyebrow">Trend</p>
+              <h2>Last 6 Months</h2>
+            </div>
+
+            <span class="report-section-meta">PHP equivalent</span>
+          </div>
+
+          <div
+            id="reportMonthlyTrend"
+            class="report-trend-chart"
+          ></div>
+        </section>
+
+        <section
+          id="reportEmptyState"
+          class="report-empty-state"
+          hidden
+        >
+          <span>🌸</span>
+          <strong>No spending in this view</strong>
+          <p>
+            Try another period or scope.
           </p>
-          <p class="muted small">total spending</p>
         </section>
       </section>
 
@@ -1244,6 +1842,42 @@
     </div>
 
 
+
+    <!-- ========================================
+         TRIP DASHBOARD 2.0
+    ========================================= -->
+    <div
+      id="tripDashboardModal"
+      class="modal-backdrop trip-dashboard-backdrop"
+      hidden
+    >
+      <section
+        class="modal-card trip-dashboard-card"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="tripDashboardTitle"
+      >
+        <div class="trip-dashboard-sticky-header">
+          <div>
+            <p class="eyebrow">Trip Dashboard</p>
+            <h2 id="tripDashboardTitle">Trip</h2>
+          </div>
+
+          <button
+            id="closeTripDashboard"
+            class="icon-btn soft"
+            type="button"
+            aria-label="Close trip dashboard"
+          >
+            ×
+          </button>
+        </div>
+
+        <div id="tripDashboardBody"></div>
+      </section>
+    </div>
+
+
     <!-- ========================================
          ADD / EDIT TRIP MODAL
     ========================================= -->
@@ -1433,6 +2067,459 @@
     </div>
 
 
+
+
+
+
+
+    <!-- ========================================
+         ADD / EDIT PLANNED EXPENSE MODAL
+    ========================================= -->
+    <div
+      id="plannedExpenseModal"
+      class="modal-backdrop"
+      hidden
+    >
+      <section
+        class="modal-card"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="plannedExpenseModalTitle"
+      >
+        <div class="modal-header">
+          <div>
+            <p class="eyebrow">Planned purchase</p>
+            <h2 id="plannedExpenseModalTitle">Add Planned Expense</h2>
+          </div>
+
+          <button
+            id="closePlannedExpenseModal"
+            class="icon-btn soft"
+            type="button"
+            aria-label="Close planned expense form"
+          >
+            ×
+          </button>
+        </div>
+
+        <form id="plannedExpenseForm">
+          <input
+            id="plannedExpenseId"
+            type="hidden"
+          >
+
+          <label class="modal-field">
+            <span>Title</span>
+            <input
+              id="plannedExpenseTitle"
+              type="text"
+              placeholder="e.g. Don Quijote shopping"
+              required
+            >
+          </label>
+
+          <div class="modal-field-row">
+            <label class="modal-field">
+              <span>Expected Amount</span>
+              <input
+                id="plannedExpenseAmount"
+                type="number"
+                inputmode="decimal"
+                min="0"
+                step="any"
+                placeholder="0"
+                required
+              >
+            </label>
+
+            <label class="modal-field">
+              <span>Currency</span>
+              <select id="plannedExpenseCurrency">
+                <option value="PHP">PHP</option>
+                <option value="JPY">JPY</option>
+                <option value="USD">USD</option>
+                <option value="GBP">GBP</option>
+                <option value="HKD">HKD</option>
+                <option value="SGD">SGD</option>
+                <option value="CNY">CNY</option>
+              </select>
+            </label>
+          </div>
+
+          <label class="modal-field">
+            <span>Category</span>
+            <select
+              id="plannedExpenseCategory"
+              required
+            >
+              <option value="Food & Drinks">Food & Drinks</option>
+              <option value="Transportation">Transportation</option>
+              <option value="Shopping">Shopping</option>
+              <option value="Groceries">Groceries</option>
+              <option value="Bills">Bills</option>
+              <option value="Entertainment">Entertainment</option>
+              <option value="Travel">Travel</option>
+              <option value="Attractions">Attractions</option>
+              <option value="Health">Health</option>
+              <option value="Beauty">Beauty</option>
+              <option value="Other">Other</option>
+            </select>
+          </label>
+
+          <label class="modal-field">
+            <span>
+              Trip
+              <small class="field-optional">Optional</small>
+            </span>
+
+            <select id="plannedExpenseTrip">
+              <option value="">Personal / No Trip</option>
+            </select>
+          </label>
+
+          <label class="modal-field">
+            <span>
+              Target Date
+              <small class="field-optional">Optional</small>
+            </span>
+
+            <input
+              id="plannedExpenseTargetDate"
+              type="date"
+            >
+          </label>
+
+          <label class="modal-field">
+            <span>
+              Notes
+              <small class="field-optional">Optional</small>
+            </span>
+
+            <textarea
+              id="plannedExpenseNotes"
+              rows="3"
+              placeholder="Anything you want to remember"
+            ></textarea>
+          </label>
+
+          <button
+            class="modal-save"
+            type="submit"
+          >
+            Save Planned Expense
+          </button>
+        </form>
+      </section>
+    </div>
+
+
+    <!-- ========================================
+         DELETE PLANNED EXPENSE MODAL
+    ========================================= -->
+    <div
+      id="deletePlannedExpenseModal"
+      class="modal-backdrop"
+      hidden
+    >
+      <section
+        class="modal-card"
+        role="dialog"
+        aria-modal="true"
+      >
+        <div class="modal-header">
+          <div>
+            <p class="eyebrow">Planned purchase</p>
+            <h2>Delete Planned Expense?</h2>
+          </div>
+        </div>
+
+        <p class="muted">
+          This removes the planned item. Any real expense already created from it will stay saved.
+        </p>
+
+        <div class="modal-field-row">
+          <button
+            id="cancelDeletePlannedExpense"
+            class="secondary-btn"
+            type="button"
+          >
+            Cancel
+          </button>
+
+          <button
+            id="confirmDeletePlannedExpense"
+            class="danger-btn"
+            type="button"
+          >
+            Delete
+          </button>
+        </div>
+      </section>
+    </div>
+
+
+    <!-- ========================================
+         RESTORE BACKUP CONFIRMATION
+    ========================================= -->
+    <div
+      id="restoreBackupModal"
+      class="modal-backdrop"
+      hidden
+    >
+      <section
+        class="modal-card"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="restoreBackupTitle"
+      >
+        <div class="modal-header">
+          <div>
+            <p class="eyebrow">Restore backup</p>
+            <h2 id="restoreBackupTitle">Replace Current Data?</h2>
+          </div>
+        </div>
+
+        <div
+          id="restoreBackupSummary"
+          class="restore-backup-summary"
+        ></div>
+
+        <p class="muted restore-warning">
+          Restoring replaces the current Momo records on this device with the records inside the selected backup.
+        </p>
+
+        <div class="modal-field-row">
+          <button
+            id="cancelRestoreBackup"
+            class="secondary-btn"
+            type="button"
+          >
+            Cancel
+          </button>
+
+          <button
+            id="confirmRestoreBackup"
+            class="danger-btn"
+            type="button"
+          >
+            Restore
+          </button>
+        </div>
+      </section>
+    </div>
+
+
+    <!-- ========================================
+         ADD / EDIT RECURRING EXPENSE MODAL
+    ========================================= -->
+    <div
+      id="recurringModal"
+      class="modal-backdrop"
+      hidden
+    >
+      <section
+        class="modal-card"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="recurringModalTitle"
+      >
+        <div class="modal-header">
+          <div>
+            <p class="eyebrow">Recurring</p>
+            <h2 id="recurringModalTitle">Add Recurring Expense</h2>
+          </div>
+
+          <button
+            id="closeRecurringModal"
+            class="icon-btn soft"
+            type="button"
+            aria-label="Close recurring expense form"
+          >
+            ×
+          </button>
+        </div>
+
+        <form id="recurringForm">
+          <input
+            id="recurringId"
+            type="hidden"
+          >
+
+          <label class="modal-field">
+            <span>Name</span>
+            <input
+              id="recurringName"
+              type="text"
+              placeholder="e.g. Netflix"
+              required
+            >
+          </label>
+
+          <div class="modal-field-row">
+            <label class="modal-field">
+              <span>Amount</span>
+              <input
+                id="recurringAmount"
+                type="number"
+                inputmode="decimal"
+                min="0"
+                step="any"
+                placeholder="0"
+                required
+              >
+            </label>
+
+            <label class="modal-field">
+              <span>Currency</span>
+              <select id="recurringCurrency">
+                <option value="PHP">PHP</option>
+                <option value="JPY">JPY</option>
+                <option value="USD">USD</option>
+                <option value="GBP">GBP</option>
+                <option value="HKD">HKD</option>
+                <option value="SGD">SGD</option>
+                <option value="CNY">CNY</option>
+              </select>
+            </label>
+          </div>
+
+          <label class="modal-field">
+            <span>Category</span>
+            <select
+              id="recurringCategory"
+              required
+            >
+              <option value="Food & Drinks">Food & Drinks</option>
+              <option value="Transportation">Transportation</option>
+              <option value="Shopping">Shopping</option>
+              <option value="Groceries">Groceries</option>
+              <option value="Bills">Bills</option>
+              <option value="Entertainment">Entertainment</option>
+              <option value="Travel">Travel</option>
+              <option value="Attractions">Attractions</option>
+              <option value="Health">Health</option>
+              <option value="Beauty">Beauty</option>
+              <option value="Other">Other</option>
+            </select>
+          </label>
+
+          <label class="modal-field">
+            <span>Payment Method</span>
+            <select
+              id="recurringPaymentMethod"
+              required
+            >
+              <option value="Cash">Cash</option>
+              <option value="Credit Card">Credit Card</option>
+              <option value="Debit Card">Debit Card</option>
+              <option value="GCash">GCash</option>
+              <option value="Maya">Maya</option>
+              <option value="Bank Transfer">Bank Transfer</option>
+              <option value="Other">Other</option>
+            </select>
+          </label>
+
+          <label class="modal-field">
+            <span>Frequency</span>
+            <select
+              id="recurringFrequency"
+              required
+            >
+              <option value="weekly">Weekly</option>
+              <option value="monthly" selected>Monthly</option>
+              <option value="quarterly">Quarterly</option>
+              <option value="yearly">Yearly</option>
+            </select>
+          </label>
+
+          <div class="modal-field-row recurring-date-row">
+            <label class="modal-field">
+              <span>Next Due Date</span>
+              <input
+                id="recurringNextDueDate"
+                type="date"
+                required
+              >
+            </label>
+
+            <label class="modal-field">
+              <span>
+                End Date
+                <small class="field-optional">Optional</small>
+              </span>
+              <input
+                id="recurringEndDate"
+                type="date"
+              >
+            </label>
+          </div>
+
+          <label class="modal-field">
+            <span>
+              Notes
+              <small class="field-optional">Optional</small>
+            </span>
+            <textarea
+              id="recurringNotes"
+              rows="3"
+              placeholder="Optional notes"
+            ></textarea>
+          </label>
+
+          <button
+            class="modal-save"
+            type="submit"
+          >
+            Save Recurring Expense
+          </button>
+        </form>
+      </section>
+    </div>
+
+
+    <!-- ========================================
+         DELETE RECURRING EXPENSE MODAL
+    ========================================= -->
+    <div
+      id="deleteRecurringModal"
+      class="modal-backdrop"
+      hidden
+    >
+      <section
+        class="modal-card"
+        role="dialog"
+        aria-modal="true"
+      >
+        <div class="modal-header">
+          <div>
+            <p class="eyebrow">Recurring</p>
+            <h2>Delete Recurring Expense?</h2>
+          </div>
+        </div>
+
+        <p class="muted">
+          This removes the recurring schedule. Expenses already logged from it will stay saved.
+        </p>
+
+        <div class="modal-field-row">
+          <button
+            id="cancelDeleteRecurring"
+            class="secondary-btn"
+            type="button"
+          >
+            Cancel
+          </button>
+
+          <button
+            id="confirmDeleteRecurring"
+            class="danger-btn"
+            type="button"
+          >
+            Delete
+          </button>
+        </div>
+      </section>
+    </div>
 
 
     <!-- ========================================
