@@ -6,8 +6,6 @@ import {
   onAuthStateChanged,
   GoogleAuthProvider,
   signInWithPopup,
-  signInWithRedirect,
-  getRedirectResult,
   createUserWithEmailAndPassword,
   signInWithEmailAndPassword,
   sendPasswordResetEmail,
@@ -360,16 +358,22 @@ function showSignedIn(user) {
 
 async function googleSignIn() {
   if (busy) return;
+
   setBusy(true);
+
   try {
-    if (isMobileApplePwa()) {
-      await signInWithRedirect(auth, googleProvider);
-      return;
-    }
     await signInWithPopup(auth, googleProvider);
+    toast("Welcome to Momo 🍑");
   } catch (error) {
     console.error("Google sign-in failed:", error);
-    toast("Google sign-in did not complete.");
+
+    if (error.code === "auth/popup-closed-by-user") {
+      toast("Google sign-in was cancelled.");
+    } else if (error.code === "auth/popup-blocked") {
+      toast("Your browser blocked the Google sign-in window. Please allow pop-ups and try again.");
+    } else {
+      toast("Google sign-in did not complete.");
+    }
   } finally {
     setBusy(false);
   }
@@ -443,13 +447,6 @@ async function init() {
     await setPersistence(auth, browserLocalPersistence);
   } catch (error) {
     console.warn("Could not set Firebase auth persistence:", error);
-  }
-
-  try {
-    await getRedirectResult(auth);
-  } catch (error) {
-    console.error("Google redirect sign-in failed:", error);
-    toast("Google sign-in did not complete.");
   }
 
   onAuthStateChanged(auth, async (user) => {
