@@ -246,6 +246,23 @@
       </div>
 
       <div class="drawer-section">
+        <p class="drawer-label">Account</p>
+
+        <button
+          class="drawer-item"
+          type="button"
+          data-drawer-nav="account"
+        >
+          <span class="drawer-icon">☁</span>
+          <span class="drawer-copy">
+            <strong id="drawerAccountTitle">Account & Cloud</strong>
+            <small id="drawerAccountSubtitle">Sign in to protect your Momo data.</small>
+          </span>
+          <span class="drawer-arrow">›</span>
+        </button>
+      </div>
+
+      <div class="drawer-section">
         <p class="drawer-label">Help</p>
 
         <button
@@ -911,7 +928,6 @@
                 id="expenseTitle"
                 type="text"
                 placeholder="What did you spend on?"
-                required
               >
             </label>
 
@@ -2359,6 +2375,106 @@
       </section>
 
 
+      <!-- ACCOUNT & CLOUD -->
+      <section
+        class="screen momo-cloud-screen"
+        data-screen="account"
+      >
+        <div class="page-heading">
+          <div>
+            <p class="eyebrow">Your Momo, protected</p>
+            <h1>Account & Cloud</h1>
+            <p class="page-description">
+              Keep Momo offline-first, with an optional cloud copy for another device or a fresh install.
+            </p>
+          </div>
+        </div>
+
+        <div id="cloudSignedOut">
+          <section class="cloud-welcome-card">
+            <div class="cloud-welcome-icon" aria-hidden="true">☁️</div>
+            <p class="section-kicker">KEEP YOUR MOMO SAFE</p>
+            <h2>Sign in when you want a cloud copy.</h2>
+            <p>Your everyday Momo data still lives on this device and works without an account.</p>
+          </section>
+
+          <section class="card cloud-auth-card">
+            <button id="googleCloudSignIn" class="cloud-google-btn" type="button" data-cloud-action>
+              <span class="cloud-google-g">G</span>
+              <strong>Continue with Google</strong>
+            </button>
+
+            <div class="cloud-auth-divider"><span>or</span></div>
+
+            <label class="cloud-auth-field">
+              <span>Email</span>
+              <input id="cloudEmail" type="email" inputmode="email" autocomplete="email" placeholder="you@example.com">
+            </label>
+
+            <label class="cloud-auth-field">
+              <span>Password</span>
+              <input id="cloudPassword" type="password" autocomplete="current-password" placeholder="Your password">
+            </label>
+
+            <div class="cloud-auth-actions">
+              <button id="emailCloudSignIn" class="primary-button" type="button" data-cloud-action>Sign In</button>
+              <button id="emailCloudCreate" class="secondary-button" type="button" data-cloud-action>Create Account</button>
+            </div>
+
+            <button id="cloudForgotPassword" class="text-btn cloud-forgot-btn" type="button">Forgot password?</button>
+          </section>
+
+          <p class="cloud-privacy-note">🔒 Google and email/password sign-in are available on Momo's free Firebase setup. Phone/SMS sign-in is not shown because Firebase bills SMS separately.</p>
+        </div>
+
+        <div id="cloudSignedIn" hidden>
+          <section class="cloud-profile-card">
+            <div id="cloudAccountAvatar" class="cloud-account-avatar">M</div>
+            <div class="cloud-account-copy">
+              <small>SIGNED IN</small>
+              <h2 id="cloudAccountName">Momo account</h2>
+              <p id="cloudAccountEmail"></p>
+            </div>
+            <span id="cloudAccountStatus" class="cloud-status-pill">Signed in</span>
+          </section>
+
+          <section class="card cloud-backup-card">
+            <div class="cloud-section-heading">
+              <div>
+                <p class="section-kicker">CLOUD COPY</p>
+                <h2>Your Momo backup</h2>
+              </div>
+              <button id="refreshCloudStatus" class="icon-btn soft" type="button" aria-label="Refresh cloud backup status">↻</button>
+            </div>
+
+            <div class="cloud-last-backup">
+              <span>Last cloud backup</span>
+              <strong id="cloudLastBackup">Checking…</strong>
+            </div>
+
+            <button id="uploadCloudBackup" class="primary-button cloud-full-btn" type="button" data-cloud-action>☁ Upload this Momo to Cloud</button>
+            <button id="restoreCloudBackup" class="secondary-button cloud-full-btn" type="button" data-cloud-action disabled>⇩ Restore Cloud Copy to This Device</button>
+
+            <div class="cloud-safety-note">
+              <span>🍑</span>
+              <p><strong>Local-first by design.</strong> Momo does not automatically overwrite either copy. Cloud upload and restore happen only when you choose them.</p>
+            </div>
+          </section>
+
+          <section class="card cloud-media-note">
+            <span>🖼️</span>
+            <div>
+              <strong>Photos stay local for now</strong>
+              <p>Receipt photos and custom wallpaper images are intentionally excluded from cloud backup to keep Momo lightweight and avoid unnecessary storage costs. Your normal JSON backup still protects them.</p>
+            </div>
+          </section>
+
+          <button id="cloudSignOut" class="secondary-button cloud-signout-btn" type="button">Sign Out</button>
+          <p class="cloud-signout-note">Signing out does not delete Momo data from this device.</p>
+        </div>
+      </section>
+
+
       <!-- MOMO GUIDE -->
       <section
         class="screen momo-guide-screen"
@@ -3542,24 +3658,84 @@
 
           <div
             id="customDateFields"
-            class="modal-field-row"
+            class="trip-range-field"
             hidden
           >
-            <label class="modal-field">
-              <span>Start Date</span>
-              <input
-                id="budgetStartDate"
-                type="date"
-              >
-            </label>
+            <span class="trip-range-label">Budget Dates</span>
 
-            <label class="modal-field">
-              <span>End Date</span>
-              <input
-                id="budgetEndDate"
-                type="date"
-              >
-            </label>
+            <input
+              id="budgetStartDate"
+              type="hidden"
+            >
+
+            <input
+              id="budgetEndDate"
+              type="hidden"
+            >
+
+            <button
+              id="budgetDateRangeButton"
+              class="trip-date-range-button"
+              type="button"
+              aria-expanded="false"
+              aria-controls="budgetDateCalendar"
+            >
+              <span class="trip-date-range-icon">📅</span>
+
+              <span class="trip-date-range-copy">
+                <strong id="budgetDateRangePrimary">Choose dates</strong>
+                <small id="budgetDateRangeSecondary">
+                  Tap one day, or tap another date to make a range
+                </small>
+              </span>
+
+              <span class="trip-date-range-arrow">⌄</span>
+            </button>
+
+            <div
+              id="budgetDateCalendar"
+              class="trip-date-calendar"
+              hidden
+            >
+              <div class="trip-calendar-header">
+                <button
+                  id="budgetCalendarPrev"
+                  type="button"
+                  aria-label="Previous month"
+                >
+                  ‹
+                </button>
+
+                <strong id="budgetCalendarMonth"></strong>
+
+                <button
+                  id="budgetCalendarNext"
+                  type="button"
+                  aria-label="Next month"
+                >
+                  ›
+                </button>
+              </div>
+
+              <div class="trip-calendar-weekdays" aria-hidden="true">
+                <span>Su</span>
+                <span>Mo</span>
+                <span>Tu</span>
+                <span>We</span>
+                <span>Th</span>
+                <span>Fr</span>
+                <span>Sa</span>
+              </div>
+
+              <div
+                id="budgetCalendarGrid"
+                class="trip-calendar-grid"
+              ></div>
+
+              <div class="trip-calendar-tip">
+                One tap can be a one-day budget. Tap another date to extend the range.
+              </div>
+            </div>
           </div>
 
           <button
@@ -3735,7 +3911,7 @@
               <span class="trip-date-range-copy">
                 <strong id="tripDateRangePrimary">Choose dates</strong>
                 <small id="tripDateRangeSecondary">
-                  First tap = start · second tap = end
+                  One tap = one day · tap another date to extend
                 </small>
               </span>
 
@@ -3783,7 +3959,7 @@
               ></div>
 
               <div class="trip-calendar-tip">
-                Tap once to select. Double-tap a selected date to remove it.
+                One tap can be a one-day trip. Tap another date to extend the range.
               </div>
             </div>
           </div>
@@ -4722,6 +4898,7 @@
   </div>
 
   <script src="app.js"></script>
+  <script type="module" src="firebase-momo.js"></script>
 
   <script>
     (() => {

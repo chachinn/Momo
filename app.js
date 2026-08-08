@@ -8093,6 +8093,545 @@ const customDateFields =
   );
 
 
+const budgetDateRangeButton =
+  document.getElementById(
+    "budgetDateRangeButton"
+  );
+
+
+const budgetDateCalendar =
+  document.getElementById(
+    "budgetDateCalendar"
+  );
+
+
+const budgetDateRangePrimary =
+  document.getElementById(
+    "budgetDateRangePrimary"
+  );
+
+
+const budgetDateRangeSecondary =
+  document.getElementById(
+    "budgetDateRangeSecondary"
+  );
+
+
+const budgetCalendarMonth =
+  document.getElementById(
+    "budgetCalendarMonth"
+  );
+
+
+const budgetCalendarGrid =
+  document.getElementById(
+    "budgetCalendarGrid"
+  );
+
+
+let budgetCalendarViewDate =
+  new Date();
+
+
+function updateBudgetDateRangeSummary() {
+
+  if (
+    !budgetDateRangePrimary ||
+    !budgetDateRangeSecondary
+  ) {
+
+    return;
+
+  }
+
+
+  const start =
+    budgetStartDate?.value ||
+    "";
+
+
+  const end =
+    budgetEndDate?.value ||
+    "";
+
+
+  if (
+    !start
+  ) {
+
+    budgetDateRangePrimary.textContent =
+      "Choose dates";
+
+
+    budgetDateRangeSecondary.textContent =
+      "Tap one day, or tap another date to make a range";
+
+
+    return;
+
+  }
+
+
+  if (
+    !end ||
+    end ===
+      start
+  ) {
+
+    budgetDateRangePrimary.textContent =
+      formatTripRangeDisplayDate(
+        start
+      );
+
+
+    budgetDateRangeSecondary.textContent =
+      "1 day · tap another date to extend";
+
+
+    return;
+
+  }
+
+
+  budgetDateRangePrimary.textContent =
+    `${formatTripRangeDisplayDate(
+      start
+    )} – ${formatTripRangeDisplayDate(
+      end
+    )}`;
+
+
+  const startDate =
+    createLocalDate(
+      start
+    );
+
+
+  const endDate =
+    createLocalDate(
+      end
+    );
+
+
+  const days =
+    Math.round(
+      (
+        endDate -
+        startDate
+      ) /
+      86400000
+    ) +
+    1;
+
+
+  budgetDateRangeSecondary.textContent =
+    `${days} days · tap a new date to start over`;
+
+}
+
+
+function setBudgetCalendarViewFromDate(
+  dateString
+) {
+
+  const date =
+    createLocalDate(
+      dateString
+    ) ||
+    new Date();
+
+
+  budgetCalendarViewDate =
+    new Date(
+      date.getFullYear(),
+      date.getMonth(),
+      1
+    );
+
+}
+
+
+function isDateInsideBudgetRange(
+  dateString
+) {
+
+  const start =
+    budgetStartDate?.value ||
+    "";
+
+
+  const end =
+    budgetEndDate?.value ||
+    "";
+
+
+  return Boolean(
+    start &&
+    end &&
+    start !==
+      end &&
+    dateString >
+      start &&
+    dateString <
+      end
+  );
+
+}
+
+
+function renderBudgetCalendar() {
+
+  if (
+    !budgetCalendarGrid ||
+    !budgetCalendarMonth
+  ) {
+
+    return;
+
+  }
+
+
+  const year =
+    budgetCalendarViewDate
+      .getFullYear();
+
+
+  const month =
+    budgetCalendarViewDate
+      .getMonth();
+
+
+  budgetCalendarMonth.textContent =
+    new Intl.DateTimeFormat(
+      "en-US",
+      {
+        month: "long",
+        year: "numeric"
+      }
+    ).format(
+      budgetCalendarViewDate
+    );
+
+
+  const firstDay =
+    new Date(
+      year,
+      month,
+      1
+    ).getDay();
+
+
+  const daysInMonth =
+    new Date(
+      year,
+      month +
+        1,
+      0
+    ).getDate();
+
+
+  const today =
+    getTodayString();
+
+
+  const cells =
+    [];
+
+
+  for (
+    let i = 0;
+    i <
+    firstDay;
+    i++
+  ) {
+
+    cells.push(
+      `<span class="trip-calendar-blank"></span>`
+    );
+
+  }
+
+
+  for (
+    let day = 1;
+    day <=
+    daysInMonth;
+    day++
+  ) {
+
+    const dateString =
+      `${year}-${String(
+        month +
+        1
+      ).padStart(
+        2,
+        "0"
+      )}-${String(
+        day
+      ).padStart(
+        2,
+        "0"
+      )}`;
+
+
+    const classes =
+      [
+        "trip-calendar-day"
+      ];
+
+
+    if (
+      dateString ===
+      today
+    ) {
+
+      classes.push(
+        "today"
+      );
+
+    }
+
+
+    if (
+      dateString ===
+      budgetStartDate?.value
+    ) {
+
+      classes.push(
+        "start"
+      );
+
+    }
+
+
+    if (
+      dateString ===
+        budgetEndDate?.value &&
+      dateString !==
+        budgetStartDate?.value
+    ) {
+
+      classes.push(
+        "end"
+      );
+
+    }
+
+
+    if (
+      isDateInsideBudgetRange(
+        dateString
+      )
+    ) {
+
+      classes.push(
+        "in-range"
+      );
+
+    }
+
+
+    cells.push(
+      `
+        <button
+          type="button"
+          class="${classes.join(
+            " "
+          )}"
+          data-budget-calendar-date="${dateString}"
+          aria-label="${dateString}"
+        >
+          ${day}
+        </button>
+      `
+    );
+
+  }
+
+
+  budgetCalendarGrid.innerHTML =
+    cells.join(
+      ""
+    );
+
+
+  budgetCalendarGrid
+    .querySelectorAll(
+      "[data-budget-calendar-date]"
+    )
+    .forEach(
+      (button) => {
+
+        button.addEventListener(
+          "click",
+          () => {
+
+            const dateString =
+              button.dataset
+                .budgetCalendarDate;
+
+
+            const start =
+              budgetStartDate.value;
+
+
+            const end =
+              budgetEndDate.value;
+
+
+            if (
+              !start ||
+              (
+                start &&
+                end &&
+                start !==
+                  end
+              )
+            ) {
+
+              budgetStartDate.value =
+                dateString;
+
+
+              budgetEndDate.value =
+                dateString;
+
+            } else if (
+              dateString <
+              start
+            ) {
+
+              budgetEndDate.value =
+                start;
+
+
+              budgetStartDate.value =
+                dateString;
+
+            } else {
+
+              budgetEndDate.value =
+                dateString;
+
+            }
+
+
+            updateBudgetDateRangeSummary();
+
+
+            renderBudgetCalendar();
+
+          }
+        );
+
+      }
+    );
+
+}
+
+
+function openBudgetDateCalendar() {
+
+  if (
+    !budgetDateCalendar
+  ) {
+
+    return;
+
+  }
+
+
+  const willOpen =
+    budgetDateCalendar.hidden;
+
+
+  budgetDateCalendar.hidden =
+    !willOpen;
+
+
+  budgetDateRangeButton
+    ?.setAttribute(
+      "aria-expanded",
+      String(
+        willOpen
+      )
+    );
+
+
+  if (
+    willOpen
+  ) {
+
+    setBudgetCalendarViewFromDate(
+      budgetStartDate.value ||
+      getTodayString()
+    );
+
+
+    renderBudgetCalendar();
+
+  }
+
+}
+
+
+budgetDateRangeButton
+  ?.addEventListener(
+    "click",
+    openBudgetDateCalendar
+  );
+
+
+document
+  .getElementById(
+    "budgetCalendarPrev"
+  )
+  ?.addEventListener(
+    "click",
+    () => {
+
+      budgetCalendarViewDate =
+        new Date(
+          budgetCalendarViewDate
+            .getFullYear(),
+          budgetCalendarViewDate
+            .getMonth() -
+            1,
+          1
+        );
+
+
+      renderBudgetCalendar();
+
+    }
+  );
+
+
+document
+  .getElementById(
+    "budgetCalendarNext"
+  )
+  ?.addEventListener(
+    "click",
+    () => {
+
+      budgetCalendarViewDate =
+        new Date(
+          budgetCalendarViewDate
+            .getFullYear(),
+          budgetCalendarViewDate
+            .getMonth() +
+            1,
+          1
+        );
+
+
+      renderBudgetCalendar();
+
+    }
+  );
+
+
 function updateCustomDateVisibility() {
 
   const custom =
@@ -8104,12 +8643,27 @@ function updateCustomDateVisibility() {
     !custom;
 
 
-  budgetStartDate.required =
-    custom;
+  if (
+    custom
+  ) {
+
+    updateBudgetDateRangeSummary();
+
+  } else if (
+    budgetDateCalendar
+  ) {
+
+    budgetDateCalendar.hidden =
+      true;
 
 
-  budgetEndDate.required =
-    custom;
+    budgetDateRangeButton
+      ?.setAttribute(
+        "aria-expanded",
+        "false"
+      );
+
+  }
 
 }
 
@@ -8205,6 +8759,23 @@ function openBudgetModal(
 
   updateCustomDateVisibility();
 
+  updateBudgetDateRangeSummary();
+
+  if (
+    budgetDateCalendar
+  ) {
+
+    budgetDateCalendar.hidden =
+      true;
+
+  }
+
+  budgetDateRangeButton
+    ?.setAttribute(
+      "aria-expanded",
+      "false"
+    );
+
 }
 
 
@@ -8274,6 +8845,28 @@ budgetForm?.addEventListener(
   ) => {
 
     event.preventDefault();
+
+
+    if (
+      budgetPeriod.value ===
+        "custom" &&
+      (
+        !budgetStartDate.value ||
+        !budgetEndDate.value
+      )
+    ) {
+
+      showToast(
+        "Choose a budget date. One day is okay."
+      );
+
+
+      openBudgetDateCalendar();
+
+
+      return;
+
+    }
 
 
     const existingId =
@@ -9433,14 +10026,6 @@ let tripCalendarViewDate =
   new Date();
 
 
-let tripCalendarLastTapDate =
-  "";
-
-
-let tripCalendarLastTapTime =
-  0;
-
-
 const tripBudget =
   document.getElementById(
     "tripBudget"
@@ -9551,7 +10136,7 @@ function updateTripDateRangeSummary() {
 
 
     tripDateRangeSecondary.textContent =
-      "First tap = start · second tap = end";
+      "One tap = one day · tap another date to extend";
 
 
     return;
@@ -9560,7 +10145,9 @@ function updateTripDateRangeSummary() {
 
 
   if (
-    !end
+    !end ||
+    end ===
+      start
   ) {
 
     tripDateRangePrimary.textContent =
@@ -9570,7 +10157,7 @@ function updateTripDateRangeSummary() {
 
 
     tripDateRangeSecondary.textContent =
-      "Start selected · tap another date for the end";
+      "1 day · tap another date to extend";
 
 
     return;
@@ -9836,121 +10423,39 @@ function renderTripCalendar() {
                 .tripCalendarDate;
 
 
-            const now =
-              Date.now();
-
-
-            const isDoubleTap =
-              tripCalendarLastTapDate ===
-                dateString &&
-              now -
-                tripCalendarLastTapTime <
-                420;
-
-
-            tripCalendarLastTapDate =
-              dateString;
-
-
-            tripCalendarLastTapTime =
-              now;
-
-
             if (
-              isDoubleTap &&
+              !tripStartDate.value ||
               (
-                dateString ===
-                  tripStartDate.value ||
-                dateString ===
+                tripStartDate.value &&
+                tripEndDate.value &&
+                tripStartDate.value !==
                   tripEndDate.value
               )
             ) {
 
-              if (
-                dateString ===
-                tripEndDate.value
-              ) {
-
-                tripEndDate.value =
-                  "";
-
-              } else if (
-                dateString ===
-                  tripStartDate.value &&
-                tripEndDate.value
-              ) {
-
-                tripStartDate.value =
-                  tripEndDate.value;
-
-
-                tripEndDate.value =
-                  "";
-
-              } else {
-
-                tripStartDate.value =
-                  "";
-
-              }
-
-
-              updateTripDateRangeSummary();
-
-
-              renderTripCalendar();
-
-
-              return;
-
-            }
-
-
-            if (
-              !tripStartDate.value
-            ) {
-
               tripStartDate.value =
                 dateString;
 
 
               tripEndDate.value =
-                "";
+                dateString;
 
             } else if (
-              !tripEndDate.value
+              dateString <
+              tripStartDate.value
             ) {
 
-              if (
-                dateString <
-                tripStartDate.value
-              ) {
-
-                tripEndDate.value =
-                  tripStartDate.value;
+              tripEndDate.value =
+                tripStartDate.value;
 
 
-                tripStartDate.value =
-                  dateString;
-
-              } else if (
-                dateString >
-                tripStartDate.value
-              ) {
-
-                tripEndDate.value =
-                  dateString;
-
-              }
+              tripStartDate.value =
+                dateString;
 
             } else {
 
-              tripStartDate.value =
-                dateString;
-
-
               tripEndDate.value =
-                "";
+                dateString;
 
             }
 
@@ -10272,12 +10777,22 @@ tripForm?.addEventListener(
 
 
     if (
-      !tripStartDate.value ||
+      tripStartDate.value &&
       !tripEndDate.value
     ) {
 
+      tripEndDate.value =
+        tripStartDate.value;
+
+    }
+
+
+    if (
+      !tripStartDate.value
+    ) {
+
       showToast(
-        "Choose both a start date and an end date."
+        "Choose a travel date. One day is okay."
       );
 
 
@@ -14346,6 +14861,44 @@ expenseForm?.addEventListener(
     }
 
 
+    const expenseTitleValue =
+      document
+        .getElementById(
+          "expenseTitle"
+        )
+        ?.value
+        .trim() ||
+      "";
+
+
+    if (
+      !expenseTitleValue
+    ) {
+
+      const saveWithoutTitle =
+        window.confirm(
+          "This expense has no title. Save it anyway?"
+        );
+
+
+      if (
+        !saveWithoutTitle
+      ) {
+
+        document
+          .getElementById(
+            "expenseTitle"
+          )
+          ?.focus();
+
+
+        return;
+
+      }
+
+    }
+
+
     const selectedBudget =
       budgets.find(
         (budget) =>
@@ -14413,12 +14966,7 @@ expenseForm?.addEventListener(
         "expense",
 
       title:
-        document
-          .getElementById(
-            "expenseTitle"
-          )
-          .value
-          .trim(),
+        expenseTitleValue,
 
       amount:
         Number(
@@ -14684,7 +15232,8 @@ function renderTransaction(
       )}"
       tabindex="0"
       aria-label="View ${escapeHTML(
-        expense.title
+        expense.title ||
+          "Untitled"
       )} expense details"
     >
 
@@ -14700,7 +15249,8 @@ function renderTransaction(
         <strong>
 
           ${escapeHTML(
-            expense.title
+            expense.title ||
+              "Untitled expense"
           )}
 
         </strong>
