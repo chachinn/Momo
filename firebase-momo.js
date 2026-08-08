@@ -295,8 +295,14 @@ async function restoreCloudBackup() {
       });
     }
 
-    toast("Cloud copy restored. Reloading Momo…");
-    window.setTimeout(() => window.location.reload(), 900);
+toast("Cloud copy restored. Reloading Momo…");
+
+// Give Safari/iOS enough time to fully release IndexedDB
+// after the restore transactions and database connection have closed.
+window.setTimeout(() => {
+  window.location.reload();
+}, 2500);
+
   } catch (error) {
     console.error("Momo cloud restore failed:", error);
     setStatus("Restore failed", "error");
