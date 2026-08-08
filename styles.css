@@ -6719,7 +6719,7 @@ body {
   z-index: 0;
   background-repeat: no-repeat;
   background-position: center center;
-  background-size: cover;
+  background-size: 100% 100%;
   background-color: var(--bg);
   transform: translateZ(0);
   -webkit-transform: translateZ(0);
@@ -6870,5 +6870,301 @@ body.wallpaper-enabled .appearance-section {
   width: 100%;
   min-height: 44px;
   margin-top: 14px;
+}
+
+
+
+/* ========================================
+   WALLPAPER READABILITY
+======================================== */
+
+body.wallpaper-enabled .page-heading,
+body.wallpaper-enabled .section-title-row,
+body.wallpaper-enabled .activity-empty,
+body.wallpaper-enabled .empty-state,
+body.wallpaper-enabled .trip-empty,
+body.wallpaper-enabled .budget-empty {
+  text-shadow:
+    0 1px 2px rgba(255, 255, 255, 0.78),
+    0 0 10px rgba(255, 255, 255, 0.72);
+}
+
+body.wallpaper-enabled .section-block {
+  padding:
+    12px 10px;
+  border-radius:
+    22px;
+  background:
+    color-mix(
+      in srgb,
+      var(--bg) 44%,
+      transparent
+    );
+  -webkit-backdrop-filter:
+    blur(3px);
+  backdrop-filter:
+    blur(3px);
+}
+
+body.wallpaper-enabled .home-actions {
+  padding:
+    8px;
+  border-radius:
+    22px;
+  background:
+    color-mix(
+      in srgb,
+      var(--bg) 28%,
+      transparent
+    );
+}
+
+body.wallpaper-enabled .home-action {
+  background:
+    color-mix(
+      in srgb,
+      var(--surface) 78%,
+      transparent
+    ) !important;
+  -webkit-backdrop-filter:
+    blur(12px);
+  backdrop-filter:
+    blur(12px);
+}
+
+body.wallpaper-enabled .page-heading h1,
+body.wallpaper-enabled .section-title-row h2 {
+  color:
+    color-mix(
+      in srgb,
+      var(--text) 88%,
+      black
+    );
+}
+
+body.wallpaper-enabled .muted,
+body.wallpaper-enabled .page-description,
+body.wallpaper-enabled .label,
+body.wallpaper-enabled .empty-state p,
+body.wallpaper-enabled .activity-empty p {
+  color:
+    color-mix(
+      in srgb,
+      var(--text-soft) 78%,
+      var(--text)
+    );
+}
+
+/* ========================================
+   WALLPAPER CROP MODAL
+======================================== */
+
+.wallpaper-crop-backdrop {
+  z-index: 240;
+}
+
+.wallpaper-crop-modal {
+  width:
+    min(
+      calc(100vw - 28px),
+      430px
+    );
+  max-height:
+    min(
+      92dvh,
+      820px
+    );
+  overflow-y:
+    auto;
+}
+
+.wallpaper-crop-help {
+  margin:
+    0 0 12px;
+  color:
+    var(--text-soft);
+  font-size:
+    11px;
+  line-height:
+    1.5;
+}
+
+.wallpaper-crop-viewport {
+  position:
+    relative;
+  width:
+    min(
+      72vw,
+      290px
+    );
+  aspect-ratio:
+    9 / 19.5;
+  margin:
+    0 auto 15px;
+  overflow:
+    hidden;
+  border:
+    3px solid
+    color-mix(
+      in srgb,
+      var(--rose) 50%,
+      white
+    );
+  border-radius:
+    30px;
+  background:
+    #111;
+  touch-action:
+    none;
+  box-shadow:
+    0 12px 34px
+    rgba(
+      73,
+      58,
+      58,
+      0.18
+    );
+}
+
+.wallpaper-crop-viewport img {
+  position:
+    absolute;
+  left:
+    50%;
+  top:
+    50%;
+  max-width:
+    none;
+  max-height:
+    none;
+  user-select:
+    none;
+  -webkit-user-select:
+    none;
+  pointer-events:
+    none;
+  transform-origin:
+    center center;
+}
+
+.wallpaper-crop-grid {
+  position:
+    absolute;
+  inset:
+    0;
+  pointer-events:
+    none;
+  background:
+    linear-gradient(
+      to right,
+      transparent 33.1%,
+      rgba(255, 255, 255, 0.35) 33.2%,
+      rgba(255, 255, 255, 0.35) 33.6%,
+      transparent 33.7%,
+      transparent 66.2%,
+      rgba(255, 255, 255, 0.35) 66.3%,
+      rgba(255, 255, 255, 0.35) 66.7%,
+      transparent 66.8%
+    ),
+    linear-gradient(
+      to bottom,
+      transparent 33.1%,
+      rgba(255, 255, 255, 0.35) 33.2%,
+      rgba(255, 255, 255, 0.35) 33.6%,
+      transparent 33.7%,
+      transparent 66.2%,
+      rgba(255, 255, 255, 0.35) 66.3%,
+      rgba(255, 255, 255, 0.35) 66.7%,
+      transparent 66.8%
+    );
+}
+
+.wallpaper-crop-zoom {
+  display:
+    block;
+}
+
+.wallpaper-crop-zoom > span {
+  display:
+    flex;
+  justify-content:
+    space-between;
+  align-items:
+    center;
+  margin-bottom:
+    7px;
+}
+
+.wallpaper-crop-zoom strong {
+  font-size:
+    12px;
+}
+
+.wallpaper-crop-zoom small {
+  color:
+    var(--rose);
+  font-size:
+    11px;
+  font-weight:
+    800;
+}
+
+.wallpaper-crop-zoom input {
+  width:
+    100%;
+  accent-color:
+    var(--rose);
+}
+
+.wallpaper-crop-actions {
+  display:
+    grid;
+  grid-template-columns:
+    1fr 1fr;
+  gap:
+    10px;
+  margin-top:
+    15px;
+}
+
+.wallpaper-crop-actions button {
+  min-height:
+    48px;
+}
+
+.wallpaper-crop-note {
+  margin-top:
+    14px;
+  padding:
+    13px 14px;
+  border:
+    1px solid
+    var(--border);
+  border-radius:
+    16px;
+  display:
+    grid;
+  gap:
+    4px;
+  background:
+    color-mix(
+      in srgb,
+      var(--blush) 54%,
+      white
+    );
+}
+
+.wallpaper-crop-note strong {
+  font-size:
+    12px;
+}
+
+.wallpaper-crop-note small {
+  color:
+    var(--text-soft);
+  font-size:
+    10px;
+  line-height:
+    1.45;
 }
 

@@ -3,13 +3,13 @@
 // Reliable GitHub Pages + iPhone PWA updates
 // ========================================
 
-const CACHE_NAME = "momo-shell-v1";
+const CACHE_NAME = "momo-shell-v4";
 
 const APP_SHELL = [
   "./",
   "./index.html",
-  "./styles.css?v=20260808-1",
-  "./app.js?v=20260808-1",
+  "./styles.css?v=20260808-4",
+  "./app.js?v=20260808-4",
   "./manifest.json",
   "./icon-192.png",
   "./icon-512.png"

@@ -198,11 +198,7 @@ const APPEARANCE_DEFAULTS = {
   theme: "peach",
   wallpaperData: "",
   wallpaperEnabled: false,
-  overlay: "medium",
-  wallpaperFit: "cover",
-  wallpaperZoom: 100,
-  wallpaperPositionX: 50,
-  wallpaperPositionY: 50
+  overlay: "medium"
 };
 
 
@@ -1768,45 +1764,51 @@ const appWallpaperOverlay =
   );
 
 
-const wallpaperZoom =
+const wallpaperCropModal =
   document.getElementById(
-    "wallpaperZoom"
+    "wallpaperCropModal"
   );
 
 
-const wallpaperPositionX =
+const wallpaperCropViewport =
   document.getElementById(
-    "wallpaperPositionX"
+    "wallpaperCropViewport"
   );
 
 
-const wallpaperPositionY =
+const wallpaperCropImage =
   document.getElementById(
-    "wallpaperPositionY"
+    "wallpaperCropImage"
   );
 
 
-const wallpaperZoomValue =
+const wallpaperCropZoom =
   document.getElementById(
-    "wallpaperZoomValue"
+    "wallpaperCropZoom"
   );
 
 
-const wallpaperXValue =
+const wallpaperCropZoomValue =
   document.getElementById(
-    "wallpaperXValue"
+    "wallpaperCropZoomValue"
   );
 
 
-const wallpaperYValue =
+const closeWallpaperCropButton =
   document.getElementById(
-    "wallpaperYValue"
+    "closeWallpaperCrop"
   );
 
 
-const resetWallpaperFramingButton =
+const cancelWallpaperCropButton =
   document.getElementById(
-    "resetWallpaperFramingButton"
+    "cancelWallpaperCrop"
+  );
+
+
+const useWallpaperCropButton =
+  document.getElementById(
+    "useWallpaperCrop"
   );
 
 
@@ -1825,12 +1827,11 @@ function getWallpaperOverlayColor(
 ) {
 
   const alphaByStrength = {
-    // Lower alpha = more of the wallpaper stays visible.
-    // Even "Strong" is intentionally softer than before so
-    // the selected photo never disappears under a white wash.
-    light: 0.18,
-    medium: 0.34,
-    strong: 0.52
+    // Enough tint to keep text readable while preserving
+    // the wallpaper as a visible background.
+    light: 0.28,
+    medium: 0.46,
+    strong: 0.64
   };
 
 
@@ -1883,66 +1884,10 @@ function applyAppearance() {
     appWallpaperLayer
   ) {
 
-    const fit =
-      appearancePreferences.wallpaperFit ===
-      "contain"
-        ? "contain"
-        : "cover";
-
-
-    const zoom =
-      Math.max(
-        100,
-        Math.min(
-          180,
-          Number(
-            appearancePreferences.wallpaperZoom
-          ) ||
-          100
-        )
-      );
-
-
-    const positionX =
-      Math.max(
-        0,
-        Math.min(
-          100,
-          Number(
-            appearancePreferences.wallpaperPositionX
-          ) ??
-          50
-        )
-      );
-
-
-    const positionY =
-      Math.max(
-        0,
-        Math.min(
-          100,
-          Number(
-            appearancePreferences.wallpaperPositionY
-          ) ??
-          50
-        )
-      );
-
-
     appWallpaperLayer.style.backgroundImage =
       hasWallpaper
         ? `url("${appearancePreferences.wallpaperData}")`
         : "none";
-
-
-    appWallpaperLayer.style.backgroundSize =
-      fit === "contain"
-        ? `${zoom}% auto`
-        : `auto ${zoom}%`;
-
-
-    appWallpaperLayer.style.backgroundPosition =
-      `${positionX}% ${positionY}%`;
 
 
     appWallpaperLayer.classList.toggle(
@@ -2114,95 +2059,6 @@ function renderAppearanceControls() {
 
       }
     );
-
-
-  document
-    .querySelectorAll(
-      "[data-wallpaper-fit]"
-    )
-    .forEach(
-      (button) => {
-
-        button.classList.toggle(
-          "active",
-          button.dataset.wallpaperFit ===
-            (
-              appearancePreferences.wallpaperFit ||
-              "cover"
-            )
-        );
-
-      }
-    );
-
-
-  if (
-    wallpaperZoom
-  ) {
-
-    wallpaperZoom.value =
-      String(
-        appearancePreferences.wallpaperZoom ??
-        100
-      );
-
-  }
-
-
-  if (
-    wallpaperPositionX
-  ) {
-
-    wallpaperPositionX.value =
-      String(
-        appearancePreferences.wallpaperPositionX ??
-        50
-      );
-
-  }
-
-
-  if (
-    wallpaperPositionY
-  ) {
-
-    wallpaperPositionY.value =
-      String(
-        appearancePreferences.wallpaperPositionY ??
-        50
-      );
-
-  }
-
-
-  if (
-    wallpaperZoomValue
-  ) {
-
-    wallpaperZoomValue.textContent =
-      `${appearancePreferences.wallpaperZoom ?? 100}%`;
-
-  }
-
-
-  if (
-    wallpaperXValue
-  ) {
-
-    wallpaperXValue.textContent =
-      `${appearancePreferences.wallpaperPositionX ?? 50}%`;
-
-  }
-
-
-  if (
-    wallpaperYValue
-  ) {
-
-    wallpaperYValue.textContent =
-      `${appearancePreferences.wallpaperPositionY ?? 50}%`;
-
-  }
 
 }
 
@@ -2376,6 +2232,842 @@ appearanceThemeOptions
   );
 
 
+
+let pendingWallpaperSource =
+  "";
+
+
+let cropImageNaturalWidth =
+  0;
+
+
+let cropImageNaturalHeight =
+  0;
+
+
+let cropBaseScale =
+  1;
+
+
+let cropZoomFactor =
+  1;
+
+
+let cropOffsetX =
+  0;
+
+
+let cropOffsetY =
+  0;
+
+
+let cropDragPointerId =
+  null;
+
+
+let cropDragStartX =
+  0;
+
+
+let cropDragStartY =
+  0;
+
+
+let cropDragOriginX =
+  0;
+
+
+let cropDragOriginY =
+  0;
+
+
+const cropPointers =
+  new Map();
+
+
+let cropPinchStartDistance =
+  0;
+
+
+let cropPinchStartZoom =
+  1;
+
+
+function getCropViewportSize() {
+
+  if (
+    !wallpaperCropViewport
+  ) {
+
+    return {
+      width: 1,
+      height: 1
+    };
+
+  }
+
+
+  const rect =
+    wallpaperCropViewport
+      .getBoundingClientRect();
+
+
+  return {
+    width:
+      Math.max(
+        1,
+        rect.width
+      ),
+    height:
+      Math.max(
+        1,
+        rect.height
+      )
+  };
+
+}
+
+
+function clampCropOffsets() {
+
+  const viewport =
+    getCropViewportSize();
+
+
+  const scaledWidth =
+    cropImageNaturalWidth *
+    cropBaseScale *
+    cropZoomFactor;
+
+
+  const scaledHeight =
+    cropImageNaturalHeight *
+    cropBaseScale *
+    cropZoomFactor;
+
+
+  const maxX =
+    Math.max(
+      0,
+      (
+        scaledWidth -
+        viewport.width
+      ) /
+      2
+    );
+
+
+  const maxY =
+    Math.max(
+      0,
+      (
+        scaledHeight -
+        viewport.height
+      ) /
+      2
+    );
+
+
+  cropOffsetX =
+    Math.max(
+      -maxX,
+      Math.min(
+        maxX,
+        cropOffsetX
+      )
+    );
+
+
+  cropOffsetY =
+    Math.max(
+      -maxY,
+      Math.min(
+        maxY,
+        cropOffsetY
+      )
+    );
+
+}
+
+
+function renderWallpaperCrop() {
+
+  if (
+    !wallpaperCropImage
+  ) {
+
+    return;
+
+  }
+
+
+  clampCropOffsets();
+
+
+  const scale =
+    cropBaseScale *
+    cropZoomFactor;
+
+
+  wallpaperCropImage.style.width =
+    `${cropImageNaturalWidth * scale}px`;
+
+
+  wallpaperCropImage.style.height =
+    `${cropImageNaturalHeight * scale}px`;
+
+
+  wallpaperCropImage.style.transform =
+    `translate(calc(-50% + ${cropOffsetX}px), calc(-50% + ${cropOffsetY}px))`;
+
+
+  if (
+    wallpaperCropZoom
+  ) {
+
+    wallpaperCropZoom.value =
+      String(
+        Math.round(
+          cropZoomFactor *
+          100
+        )
+      );
+
+  }
+
+
+  if (
+    wallpaperCropZoomValue
+  ) {
+
+    wallpaperCropZoomValue.textContent =
+      `${Math.round(cropZoomFactor * 100)}%`;
+
+  }
+
+}
+
+
+function initializeWallpaperCrop() {
+
+  const viewport =
+    getCropViewportSize();
+
+
+  cropBaseScale =
+    Math.max(
+      viewport.width /
+        cropImageNaturalWidth,
+      viewport.height /
+        cropImageNaturalHeight
+    );
+
+
+  cropZoomFactor =
+    1;
+
+
+  cropOffsetX =
+    0;
+
+
+  cropOffsetY =
+    0;
+
+
+  renderWallpaperCrop();
+
+}
+
+
+function closeWallpaperCropModal() {
+
+  if (
+    wallpaperCropModal
+  ) {
+
+    wallpaperCropModal.hidden =
+      true;
+
+  }
+
+
+  pendingWallpaperSource =
+    "";
+
+
+  cropPointers.clear();
+
+
+  cropDragPointerId =
+    null;
+
+}
+
+
+function openWallpaperCropModal(
+  source
+) {
+
+  pendingWallpaperSource =
+    source;
+
+
+  if (
+    !wallpaperCropModal ||
+    !wallpaperCropImage
+  ) {
+
+    return;
+
+  }
+
+
+  wallpaperCropImage.onload =
+    () => {
+
+      cropImageNaturalWidth =
+        wallpaperCropImage.naturalWidth;
+
+
+      cropImageNaturalHeight =
+        wallpaperCropImage.naturalHeight;
+
+
+      requestAnimationFrame(
+        () => {
+
+          initializeWallpaperCrop();
+
+        }
+      );
+
+    };
+
+
+  wallpaperCropImage.src =
+    source;
+
+
+  wallpaperCropModal.hidden =
+    false;
+
+}
+
+
+function getPointerDistance() {
+
+  const points =
+    Array.from(
+      cropPointers.values()
+    );
+
+
+  if (
+    points.length <
+    2
+  ) {
+
+    return 0;
+
+  }
+
+
+  const dx =
+    points[0].x -
+    points[1].x;
+
+
+  const dy =
+    points[0].y -
+    points[1].y;
+
+
+  return Math.hypot(
+    dx,
+    dy
+  );
+
+}
+
+
+wallpaperCropViewport
+  ?.addEventListener(
+    "pointerdown",
+    (event) => {
+
+      event.preventDefault();
+
+
+      wallpaperCropViewport
+        .setPointerCapture?.(
+          event.pointerId
+        );
+
+
+      cropPointers.set(
+        event.pointerId,
+        {
+          x: event.clientX,
+          y: event.clientY
+        }
+      );
+
+
+      if (
+        cropPointers.size ===
+        1
+      ) {
+
+        cropDragPointerId =
+          event.pointerId;
+
+
+        cropDragStartX =
+          event.clientX;
+
+
+        cropDragStartY =
+          event.clientY;
+
+
+        cropDragOriginX =
+          cropOffsetX;
+
+
+        cropDragOriginY =
+          cropOffsetY;
+
+      }
+
+
+      if (
+        cropPointers.size ===
+        2
+      ) {
+
+        cropPinchStartDistance =
+          getPointerDistance();
+
+
+        cropPinchStartZoom =
+          cropZoomFactor;
+
+      }
+
+    }
+  );
+
+
+wallpaperCropViewport
+  ?.addEventListener(
+    "pointermove",
+    (event) => {
+
+      if (
+        !cropPointers.has(
+          event.pointerId
+        )
+      ) {
+
+        return;
+
+      }
+
+
+      event.preventDefault();
+
+
+      cropPointers.set(
+        event.pointerId,
+        {
+          x: event.clientX,
+          y: event.clientY
+        }
+      );
+
+
+      if (
+        cropPointers.size >=
+        2
+      ) {
+
+        const distance =
+          getPointerDistance();
+
+
+        if (
+          cropPinchStartDistance >
+          0
+        ) {
+
+          cropZoomFactor =
+            Math.max(
+              1,
+              Math.min(
+                3,
+                cropPinchStartZoom *
+                  (
+                    distance /
+                    cropPinchStartDistance
+                  )
+              )
+            );
+
+
+          renderWallpaperCrop();
+
+        }
+
+
+        return;
+
+      }
+
+
+      if (
+        cropDragPointerId ===
+        event.pointerId
+      ) {
+
+        cropOffsetX =
+          cropDragOriginX +
+          (
+            event.clientX -
+            cropDragStartX
+          );
+
+
+        cropOffsetY =
+          cropDragOriginY +
+          (
+            event.clientY -
+            cropDragStartY
+          );
+
+
+        renderWallpaperCrop();
+
+      }
+
+    }
+  );
+
+
+function finishCropPointer(
+  event
+) {
+
+  cropPointers.delete(
+    event.pointerId
+  );
+
+
+  if (
+    cropDragPointerId ===
+    event.pointerId
+  ) {
+
+    cropDragPointerId =
+      null;
+
+  }
+
+
+  if (
+    cropPointers.size ===
+    1
+  ) {
+
+    const [
+      pointerId,
+      point
+    ] =
+      Array.from(
+        cropPointers.entries()
+      )[0];
+
+
+    cropDragPointerId =
+      pointerId;
+
+
+    cropDragStartX =
+      point.x;
+
+
+    cropDragStartY =
+      point.y;
+
+
+    cropDragOriginX =
+      cropOffsetX;
+
+
+    cropDragOriginY =
+      cropOffsetY;
+
+  }
+
+}
+
+
+wallpaperCropViewport
+  ?.addEventListener(
+    "pointerup",
+    finishCropPointer
+  );
+
+
+wallpaperCropViewport
+  ?.addEventListener(
+    "pointercancel",
+    finishCropPointer
+  );
+
+
+wallpaperCropZoom
+  ?.addEventListener(
+    "input",
+    () => {
+
+      cropZoomFactor =
+        Math.max(
+          1,
+          Math.min(
+            3,
+            Number(
+              wallpaperCropZoom.value
+            ) /
+            100
+          )
+        );
+
+
+      renderWallpaperCrop();
+
+    }
+  );
+
+
+[
+  closeWallpaperCropButton,
+  cancelWallpaperCropButton
+].forEach(
+  (button) => {
+
+    button?.addEventListener(
+      "click",
+      closeWallpaperCropModal
+    );
+
+  }
+);
+
+
+useWallpaperCropButton
+  ?.addEventListener(
+    "click",
+    async () => {
+
+      if (
+        !pendingWallpaperSource
+      ) {
+
+        return;
+
+      }
+
+
+      try {
+
+        const viewport =
+          getCropViewportSize();
+
+
+        const outputWidth =
+          Math.max(
+            900,
+            Math.round(
+              window.innerWidth *
+              Math.min(
+                3,
+                window.devicePixelRatio ||
+                2
+              )
+            )
+          );
+
+
+        const outputHeight =
+          Math.round(
+            outputWidth *
+            (
+              viewport.height /
+              viewport.width
+            )
+          );
+
+
+        const canvas =
+          document.createElement(
+            "canvas"
+          );
+
+
+        canvas.width =
+          outputWidth;
+
+
+        canvas.height =
+          outputHeight;
+
+
+        const context =
+          canvas.getContext(
+            "2d"
+          );
+
+
+        if (
+          !context
+        ) {
+
+          throw new Error(
+            "Canvas unavailable"
+          );
+
+        }
+
+
+        const displayScale =
+          cropBaseScale *
+          cropZoomFactor;
+
+
+        const displayedWidth =
+          cropImageNaturalWidth *
+          displayScale;
+
+
+        const displayedHeight =
+          cropImageNaturalHeight *
+          displayScale;
+
+
+        const left =
+          (
+            viewport.width -
+            displayedWidth
+          ) /
+          2 +
+          cropOffsetX;
+
+
+        const top =
+          (
+            viewport.height -
+            displayedHeight
+          ) /
+          2 +
+          cropOffsetY;
+
+
+        const sourceX =
+          Math.max(
+            0,
+            -left /
+            displayScale
+          );
+
+
+        const sourceY =
+          Math.max(
+            0,
+            -top /
+            displayScale
+          );
+
+
+        const sourceWidth =
+          Math.min(
+            cropImageNaturalWidth -
+              sourceX,
+            viewport.width /
+              displayScale
+          );
+
+
+        const sourceHeight =
+          Math.min(
+            cropImageNaturalHeight -
+              sourceY,
+            viewport.height /
+              displayScale
+          );
+
+
+        context.drawImage(
+          wallpaperCropImage,
+          sourceX,
+          sourceY,
+          sourceWidth,
+          sourceHeight,
+          0,
+          0,
+          outputWidth,
+          outputHeight
+        );
+
+
+        const cropped =
+          canvas.toDataURL(
+            "image/jpeg",
+            0.88
+          );
+
+
+        appearancePreferences.wallpaperData =
+          cropped;
+
+
+        appearancePreferences.wallpaperEnabled =
+          true;
+
+
+        applyAppearance();
+
+
+        await saveAppearancePreferences();
+
+
+        closeWallpaperCropModal();
+
+
+        showToast(
+          "Wallpaper saved"
+        );
+
+      } catch (
+        error
+      ) {
+
+        console.error(
+          "Could not crop wallpaper:",
+          error
+        );
+
+
+        showToast(
+          "Could not crop that photo."
+        );
+
+      }
+
+    }
+  );
+
+
 chooseWallpaperButton
   ?.addEventListener(
     "click",
@@ -2428,28 +3120,47 @@ wallpaperInput?.addEventListener(
 
     try {
 
-      const compressed =
-        await compressExpensePhoto(
-          file
+      const source =
+        await new Promise(
+          (
+            resolve,
+            reject
+          ) => {
+
+            const reader =
+              new FileReader();
+
+
+            reader.onload =
+              () =>
+                resolve(
+                  String(
+                    reader.result ||
+                    ""
+                  )
+                );
+
+
+            reader.onerror =
+              () =>
+                reject(
+                  reader.error ||
+                  new Error(
+                    "Could not read photo"
+                  )
+                );
+
+
+            reader.readAsDataURL(
+              file
+            );
+
+          }
         );
 
 
-      appearancePreferences.wallpaperData =
-        compressed;
-
-
-      appearancePreferences.wallpaperEnabled =
-        true;
-
-
-      applyAppearance();
-
-
-      await saveAppearancePreferences();
-
-
-      showToast(
-        "Wallpaper saved"
+      openWallpaperCropModal(
+        source
       );
 
     } catch (
@@ -2457,7 +3168,7 @@ wallpaperInput?.addEventListener(
     ) {
 
       console.error(
-        "Could not save wallpaper:",
+        "Could not open wallpaper photo:",
         error
       );
 
@@ -2616,161 +3327,6 @@ overlayStrengthOptions
     }
   );
 
-
-
-document
-  .querySelectorAll(
-    "[data-wallpaper-fit]"
-  )
-  .forEach(
-    (button) => {
-
-      button.addEventListener(
-        "click",
-        async () => {
-
-          appearancePreferences.wallpaperFit =
-            button.dataset.wallpaperFit ===
-            "contain"
-              ? "contain"
-              : "cover";
-
-
-          applyAppearance();
-
-
-          try {
-
-            await saveAppearancePreferences();
-
-          } catch (
-            error
-          ) {
-
-            console.error(
-              "Could not save wallpaper fit:",
-              error
-            );
-
-          }
-
-        }
-      );
-
-    }
-  );
-
-
-async function saveWallpaperFramingFromControls() {
-
-  appearancePreferences.wallpaperZoom =
-    Number(
-      wallpaperZoom?.value ||
-      100
-    );
-
-
-  appearancePreferences.wallpaperPositionX =
-    Number(
-      wallpaperPositionX?.value ||
-      50
-    );
-
-
-  appearancePreferences.wallpaperPositionY =
-    Number(
-      wallpaperPositionY?.value ||
-      50
-    );
-
-
-  applyAppearance();
-
-
-  try {
-
-    await saveAppearancePreferences();
-
-  } catch (
-    error
-  ) {
-
-    console.error(
-      "Could not save wallpaper framing:",
-      error
-    );
-
-  }
-
-}
-
-
-[
-  wallpaperZoom,
-  wallpaperPositionX,
-  wallpaperPositionY
-].forEach(
-  (control) => {
-
-    control?.addEventListener(
-      "input",
-      () => {
-
-        saveWallpaperFramingFromControls();
-
-      }
-    );
-
-  }
-);
-
-
-resetWallpaperFramingButton
-  ?.addEventListener(
-    "click",
-    async () => {
-
-      appearancePreferences.wallpaperFit =
-        "cover";
-
-
-      appearancePreferences.wallpaperZoom =
-        100;
-
-
-      appearancePreferences.wallpaperPositionX =
-        50;
-
-
-      appearancePreferences.wallpaperPositionY =
-        50;
-
-
-      applyAppearance();
-
-
-      try {
-
-        await saveAppearancePreferences();
-
-
-        showToast(
-          "Wallpaper framing reset"
-        );
-
-      } catch (
-        error
-      ) {
-
-        console.error(
-          "Could not reset wallpaper framing:",
-          error
-        );
-
-      }
-
-    }
-  );
 
 
 resetAppearanceButton
