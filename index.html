@@ -18,10 +18,13 @@
 
   <link rel="manifest" href="manifest.json">
   <link rel="apple-touch-icon" href="icon-192.png">
-  <link rel="stylesheet" href="styles.css?v=20260808-2">
+  <link rel="stylesheet" href="styles.css?v=20260808-3">
 </head>
 
 <body>
+  <div id="appWallpaperLayer" class="app-wallpaper-layer" aria-hidden="true"></div>
+  <div id="appWallpaperOverlay" class="app-wallpaper-overlay" aria-hidden="true"></div>
+
   <div class="app-shell">
 
     <!-- ========================================
@@ -1827,6 +1830,71 @@
               <button type="button" data-overlay-choice="strong">Strong</button>
             </div>
           </div>
+
+          <div class="wallpaper-framing-block">
+            <div class="wallpaper-framing-heading">
+              <strong>Wallpaper Framing</strong>
+              <small>Adjust how the photo fits your screen.</small>
+            </div>
+
+            <div class="wallpaper-fit-options">
+              <button type="button" data-wallpaper-fit="cover" class="active">Fill Screen</button>
+              <button type="button" data-wallpaper-fit="contain">Fit Image</button>
+            </div>
+
+            <label class="wallpaper-slider-row">
+              <span>
+                <strong>Zoom</strong>
+                <small id="wallpaperZoomValue">100%</small>
+              </span>
+              <input
+                id="wallpaperZoom"
+                type="range"
+                min="100"
+                max="180"
+                step="1"
+                value="100"
+              >
+            </label>
+
+            <label class="wallpaper-slider-row">
+              <span>
+                <strong>Horizontal</strong>
+                <small id="wallpaperXValue">50%</small>
+              </span>
+              <input
+                id="wallpaperPositionX"
+                type="range"
+                min="0"
+                max="100"
+                step="1"
+                value="50"
+              >
+            </label>
+
+            <label class="wallpaper-slider-row">
+              <span>
+                <strong>Vertical</strong>
+                <small id="wallpaperYValue">50%</small>
+              </span>
+              <input
+                id="wallpaperPositionY"
+                type="range"
+                min="0"
+                max="100"
+                step="1"
+                value="50"
+              >
+            </label>
+
+            <button
+              id="resetWallpaperFramingButton"
+              class="secondary-button reset-framing-btn"
+              type="button"
+            >
+              Center & Reset Framing
+            </button>
+          </div>
         </section>
 
         <button
@@ -2820,7 +2888,7 @@
 
   </div>
 
-  <script src="app.js?v=20260808-2"></script>
+  <script src="app.js?v=20260808-3"></script>
 
   <script>
     (() => {

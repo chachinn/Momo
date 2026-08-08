@@ -198,7 +198,11 @@ const APPEARANCE_DEFAULTS = {
   theme: "peach",
   wallpaperData: "",
   wallpaperEnabled: false,
-  overlay: "medium"
+  overlay: "medium",
+  wallpaperFit: "cover",
+  wallpaperZoom: 100,
+  wallpaperPositionX: 50,
+  wallpaperPositionY: 50
 };
 
 
@@ -1752,6 +1756,60 @@ const resetAppearanceButton =
   );
 
 
+const appWallpaperLayer =
+  document.getElementById(
+    "appWallpaperLayer"
+  );
+
+
+const appWallpaperOverlay =
+  document.getElementById(
+    "appWallpaperOverlay"
+  );
+
+
+const wallpaperZoom =
+  document.getElementById(
+    "wallpaperZoom"
+  );
+
+
+const wallpaperPositionX =
+  document.getElementById(
+    "wallpaperPositionX"
+  );
+
+
+const wallpaperPositionY =
+  document.getElementById(
+    "wallpaperPositionY"
+  );
+
+
+const wallpaperZoomValue =
+  document.getElementById(
+    "wallpaperZoomValue"
+  );
+
+
+const wallpaperXValue =
+  document.getElementById(
+    "wallpaperXValue"
+  );
+
+
+const wallpaperYValue =
+  document.getElementById(
+    "wallpaperYValue"
+  );
+
+
+const resetWallpaperFramingButton =
+  document.getElementById(
+    "resetWallpaperFramingButton"
+  );
+
+
 const THEME_LABELS = {
   peach: "Peach Pink",
   lavender: "Lavender Purple",
@@ -1821,20 +1879,96 @@ function applyAppearance() {
   );
 
 
-  document.body.style.setProperty(
-    "--momo-wallpaper-image",
-    hasWallpaper
-      ? `url("${appearancePreferences.wallpaperData}")`
-      : "none"
-  );
+  if (
+    appWallpaperLayer
+  ) {
+
+    const fit =
+      appearancePreferences.wallpaperFit ===
+      "contain"
+        ? "contain"
+        : "cover";
 
 
-  document.body.style.setProperty(
-    "--momo-wallpaper-overlay",
-    getWallpaperOverlayColor(
-      appearancePreferences.overlay
-    )
-  );
+    const zoom =
+      Math.max(
+        100,
+        Math.min(
+          180,
+          Number(
+            appearancePreferences.wallpaperZoom
+          ) ||
+          100
+        )
+      );
+
+
+    const positionX =
+      Math.max(
+        0,
+        Math.min(
+          100,
+          Number(
+            appearancePreferences.wallpaperPositionX
+          ) ??
+          50
+        )
+      );
+
+
+    const positionY =
+      Math.max(
+        0,
+        Math.min(
+          100,
+          Number(
+            appearancePreferences.wallpaperPositionY
+          ) ??
+          50
+        )
+      );
+
+
+    appWallpaperLayer.style.backgroundImage =
+      hasWallpaper
+        ? `url("${appearancePreferences.wallpaperData}")`
+        : "none";
+
+
+    appWallpaperLayer.style.backgroundSize =
+      fit === "contain"
+        ? `${zoom}% auto`
+        : `auto ${zoom}%`;
+
+
+    appWallpaperLayer.style.backgroundPosition =
+      `${positionX}% ${positionY}%`;
+
+
+    appWallpaperLayer.classList.toggle(
+      "active",
+      wallpaperIsOn
+    );
+
+  }
+
+
+  if (
+    appWallpaperOverlay
+  ) {
+
+    appWallpaperOverlay.style.background =
+      getWallpaperOverlayColor(
+        appearancePreferences.overlay
+      );
+
+
+    appWallpaperOverlay.classList.toggle(
+      "active",
+      wallpaperIsOn
+    );
+
+  }
 
 
   renderAppearanceControls();
@@ -1980,6 +2114,95 @@ function renderAppearanceControls() {
 
       }
     );
+
+
+  document
+    .querySelectorAll(
+      "[data-wallpaper-fit]"
+    )
+    .forEach(
+      (button) => {
+
+        button.classList.toggle(
+          "active",
+          button.dataset.wallpaperFit ===
+            (
+              appearancePreferences.wallpaperFit ||
+              "cover"
+            )
+        );
+
+      }
+    );
+
+
+  if (
+    wallpaperZoom
+  ) {
+
+    wallpaperZoom.value =
+      String(
+        appearancePreferences.wallpaperZoom ??
+        100
+      );
+
+  }
+
+
+  if (
+    wallpaperPositionX
+  ) {
+
+    wallpaperPositionX.value =
+      String(
+        appearancePreferences.wallpaperPositionX ??
+        50
+      );
+
+  }
+
+
+  if (
+    wallpaperPositionY
+  ) {
+
+    wallpaperPositionY.value =
+      String(
+        appearancePreferences.wallpaperPositionY ??
+        50
+      );
+
+  }
+
+
+  if (
+    wallpaperZoomValue
+  ) {
+
+    wallpaperZoomValue.textContent =
+      `${appearancePreferences.wallpaperZoom ?? 100}%`;
+
+  }
+
+
+  if (
+    wallpaperXValue
+  ) {
+
+    wallpaperXValue.textContent =
+      `${appearancePreferences.wallpaperPositionX ?? 50}%`;
+
+  }
+
+
+  if (
+    wallpaperYValue
+  ) {
+
+    wallpaperYValue.textContent =
+      `${appearancePreferences.wallpaperPositionY ?? 50}%`;
+
+  }
 
 }
 
@@ -2385,6 +2608,162 @@ overlayStrengthOptions
 
         console.error(
           "Could not save overlay:",
+          error
+        );
+
+      }
+
+    }
+  );
+
+
+
+document
+  .querySelectorAll(
+    "[data-wallpaper-fit]"
+  )
+  .forEach(
+    (button) => {
+
+      button.addEventListener(
+        "click",
+        async () => {
+
+          appearancePreferences.wallpaperFit =
+            button.dataset.wallpaperFit ===
+            "contain"
+              ? "contain"
+              : "cover";
+
+
+          applyAppearance();
+
+
+          try {
+
+            await saveAppearancePreferences();
+
+          } catch (
+            error
+          ) {
+
+            console.error(
+              "Could not save wallpaper fit:",
+              error
+            );
+
+          }
+
+        }
+      );
+
+    }
+  );
+
+
+async function saveWallpaperFramingFromControls() {
+
+  appearancePreferences.wallpaperZoom =
+    Number(
+      wallpaperZoom?.value ||
+      100
+    );
+
+
+  appearancePreferences.wallpaperPositionX =
+    Number(
+      wallpaperPositionX?.value ||
+      50
+    );
+
+
+  appearancePreferences.wallpaperPositionY =
+    Number(
+      wallpaperPositionY?.value ||
+      50
+    );
+
+
+  applyAppearance();
+
+
+  try {
+
+    await saveAppearancePreferences();
+
+  } catch (
+    error
+  ) {
+
+    console.error(
+      "Could not save wallpaper framing:",
+      error
+    );
+
+  }
+
+}
+
+
+[
+  wallpaperZoom,
+  wallpaperPositionX,
+  wallpaperPositionY
+].forEach(
+  (control) => {
+
+    control?.addEventListener(
+      "input",
+      () => {
+
+        saveWallpaperFramingFromControls();
+
+      }
+    );
+
+  }
+);
+
+
+resetWallpaperFramingButton
+  ?.addEventListener(
+    "click",
+    async () => {
+
+      appearancePreferences.wallpaperFit =
+        "cover";
+
+
+      appearancePreferences.wallpaperZoom =
+        100;
+
+
+      appearancePreferences.wallpaperPositionX =
+        50;
+
+
+      appearancePreferences.wallpaperPositionY =
+        50;
+
+
+      applyAppearance();
+
+
+      try {
+
+        await saveAppearancePreferences();
+
+
+        showToast(
+          "Wallpaper framing reset"
+        );
+
+      } catch (
+        error
+      ) {
+
+        console.error(
+          "Could not reset wallpaper framing:",
           error
         );
 

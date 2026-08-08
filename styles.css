@@ -6694,3 +6694,181 @@ body.wallpaper-enabled .form-card {
   backdrop-filter: blur(10px);
 }
 
+
+
+/* ========================================
+   WALLPAPER LAYER — SCREEN LOCKED
+======================================== */
+
+body {
+  position: relative;
+}
+
+.app-wallpaper-layer,
+.app-wallpaper-overlay {
+  position: fixed;
+  inset: 0;
+  width: 100vw;
+  height: 100dvh;
+  pointer-events: none;
+  opacity: 0;
+  transition: opacity 0.2s ease;
+}
+
+.app-wallpaper-layer {
+  z-index: 0;
+  background-repeat: no-repeat;
+  background-position: center center;
+  background-size: cover;
+  background-color: var(--bg);
+  transform: translateZ(0);
+  -webkit-transform: translateZ(0);
+}
+
+.app-wallpaper-overlay {
+  z-index: 1;
+}
+
+.app-wallpaper-layer.active,
+.app-wallpaper-overlay.active {
+  opacity: 1;
+}
+
+.app-shell {
+  position: relative;
+  z-index: 2;
+}
+
+body.wallpaper-enabled::before,
+body.wallpaper-enabled::after {
+  content: none !important;
+  display: none !important;
+}
+
+body.wallpaper-enabled {
+  background: transparent !important;
+}
+
+body.wallpaper-enabled .app-shell,
+body.wallpaper-enabled .screen-stack,
+body.wallpaper-enabled .screen {
+  background: transparent !important;
+}
+
+/*
+  Keep navigation/header readable while still showing the wallpaper.
+*/
+body.wallpaper-enabled .topbar,
+body.wallpaper-enabled .bottom-nav {
+  background:
+    color-mix(
+      in srgb,
+      var(--bg) 66%,
+      transparent
+    ) !important;
+  -webkit-backdrop-filter: blur(16px);
+  backdrop-filter: blur(16px);
+}
+
+/*
+  Make major content surfaces translucent so the wallpaper
+  remains visible through the full screen.
+*/
+body.wallpaper-enabled .card,
+body.wallpaper-enabled .budget-summary-card,
+body.wallpaper-enabled .activity-tools,
+body.wallpaper-enabled .activity-summary,
+body.wallpaper-enabled .form-card,
+body.wallpaper-enabled .appearance-section {
+  background:
+    color-mix(
+      in srgb,
+      var(--surface) 70%,
+      transparent
+    ) !important;
+  -webkit-backdrop-filter: blur(9px);
+  backdrop-filter: blur(9px);
+}
+
+/* ========================================
+   WALLPAPER FRAMING CONTROLS
+======================================== */
+
+.wallpaper-framing-block {
+  margin-top: 16px;
+  padding-top: 14px;
+  border-top: 1px solid var(--border);
+}
+
+.wallpaper-framing-heading {
+  display: grid;
+  gap: 3px;
+  margin-bottom: 10px;
+}
+
+.wallpaper-framing-heading > strong {
+  font-size: 12px;
+}
+
+.wallpaper-framing-heading > small {
+  color: var(--text-soft);
+  font-size: 10px;
+  line-height: 1.4;
+}
+
+.wallpaper-fit-options {
+  display: grid;
+  grid-template-columns: repeat(2, 1fr);
+  gap: 8px;
+  margin-bottom: 14px;
+}
+
+.wallpaper-fit-options button {
+  min-height: 42px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  background: white;
+  color: var(--text-soft);
+}
+
+.wallpaper-fit-options button.active {
+  border-color: var(--pink);
+  background: var(--blush);
+  color: var(--rose);
+  font-weight: 800;
+}
+
+.wallpaper-slider-row {
+  display: block;
+  margin-top: 13px;
+}
+
+.wallpaper-slider-row > span {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  gap: 10px;
+  margin-bottom: 7px;
+}
+
+.wallpaper-slider-row strong {
+  font-size: 11px;
+}
+
+.wallpaper-slider-row small {
+  color: var(--rose);
+  font-size: 10px;
+  font-weight: 800;
+}
+
+.wallpaper-slider-row input[type="range"] {
+  width: 100%;
+  accent-color: var(--rose);
+}
+
+.reset-framing-btn {
+  width: 100%;
+  min-height: 44px;
+  margin-top: 14px;
+}
+
