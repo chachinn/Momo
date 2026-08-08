@@ -6049,6 +6049,48 @@ const expenseCategory =
   );
 
 
+const expenseOtherCategoryRow =
+  document.getElementById(
+    "expenseOtherCategoryRow"
+  );
+
+
+const expenseOtherCategory =
+  document.getElementById(
+    "expenseOtherCategory"
+  );
+
+
+function updateExpenseOtherCategoryVisibility() {
+
+  const isOther =
+    expenseCategory?.value ===
+    "Other";
+
+
+  if (
+    expenseOtherCategoryRow
+  ) {
+
+    expenseOtherCategoryRow.hidden =
+      !isOther;
+
+  }
+
+
+  if (
+    !isOther &&
+    expenseOtherCategory
+  ) {
+
+    expenseOtherCategory.value =
+      "";
+
+  }
+
+}
+
+
 function populateExpenseBudgetDropdown() {
 
   if (
@@ -7221,6 +7263,12 @@ document
   );
 
 
+expenseCategory?.addEventListener(
+  "change",
+  updateExpenseOtherCategoryVisibility
+);
+
+
 expenseBudget?.addEventListener(
   "change",
   () => {
@@ -7244,6 +7292,9 @@ expenseBudget?.addEventListener(
 
     expenseCategory.value =
       budget.category;
+
+
+    updateExpenseOtherCategoryVisibility();
 
 
     currencySelect.value =
@@ -11804,6 +11855,19 @@ function resetExpenseForm() {
   }
 
 
+  if (
+    expenseOtherCategory
+  ) {
+
+    expenseOtherCategory.value =
+      "";
+
+  }
+
+
+  updateExpenseOtherCategoryVisibility();
+
+
   updateExpenseConversion();
 
   renderExpenseTagSuggestions();
@@ -11847,6 +11911,9 @@ function prepareExpenseForm() {
   renderExpenseSettlementControls(
     currentExpense
   );
+
+
+  updateExpenseOtherCategoryVisibility();
 
 }
 
@@ -11914,6 +11981,20 @@ function openExpenseEditor(
   expenseCategory.value =
     expense.category ||
     "Other";
+
+
+  if (
+    expenseOtherCategory
+  ) {
+
+    expenseOtherCategory.value =
+      expense.otherCategory ||
+      "";
+
+  }
+
+
+  updateExpenseOtherCategoryVisibility();
 
 
   expenseBudget.value =
@@ -12778,6 +12859,16 @@ expenseForm?.addEventListener(
       category:
         expenseCategory.value ||
         "Other",
+
+      otherCategory:
+        expenseCategory.value ===
+          "Other"
+          ? (
+              expenseOtherCategory?.value
+                .trim() ||
+              ""
+            )
+          : "",
 
       budgetId:
         selectedBudget?.id ||
@@ -27516,6 +27607,7 @@ function getFilteredReceiptExpenses() {
             [
               expense.title,
               expense.category,
+              expense.otherCategory,
               expense.location,
               expense.notes,
               expense.paymentMethod,
@@ -27773,8 +27865,14 @@ function renderReceiptGallery() {
                   )}
                   ·
                   ${escapeHTML(
-                    expense.category ||
-                    "Other"
+                    expense.category ===
+                      "Other" &&
+                    expense.otherCategory
+                      ? `Other · ${expense.otherCategory}`
+                      : (
+                          expense.category ||
+                          "Other"
+                        )
                   )}
                 </span>
 

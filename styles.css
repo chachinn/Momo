@@ -9031,3 +9031,122 @@ body.wallpaper-enabled
   }
 }
 
+
+
+/* ========================================
+   OPTIONAL "OTHER" CATEGORY DETAIL
+======================================== */
+
+.expense-other-category-row {
+  background:
+    color-mix(
+      in srgb,
+      var(--blush) 34%,
+      transparent
+    );
+}
+
+.expense-other-category-row[hidden] {
+  display: none !important;
+}
+
+.expense-other-category-row .field-optional {
+  margin-left: 5px;
+  color: var(--text-soft);
+  font-size: 8px;
+  font-weight: 500;
+}
+
+.detail-subvalue {
+  display: block;
+  margin-top: 3px;
+  color: var(--text-soft);
+  font-size: 9px;
+  font-weight: 500;
+}
+
+
+
+/* ========================================
+   CONVERTER LAUNCH CARD FIX
+======================================== */
+
+.converter-launch-card {
+  grid-template-columns:
+    44px
+    minmax(0, 1fr)
+    26px;
+  gap: 12px;
+  min-height: 88px;
+  padding: 14px 15px;
+}
+
+/*
+  Override the older broad .trip-tool > span rule:
+  only the icon should be a fixed square.
+*/
+.converter-launch-card > .trip-tool-icon {
+  width: 44px;
+  height: 44px;
+  border-radius: 14px;
+  display: grid;
+  place-items: center;
+  background: var(--blush);
+  font-size: 20px;
+}
+
+.converter-launch-card > .trip-tool-copy {
+  width: auto;
+  height: auto;
+  min-width: 0;
+  display: block;
+  border-radius: 0;
+  background: transparent;
+}
+
+.converter-launch-card .trip-tool-copy strong {
+  display: block;
+  color: var(--text);
+  font-size: 13px;
+  line-height: 1.25;
+  white-space: normal;
+}
+
+.converter-launch-card .trip-tool-copy small {
+  display: block;
+  margin-top: 4px;
+  color: var(--text-soft);
+  font-size: 9px;
+  line-height: 1.45;
+  white-space: normal;
+}
+
+.converter-launch-card > .trip-tool-arrow {
+  width: 26px;
+  height: 26px;
+  border-radius: 50%;
+  display: grid;
+  place-items: center;
+  background:
+    color-mix(
+      in srgb,
+      var(--blush) 78%,
+      white
+    );
+  color: var(--rose);
+  font-size: 22px;
+  line-height: 1;
+}
+
+body.wallpaper-enabled
+.converter-launch-card {
+  background:
+    color-mix(
+      in srgb,
+      var(--surface) 78%,
+      transparent
+    );
+  -webkit-backdrop-filter: blur(12px);
+  backdrop-filter: blur(12px);
+}
+

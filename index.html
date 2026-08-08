@@ -763,6 +763,25 @@
               </select>
             </label>
 
+            <label
+              id="expenseOtherCategoryRow"
+              class="form-row expense-other-category-row"
+              hidden
+            >
+              <span>
+                What is it?
+                <small class="field-optional">Optional</small>
+              </span>
+
+              <input
+                id="expenseOtherCategory"
+                type="text"
+                maxlength="50"
+                placeholder="e.g. Laundry, souvenir, pharmacy"
+                autocomplete="off"
+              >
+            </label>
+
             <label class="form-row">
               <span>Budget</span>
               <select id="expenseBudget">
@@ -1155,18 +1174,21 @@
         </div>
 
         <button
-          class="card trip-tool"
+          class="card trip-tool converter-launch-card"
           type="button"
           data-nav="trips"
           data-focus-converter
         >
-          <span>💱</span>
-          <span>
+          <span class="trip-tool-icon" aria-hidden="true">💱</span>
+
+          <span class="trip-tool-copy">
             <strong>Open Currency Converter</strong>
             <small>
               Convert PHP, JPY, USD, GBP, HKD, SGD and CNY.
             </small>
           </span>
+
+          <span class="trip-tool-arrow" aria-hidden="true">›</span>
         </button>
       </section>
 
