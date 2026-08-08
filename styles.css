@@ -9343,3 +9343,1038 @@ body.wallpaper-enabled
   }
 }
 
+
+
+/* =========================================================
+   MOMO — PEACHY LIFE
+   Global visual direction + Home
+   ========================================================= */
+
+:root {
+  --momo-peach: #f2a18f;
+  --momo-peach-deep: #dc7f78;
+  --momo-apricot: #f6c39f;
+  --momo-cream: #fff9f4;
+  --momo-blush: #f9e5e4;
+  --momo-cocoa: #654c4b;
+  --momo-cocoa-soft: #8d7471;
+  --momo-leaf: #8faf9b;
+  --momo-gold: #efc98f;
+  --momo-glass: rgba(255, 249, 246, 0.82);
+  --momo-glass-strong: rgba(255, 251, 248, 0.91);
+  --momo-hairline: rgba(211, 143, 134, 0.28);
+  --momo-shadow:
+    0 16px 42px
+    rgba(103, 70, 67, 0.10);
+}
+
+/*
+  Keep existing theme support, but give Peach its own warmer
+  personality. Other selected themes can still override their
+  existing accent variables elsewhere.
+*/
+body[data-theme="peach"],
+body:not([data-theme]) {
+  --bg: #fff9f4;
+  --surface: #fffdfb;
+  --blush: #f9e5e4;
+  --pink: #f2a18f;
+  --rose: #d87e78;
+  --peach: #f6c39f;
+  --border: rgba(213, 153, 143, 0.30);
+  --text: #5d4747;
+  --text-soft: #8e7875;
+}
+
+body {
+  color: var(--momo-cocoa);
+  background:
+    radial-gradient(
+      circle at 12% 8%,
+      rgba(246, 195, 159, 0.22),
+      transparent 25%
+    ),
+    radial-gradient(
+      circle at 88% 16%,
+      rgba(242, 161, 143, 0.18),
+      transparent 28%
+    ),
+    var(--bg);
+}
+
+.brand-name {
+  color: var(--momo-peach-deep);
+  letter-spacing: -0.025em;
+}
+
+.topbar {
+  background:
+    color-mix(
+      in srgb,
+      var(--momo-cream) 88%,
+      transparent
+    );
+  border-bottom:
+    1px solid
+    var(--momo-hairline);
+  -webkit-backdrop-filter:
+    blur(20px) saturate(1.15);
+  backdrop-filter:
+    blur(20px) saturate(1.15);
+}
+
+.bottom-nav {
+  border:
+    1px solid
+    rgba(213, 153, 143, 0.20);
+  background:
+    color-mix(
+      in srgb,
+      var(--momo-cream) 91%,
+      transparent
+    );
+  box-shadow:
+    0 -8px 30px
+    rgba(103, 70, 67, 0.06);
+  -webkit-backdrop-filter:
+    blur(22px) saturate(1.16);
+  backdrop-filter:
+    blur(22px) saturate(1.16);
+}
+
+.nav-item.active {
+  color:
+    var(--momo-peach-deep);
+  background:
+    linear-gradient(
+      180deg,
+      rgba(249, 229, 228, 0.92),
+      rgba(255, 249, 244, 0.78)
+    );
+}
+
+.nav-item.active > span {
+  color:
+    var(--momo-peach-deep);
+  background:
+    rgba(242, 161, 143, 0.16);
+}
+
+.nav-item.nav-add > span,
+.nav-item.nav-add.active > span {
+  background:
+    linear-gradient(
+      145deg,
+      #f5b0a2,
+      #df827d
+    );
+  box-shadow:
+    0 12px 24px
+    rgba(216, 126, 120, 0.24);
+}
+
+.card,
+.form-card,
+.modal-card,
+.section-block {
+  border-color:
+    var(--momo-hairline);
+}
+
+.drawer-footer > span {
+  filter:
+    drop-shadow(
+      0 4px 8px
+      rgba(216, 126, 120, 0.20)
+    );
+}
+
+/* -------------------------
+   HOME: PAGE RHYTHM
+------------------------- */
+
+.momo-home {
+  padding-top:
+    18px;
+  padding-bottom:
+    calc(
+      var(--bottom-nav-h) +
+      32px
+    );
+}
+
+.momo-home-welcome {
+  position:
+    relative;
+  min-height:
+    198px;
+  margin:
+    0 0 18px;
+  padding:
+    24px 23px;
+  overflow:
+    hidden;
+  border:
+    1px solid
+    var(--momo-hairline);
+  border-radius:
+    30px;
+  display:
+    grid;
+  grid-template-columns:
+    minmax(0, 1fr)
+    92px;
+  align-items:
+    center;
+  gap:
+    14px;
+  background:
+    linear-gradient(
+      135deg,
+      rgba(255, 252, 249, 0.94),
+      rgba(249, 226, 222, 0.80)
+    );
+  box-shadow:
+    var(--momo-shadow);
+}
+
+.momo-home-welcome::before {
+  content:
+    "";
+  position:
+    absolute;
+  width:
+    170px;
+  height:
+    170px;
+  right:
+    -52px;
+  top:
+    -55px;
+  border-radius:
+    50%;
+  background:
+    radial-gradient(
+      circle,
+      rgba(246, 195, 159, 0.46),
+      rgba(246, 195, 159, 0)
+      70%
+    );
+  pointer-events:
+    none;
+}
+
+.momo-home-welcome::after {
+  content:
+    "୨୧  ✦";
+  position:
+    absolute;
+  right:
+    20px;
+  bottom:
+    15px;
+  color:
+    rgba(216, 126, 120, 0.36);
+  font-size:
+    13px;
+  letter-spacing:
+    0.14em;
+  pointer-events:
+    none;
+}
+
+.momo-peach-kicker,
+.momo-section-kicker {
+  margin:
+    0;
+  color:
+    var(--momo-peach-deep);
+  font-size:
+    10px;
+  font-weight:
+    900;
+  letter-spacing:
+    0.13em;
+}
+
+.momo-home-welcome h1 {
+  margin:
+    8px 0 8px;
+  color:
+    var(--momo-cocoa);
+  font-family:
+    Georgia,
+    "Times New Roman",
+    serif;
+  font-size:
+    clamp(
+      36px,
+      10vw,
+      48px
+    );
+  line-height:
+    0.98;
+  letter-spacing:
+    -0.045em;
+}
+
+.momo-home-welcome p:last-child {
+  max-width:
+    260px;
+  margin:
+    0;
+  color:
+    var(--momo-cocoa-soft);
+  font-size:
+    12px;
+  line-height:
+    1.55;
+}
+
+.momo-welcome-peach {
+  position:
+    relative;
+  width:
+    86px;
+  height:
+    86px;
+  display:
+    grid;
+  place-items:
+    center;
+  align-self:
+    center;
+}
+
+.momo-welcome-peach::before {
+  content:
+    "";
+  position:
+    absolute;
+  inset:
+    5px;
+  border:
+    1px solid
+    rgba(216, 126, 120, 0.18);
+  border-radius:
+    28px;
+  background:
+    rgba(255, 255, 255, 0.46);
+  transform:
+    rotate(7deg);
+}
+
+.momo-welcome-peach > span {
+  position:
+    relative;
+  z-index:
+    1;
+  font-size:
+    46px;
+  filter:
+    drop-shadow(
+      0 10px 15px
+      rgba(174, 105, 92, 0.17)
+    );
+}
+
+.momo-welcome-peach > i {
+  position:
+    absolute;
+  z-index:
+    2;
+  right:
+    2px;
+  top:
+    1px;
+  color:
+    var(--momo-gold);
+  font-size:
+    16px;
+  font-style:
+    normal;
+}
+
+.momo-home-section {
+  margin-top:
+    23px;
+}
+
+.momo-home-section-heading {
+  min-height:
+    46px;
+  margin:
+    0 3px 10px;
+  display:
+    flex;
+  justify-content:
+    space-between;
+  align-items:
+    flex-end;
+  gap:
+    12px;
+}
+
+.momo-home-section-heading h2 {
+  margin:
+    4px 0 0;
+  color:
+    var(--momo-cocoa);
+  font-family:
+    Georgia,
+    "Times New Roman",
+    serif;
+  font-size:
+    25px;
+  line-height:
+    1.05;
+  letter-spacing:
+    -0.025em;
+}
+
+.momo-soft-pill {
+  flex:
+    0 0 auto;
+  padding:
+    7px 10px;
+  border:
+    1px solid
+    var(--momo-hairline);
+  border-radius:
+    999px;
+  background:
+    rgba(255, 251, 248, 0.68);
+  color:
+    var(--momo-cocoa-soft);
+  font-size:
+    9px;
+  font-weight:
+    800;
+}
+
+.momo-section-link {
+  padding-bottom:
+    3px;
+  color:
+    var(--momo-peach-deep);
+  font-size:
+    9px;
+}
+
+/* -------------------------
+   HOME: MONEY SNAPSHOT
+------------------------- */
+
+.momo-money-snapshot {
+  overflow:
+    hidden;
+  border:
+    1px solid
+    var(--momo-hairline);
+  border-radius:
+    28px;
+  background:
+    linear-gradient(
+      145deg,
+      rgba(255, 252, 249, 0.93),
+      rgba(249, 230, 226, 0.82)
+    );
+  box-shadow:
+    var(--momo-shadow);
+}
+
+.momo-snapshot-main {
+  padding:
+    20px 20px 17px;
+}
+
+.momo-snapshot-main .label {
+  color:
+    var(--momo-cocoa-soft);
+  font-size:
+    9px;
+  font-weight:
+    800;
+  text-transform:
+    uppercase;
+  letter-spacing:
+    0.08em;
+}
+
+.momo-snapshot-main > strong {
+  display:
+    block;
+  margin-top:
+    5px;
+  color:
+    var(--momo-cocoa);
+  font-family:
+    Georgia,
+    "Times New Roman",
+    serif;
+  font-size:
+    35px;
+  line-height:
+    1;
+  letter-spacing:
+    -0.035em;
+}
+
+.momo-snapshot-progress {
+  height:
+    8px;
+  margin-top:
+    16px;
+  overflow:
+    hidden;
+  border-radius:
+    999px;
+  background:
+    rgba(216, 126, 120, 0.11);
+}
+
+.momo-snapshot-progress-fill {
+  height:
+    100%;
+  border-radius:
+    inherit;
+  background:
+    linear-gradient(
+      90deg,
+      #f5b49f,
+      #df837d
+    );
+  transition:
+    width 0.25s ease;
+}
+
+.momo-snapshot-caption {
+  margin:
+    9px 0 0;
+  color:
+    var(--momo-cocoa-soft);
+  font-size:
+    9px;
+  line-height:
+    1.45;
+}
+
+.momo-snapshot-grid {
+  border-top:
+    1px solid
+    var(--momo-hairline);
+  display:
+    grid;
+  grid-template-columns:
+    repeat(
+      3,
+      minmax(
+        0,
+        1fr
+      )
+    );
+}
+
+.momo-snapshot-stat {
+  min-width:
+    0;
+  min-height:
+    90px;
+  padding:
+    12px 8px;
+  border:
+    0;
+  background:
+    rgba(255, 255, 255, 0.23);
+  color:
+    var(--momo-cocoa);
+  text-align:
+    center;
+}
+
+.momo-snapshot-stat + .momo-snapshot-stat {
+  border-left:
+    1px solid
+    var(--momo-hairline);
+}
+
+.momo-stat-icon {
+  width:
+    26px;
+  height:
+    26px;
+  margin:
+    0 auto 6px;
+  border-radius:
+    9px;
+  display:
+    grid;
+  place-items:
+    center;
+  background:
+    rgba(242, 161, 143, 0.13);
+  color:
+    var(--momo-peach-deep);
+  font-size:
+    12px;
+}
+
+.momo-snapshot-stat small,
+.momo-snapshot-stat strong {
+  display:
+    block;
+}
+
+.momo-snapshot-stat small {
+  color:
+    var(--momo-cocoa-soft);
+  font-size:
+    8px;
+}
+
+.momo-snapshot-stat strong {
+  margin-top:
+    4px;
+  overflow:
+    hidden;
+  font-size:
+    10px;
+  line-height:
+    1.25;
+  text-overflow:
+    ellipsis;
+  white-space:
+    nowrap;
+}
+
+/* -------------------------
+   HOME: NEXT ADVENTURE
+------------------------- */
+
+.momo-adventure-card,
+.momo-adventure-empty {
+  width:
+    100%;
+  overflow:
+    hidden;
+  border:
+    1px solid
+    var(--momo-hairline);
+  border-radius:
+    27px;
+  background:
+    linear-gradient(
+      145deg,
+      rgba(255, 251, 248, 0.92),
+      rgba(246, 195, 159, 0.20)
+    );
+  box-shadow:
+    var(--momo-shadow);
+  color:
+    var(--momo-cocoa);
+  text-align:
+    left;
+}
+
+.momo-adventure-card {
+  padding:
+    16px;
+}
+
+.momo-adventure-top {
+  display:
+    grid;
+  grid-template-columns:
+    45px
+    minmax(
+      0,
+      1fr
+    )
+    22px;
+  align-items:
+    center;
+  gap:
+    11px;
+}
+
+.momo-adventure-icon {
+  width:
+    45px;
+  height:
+    45px;
+  border-radius:
+    15px;
+  display:
+    grid;
+  place-items:
+    center;
+  background:
+    linear-gradient(
+      145deg,
+      rgba(246, 195, 159, 0.36),
+      rgba(249, 229, 228, 0.75)
+    );
+  color:
+    var(--momo-peach-deep);
+  font-size:
+    20px;
+}
+
+.momo-adventure-copy {
+  min-width:
+    0;
+}
+
+.momo-adventure-status {
+  color:
+    var(--momo-peach-deep);
+  font-size:
+    8px;
+  font-weight:
+    900;
+  letter-spacing:
+    0.08em;
+  text-transform:
+    uppercase;
+}
+
+.momo-adventure-copy h3 {
+  margin:
+    3px 0 0;
+  overflow:
+    hidden;
+  font-family:
+    Georgia,
+    "Times New Roman",
+    serif;
+  font-size:
+    18px;
+  line-height:
+    1.1;
+  text-overflow:
+    ellipsis;
+  white-space:
+    nowrap;
+}
+
+.momo-adventure-copy p {
+  margin:
+    3px 0 0;
+  overflow:
+    hidden;
+  color:
+    var(--momo-cocoa-soft);
+  font-size:
+    9px;
+  text-overflow:
+    ellipsis;
+  white-space:
+    nowrap;
+}
+
+.momo-adventure-arrow {
+  color:
+    var(--momo-peach-deep);
+  font-size:
+    24px;
+}
+
+.momo-adventure-date {
+  margin:
+    14px 0 12px;
+  padding:
+    10px 12px;
+  border:
+    1px solid
+    rgba(213, 153, 143, 0.19);
+  border-radius:
+    15px;
+  display:
+    flex;
+  justify-content:
+    space-between;
+  align-items:
+    center;
+  gap:
+    10px;
+  background:
+    rgba(255, 255, 255, 0.33);
+}
+
+.momo-adventure-date span {
+  color:
+    var(--momo-cocoa-soft);
+  font-size:
+    8px;
+}
+
+.momo-adventure-date strong {
+  color:
+    var(--momo-peach-deep);
+  font-size:
+    9px;
+}
+
+.momo-adventure-money {
+  display:
+    grid;
+  grid-template-columns:
+    repeat(
+      3,
+      minmax(
+        0,
+        1fr
+      )
+    );
+}
+
+.momo-adventure-money > div {
+  min-width:
+    0;
+  padding:
+    2px 9px;
+}
+
+.momo-adventure-money > div + div {
+  border-left:
+    1px solid
+    var(--momo-hairline);
+}
+
+.momo-adventure-money small,
+.momo-adventure-money strong {
+  display:
+    block;
+}
+
+.momo-adventure-money small {
+  color:
+    var(--momo-cocoa-soft);
+  font-size:
+    8px;
+}
+
+.momo-adventure-money strong {
+  margin-top:
+    4px;
+  overflow:
+    hidden;
+  font-size:
+    10px;
+  text-overflow:
+    ellipsis;
+  white-space:
+    nowrap;
+}
+
+.momo-adventure-empty {
+  min-height:
+    105px;
+  padding:
+    16px;
+  display:
+    grid;
+  grid-template-columns:
+    44px
+    minmax(
+      0,
+      1fr
+    )
+    30px;
+  align-items:
+    center;
+  gap:
+    11px;
+}
+
+.momo-adventure-empty-icon {
+  width:
+    44px;
+  height:
+    44px;
+  border-radius:
+    15px;
+  display:
+    grid;
+  place-items:
+    center;
+  background:
+    var(--momo-blush);
+  font-size:
+    20px;
+}
+
+.momo-adventure-empty strong,
+.momo-adventure-empty small {
+  display:
+    block;
+}
+
+.momo-adventure-empty strong {
+  font-family:
+    Georgia,
+    "Times New Roman",
+    serif;
+  font-size:
+    14px;
+}
+
+.momo-adventure-empty small {
+  margin-top:
+    4px;
+  color:
+    var(--momo-cocoa-soft);
+  font-size:
+    9px;
+  line-height:
+    1.4;
+}
+
+.momo-adventure-empty b {
+  width:
+    30px;
+  height:
+    30px;
+  border-radius:
+    10px;
+  display:
+    grid;
+  place-items:
+    center;
+  background:
+    rgba(242, 161, 143, 0.13);
+  color:
+    var(--momo-peach-deep);
+  font-size:
+    16px;
+}
+
+/* -------------------------
+   HOME: LATELY
+------------------------- */
+
+.momo-lately-section {
+  margin-bottom:
+    12px;
+}
+
+.momo-lately-list {
+  overflow:
+    hidden;
+  border:
+    1px solid
+    var(--momo-hairline);
+  border-radius:
+    25px;
+  background:
+    rgba(255, 251, 248, 0.80);
+  box-shadow:
+    var(--momo-shadow);
+}
+
+.momo-lately-list > .transaction-card,
+.momo-lately-list > .transaction-row {
+  margin:
+    0;
+  border-radius:
+    0;
+  box-shadow:
+    none;
+  background:
+    transparent;
+}
+
+.momo-lately-list > * + * {
+  border-top:
+    1px solid
+    var(--momo-hairline);
+}
+
+.momo-lately-list .empty-panel {
+  border:
+    0;
+  box-shadow:
+    none;
+  background:
+    transparent;
+}
+
+/* -------------------------
+   WALLPAPER VARIANT
+------------------------- */
+
+body.wallpaper-enabled
+.momo-home-welcome,
+body.wallpaper-enabled
+.momo-money-snapshot,
+body.wallpaper-enabled
+.momo-adventure-card,
+body.wallpaper-enabled
+.momo-adventure-empty,
+body.wallpaper-enabled
+.momo-lately-list {
+  background:
+    color-mix(
+      in srgb,
+      var(--momo-cream) 74%,
+      transparent
+    );
+  -webkit-backdrop-filter:
+    blur(14px)
+    saturate(1.08);
+  backdrop-filter:
+    blur(14px)
+    saturate(1.08);
+}
+
+body.wallpaper-enabled
+.momo-snapshot-stat {
+  background:
+    rgba(255, 255, 255, 0.12);
+}
+
+body.wallpaper-enabled
+.momo-home-welcome h1,
+body.wallpaper-enabled
+.momo-home-section-heading h2,
+body.wallpaper-enabled
+.momo-snapshot-main > strong,
+body.wallpaper-enabled
+.momo-adventure-copy h3 {
+  text-shadow:
+    0 1px 8px
+    rgba(255, 255, 255, 0.62);
+}
+
+@media (max-width: 365px) {
+  .momo-home-welcome {
+    grid-template-columns:
+      minmax(0, 1fr)
+      70px;
+    padding:
+      21px 18px;
+  }
+
+  .momo-welcome-peach {
+    width:
+      68px;
+    height:
+      68px;
+  }
+
+  .momo-welcome-peach > span {
+    font-size:
+      37px;
+  }
+
+  .momo-home-welcome h1 {
+    font-size:
+      37px;
+  }
+
+  .momo-snapshot-stat strong {
+    font-size:
+      9px;
+  }
+}
+

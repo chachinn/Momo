@@ -8459,21 +8459,20 @@ function renderHomeTripSnapshot() {
 
     homeTripSnapshot.innerHTML = `
 
-      <div class="empty-panel compact-empty">
+      <button
+        class="momo-adventure-empty"
+        type="button"
+        data-nav="trips"
+      >
+        <span class="momo-adventure-empty-icon">✈️</span>
 
-        <span class="empty-icon">
-          ✈️
+        <span>
+          <strong>Your next adventure starts here.</strong>
+          <small>Add a trip whenever you're ready to wander.</small>
         </span>
 
-        <h3>
-          No trips yet
-        </h3>
-
-        <p>
-          Create a trip and it will appear here.
-        </p>
-
-      </div>
+        <b>＋</b>
+      </button>
 
     `;
 
@@ -8497,7 +8496,9 @@ function renderHomeTripSnapshot() {
 
   const currentTrips =
     trips.filter(
-      (trip) =>
+      (
+        trip
+      ) =>
         getTripStatus(
           trip
         ) ===
@@ -8506,18 +8507,38 @@ function renderHomeTripSnapshot() {
 
 
   const upcomingTrips =
-    trips.filter(
-      (trip) =>
-        createLocalDate(
-          trip.startDate
-        ) >=
-        today
-    );
+    trips
+      .filter(
+        (
+          trip
+        ) =>
+          createLocalDate(
+            trip.startDate
+          ) >=
+          today
+      )
+      .sort(
+        (
+          a,
+          b
+        ) =>
+          String(
+            a.startDate
+          ).localeCompare(
+            String(
+              b.startDate
+            )
+          )
+      );
 
 
   const trip =
-    currentTrips[0] ||
-    upcomingTrips[0] ||
+    currentTrips[
+      0
+    ] ||
+    upcomingTrips[
+      0
+    ] ||
     trips[
       trips.length -
       1
@@ -8531,123 +8552,183 @@ function renderHomeTripSnapshot() {
 
 
   const remaining =
-    Math.max(
-      Number(
-        trip.budget
-      ) -
-      spent,
+    Number(
+      trip.budget ||
       0
+    ) -
+    spent;
+
+
+  const start =
+    createLocalDate(
+      trip.startDate
     );
+
+
+  const status =
+    getTripStatus(
+      trip
+    );
+
+
+  const daysUntil =
+    start
+      ? Math.ceil(
+          (
+            start -
+            today
+          ) /
+          86400000
+        )
+      : 0;
+
+
+  let countdownText =
+    "";
+
+
+  if (
+    status ===
+    "Current"
+  ) {
+
+    countdownText =
+      "You're there! ✨";
+
+  } else if (
+    daysUntil >
+    1
+  ) {
+
+    countdownText =
+      `${daysUntil} days to go ♡`;
+
+  } else if (
+    daysUntil ===
+    1
+  ) {
+
+    countdownText =
+      "Tomorrow! ♡";
+
+  } else {
+
+    countdownText =
+      "A sweet little memory ♡";
+
+  }
 
 
   homeTripSnapshot.innerHTML = `
 
     <button
-      class="home-trip-card"
+      class="momo-adventure-card"
       type="button"
       data-nav="trips"
     >
 
-      <div class="home-trip-banner">
+      <div class="momo-adventure-top">
 
-        <p class="eyebrow light">
+        <div class="momo-adventure-icon">
+          ✈
+        </div>
 
-          ${escapeHTML(
-            getTripStatus(
-              trip
-            )
-          )}
+        <div class="momo-adventure-copy">
 
-        </p>
+          <span class="momo-adventure-status">
+            ${escapeHTML(
+              status
+            )}
+          </span>
 
+          <h3>
+            ${escapeHTML(
+              trip.name
+            )}
+          </h3>
 
-        <h3>
+          <p>
+            ${escapeHTML(
+              trip.destination ||
+              "Adventure"
+            )}
+          </p>
 
-          ${escapeHTML(
-            trip.name
-          )}
+        </div>
 
-          ✈️
-
-        </h3>
-
-
-        <p>
-
-          ${escapeHTML(
-            trip.destination
-          )}
-
-          ·
-
-          ${formatShortDate(
-            trip.startDate
-          )}
-
-          –
-
-          ${formatShortDate(
-            trip.endDate
-          )}
-
-        </p>
+        <span class="momo-adventure-arrow">
+          ›
+        </span>
 
       </div>
 
 
-      <div class="home-trip-stats">
+      <div class="momo-adventure-date">
+
+        <span>
+          ${formatShortDate(
+            trip.startDate
+          )}
+          –
+          ${formatShortDate(
+            trip.endDate
+          )}
+        </span>
+
+        <strong>
+          ${escapeHTML(
+            countdownText
+          )}
+        </strong>
+
+      </div>
+
+
+      <div class="momo-adventure-money">
 
         <div>
-
-          <span>
-            Budget
-          </span>
-
+          <small>Budget</small>
           <strong>
-
             ${formatCurrency(
               trip.budget,
               trip.currency
             )}
-
           </strong>
-
         </div>
 
-
         <div>
-
-          <span>
-            Spent
-          </span>
-
+          <small>Spent</small>
           <strong>
-
             ${formatCurrency(
               spent,
               trip.currency
             )}
-
           </strong>
-
         </div>
 
-
         <div>
+          <small>
+            ${
+              remaining >=
+              0
+                ? "Left"
+                : "Over"
+            }
+          </small>
 
-          <span>
-            Left
-          </span>
-
-          <strong class="positive">
-
+          <strong class="${
+            remaining >=
+            0
+              ? "positive"
+              : "danger"
+          }">
             ${formatCurrency(
-              remaining,
+              Math.abs(
+                remaining
+              ),
               trip.currency
             )}
-
           </strong>
-
         </div>
 
       </div>
@@ -15883,6 +15964,47 @@ function renderHomeSummary() {
 
 
   setText(
+    "homeMonthLabel",
+    new Intl.DateTimeFormat(
+      "en-US",
+      {
+        month: "short",
+        year: "numeric"
+      }
+    ).format(
+      new Date()
+    )
+  );
+
+
+  const homeSavingsPHP =
+    savingsGoals.reduce(
+      (
+        total,
+        goal
+      ) =>
+        total +
+        convertCurrency(
+          getSavingsGoalSaved(
+            goal
+          ),
+          goal.currency ||
+            "PHP",
+          "PHP"
+        ),
+      0
+    );
+
+
+  setText(
+    "homeSavingsTotal",
+    formatPHP(
+      homeSavingsPHP
+    )
+  );
+
+
+  setText(
     "activityMonthTotal",
     formatPHP(
       spent
@@ -15963,6 +16085,35 @@ function renderHomeSummary() {
       "budgetPercent",
       "—"
     );
+
+  }
+
+
+  const budgetSentence =
+    document.getElementById(
+      "homeBudgetSentence"
+    );
+
+
+  if (
+    budgetSentence
+  ) {
+
+    budgetSentence.textContent =
+      hasBudget
+        ? (
+            remaining >
+            0
+              ? `${formatPHP(
+                  remaining
+                )} left from your ${formatPHP(
+                  monthlyBudget
+                )} monthly plan.`
+              : `You've reached your ${formatPHP(
+                  monthlyBudget
+                )} monthly plan.`
+          )
+        : "Set a monthly budget to see your progress.";
 
   }
 

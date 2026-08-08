@@ -246,9 +246,9 @@
       </div>
 
       <div class="drawer-footer">
-        <span>🌸</span>
+        <span>🍑</span>
         <p>
-          Your money, softly tracked.
+          A little sweeter every day.
         </p>
       </div>
     </aside>
@@ -261,110 +261,95 @@
 
       <!-- HOME -->
       <section
-        class="screen active"
+        class="screen active momo-home"
         data-screen="home"
       >
-        <div class="page-heading">
+        <section class="momo-home-welcome">
           <div>
-            <p class="eyebrow">Spending Diary</p>
-            <h1>Your money,<br>softly tracked.</h1>
+            <p class="momo-peach-kicker">🍑 HELLO, PEACH</p>
+            <h1>Your money,<br>your way.</h1>
+            <p>
+              A soft little place for spending, saving, and adventures.
+            </p>
           </div>
 
-          <span class="date-pill">Momo</span>
-        </div>
-
-        <section class="card monthly-card">
-          <div class="card-row">
-            <div>
-              <p class="label">This Month</p>
-              <p
-                id="homeMonthSpent"
-                class="amount-lg"
-              >
-                ₱0.00
-              </p>
-              <p class="muted small">spent so far</p>
-            </div>
-
-            <div
-              id="budgetRing"
-              class="budget-ring"
-            >
-              <span>0%</span>
-            </div>
-          </div>
-
-          <div class="summary-grid">
-            <div>
-              <p class="label">Budget</p>
-              <strong id="homeMonthBudget">₱0.00</strong>
-            </div>
-
-            <div>
-              <p class="label">Remaining</p>
-              <strong
-                id="homeMonthRemaining"
-                class="positive"
-              >
-                ₱0.00
-              </strong>
-            </div>
-          </div>
-
-          <div class="progress-track">
-            <div
-              id="homeProgress"
-              class="progress-fill"
-              style="width:0%"
-            ></div>
+          <div class="momo-welcome-peach" aria-hidden="true">
+            <span>🍑</span>
+            <i>✦</i>
           </div>
         </section>
 
-        <div class="home-actions">
-          <button
-            class="home-action"
-            type="button"
-            data-nav="add"
-          >
-            <span class="home-action-icon">＋</span>
-            <span>Add Expense</span>
-          </button>
+        <section class="momo-home-section">
+          <div class="momo-home-section-heading">
+            <div>
+              <p class="momo-section-kicker">✦ MONEY SNAPSHOT</p>
+              <h2>This Month</h2>
+            </div>
 
-          <button
-            class="home-action"
-            type="button"
-            data-nav="budgets"
-          >
-            <span class="home-action-icon">♡</span>
-            <span>Budgets</span>
-          </button>
+            <span id="homeMonthLabel" class="momo-soft-pill"></span>
+          </div>
 
-          <button
-            class="home-action"
-            type="button"
-            data-nav="trips"
-          >
-            <span class="home-action-icon">✈</span>
-            <span>Trips</span>
-          </button>
+          <article class="momo-money-snapshot">
+            <div class="momo-snapshot-main">
+              <p class="label">Spent so far</p>
+              <strong id="homeMonthSpent">₱0.00</strong>
 
-          <button
-            class="home-action"
-            type="button"
-            data-nav="converter"
-            data-focus-converter
-          >
-            <span class="home-action-icon">⇄</span>
-            <span>Converter</span>
-          </button>
-        </div>
+              <div class="momo-snapshot-progress">
+                <div
+                  id="homeProgress"
+                  class="momo-snapshot-progress-fill"
+                  style="width:0%"
+                ></div>
+              </div>
 
-        <section class="section-block">
-          <div class="section-title-row">
-            <h2>Trip</h2>
+              <p id="homeBudgetSentence" class="momo-snapshot-caption">
+                Set a monthly budget to see your progress.
+              </p>
+            </div>
+
+            <div class="momo-snapshot-grid">
+              <button
+                class="momo-snapshot-stat"
+                type="button"
+                data-nav="budgets"
+              >
+                <span class="momo-stat-icon">♡</span>
+                <small>Budget</small>
+                <strong id="homeMonthBudget">Not set</strong>
+              </button>
+
+              <button
+                class="momo-snapshot-stat"
+                type="button"
+                data-nav="budgets"
+              >
+                <span class="momo-stat-icon">✦</span>
+                <small>Left</small>
+                <strong id="homeMonthRemaining">—</strong>
+              </button>
+
+              <button
+                class="momo-snapshot-stat"
+                type="button"
+                data-drawer-nav="savings"
+              >
+                <span class="momo-stat-icon">🌱</span>
+                <small>Saved</small>
+                <strong id="homeSavingsTotal">₱0.00</strong>
+              </button>
+            </div>
+          </article>
+        </section>
+
+        <section class="momo-home-section">
+          <div class="momo-home-section-heading">
+            <div>
+              <p class="momo-section-kicker">✈ NEXT ADVENTURE</p>
+              <h2>Where to next?</h2>
+            </div>
 
             <button
-              class="text-btn"
+              class="text-btn momo-section-link"
               type="button"
               data-nav="trips"
             >
@@ -375,31 +360,15 @@
           <div id="homeTripSnapshot"></div>
         </section>
 
-        <section class="section-block">
-          <div class="section-title-row">
-            <h2>Budgets</h2>
+        <section class="momo-home-section momo-lately-section">
+          <div class="momo-home-section-heading">
+            <div>
+              <p class="momo-section-kicker">🧾 LATELY</p>
+              <h2>Recent spending</h2>
+            </div>
 
             <button
-              class="text-btn"
-              type="button"
-              data-nav="budgets"
-            >
-              See all
-            </button>
-          </div>
-
-          <div
-            id="homeBudgetList"
-            class="home-budget-list"
-          ></div>
-        </section>
-
-        <section class="section-block">
-          <div class="section-title-row">
-            <h2>Recent Activity</h2>
-
-            <button
-              class="text-btn"
+              class="text-btn momo-section-link"
               type="button"
               data-nav="activity"
             >
@@ -409,7 +378,7 @@
 
           <div
             id="homeTransactionList"
-            class="transaction-list"
+            class="transaction-list momo-lately-list"
           ></div>
         </section>
       </section>
