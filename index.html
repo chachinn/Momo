@@ -15,7 +15,7 @@
   <meta name="apple-mobile-web-app-title" content="Momo">
 
   <title>Momo — Spending Diary</title>
-  <meta name="momo-app-version" content="20260808-9">
+  <meta name="momo-app-version" content="20260808-10">
 
   <link rel="manifest" href="manifest.json">
   <link rel="apple-touch-icon" href="icon-192.png">
@@ -146,6 +146,20 @@
             <strong>Reports</strong>
             <small>Review your spending totals.</small>
           </span>
+          <span class="drawer-arrow">›</span>
+        </button>
+
+        <button
+          class="drawer-item"
+          type="button"
+          data-drawer-nav="reminders"
+        >
+          <span class="drawer-icon">🔔</span>
+          <span class="drawer-copy">
+            <strong>Smart Reminders</strong>
+            <small>Momo keeps an eye on what’s coming up.</small>
+          </span>
+          <span id="drawerReminderBadge" class="drawer-reminder-badge" hidden>0</span>
           <span class="drawer-arrow">›</span>
         </button>
 
@@ -422,6 +436,19 @@
           </article>
         </section>
 
+        <section id="homeRemindersSection" class="momo-home-section momo-reminders-home">
+          <div class="momo-home-section-heading">
+            <div>
+              <p class="momo-section-kicker">🔔 GENTLE NUDGES</p>
+              <h2>Coming up</h2>
+            </div>
+            <button class="text-btn momo-section-link" type="button" data-nav="reminders">See all</button>
+          </div>
+
+          <div id="homeReminderList" class="home-reminder-list"></div>
+        </section>
+
+
         <section class="momo-home-section">
           <div class="momo-home-section-heading">
             <div>
@@ -461,6 +488,53 @@
             id="homeTransactionList"
             class="transaction-list momo-lately-list"
           ></div>
+        </section>
+      </section>
+
+
+      <!-- SMART REMINDERS -->
+      <section class="screen momo-reminders-screen" data-screen="reminders">
+        <div class="page-heading">
+          <div>
+            <p class="eyebrow">Momo’s little nudge</p>
+            <h1>Smart Reminders</h1>
+            <p class="page-description">
+              Nothing extra to maintain. Momo quietly gathers important dates and money moments from the things you already track.
+            </p>
+          </div>
+        </div>
+
+        <section class="reminder-summary-card">
+          <div>
+            <span class="reminder-summary-icon">🔔</span>
+            <p>Needs your attention</p>
+            <strong id="reminderAttentionCount">0</strong>
+            <small id="reminderSummaryCopy">All quiet for now 🌸</small>
+          </div>
+          <span class="reminder-summary-sparkle" aria-hidden="true">✦</span>
+        </section>
+
+        <div class="reminder-filter-row" role="group" aria-label="Reminder filters">
+          <button class="reminder-filter active" type="button" data-reminder-filter="all">All</button>
+          <button class="reminder-filter" type="button" data-reminder-filter="attention">Attention</button>
+          <button class="reminder-filter" type="button" data-reminder-filter="soon">Soon</button>
+          <button class="reminder-filter" type="button" data-reminder-filter="later">Later</button>
+        </div>
+
+        <div id="reminderList" class="reminder-list"></div>
+
+        <div id="reminderEmpty" class="empty-state reminder-empty" hidden>
+          <span class="empty-icon">🌸</span>
+          <h3>All quiet</h3>
+          <p>Momo will bring things here automatically when something gets closer.</p>
+        </div>
+
+        <section class="reminder-how-card">
+          <span>🍑</span>
+          <div>
+            <strong>No reminder setup needed</strong>
+            <p>These nudges come from recurring expenses, planned purchases, trips, savings goals, and budgets. Change the original item and the reminder updates with it.</p>
+          </div>
         </section>
       </section>
 

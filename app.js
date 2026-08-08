@@ -3824,6 +3824,16 @@ function showScreen(
 
   if (
     name ===
+    "reminders"
+  ) {
+
+    renderSmartReminders();
+
+  }
+
+
+  if (
+    name ===
     "reports"
   ) {
 
@@ -33676,6 +33686,372 @@ document.getElementById("closePayableDetail")?.addEventListener("click", closePa
 document.getElementById("closePayablePayment")?.addEventListener("click", closePayablePayment);
 
 
+
+// ========================================
+// SMART REMINDERS
+// ========================================
+
+let activeReminderFilter = "all";
+
+const REMINDER_WINDOWS = {
+  recurring: 7,
+  planned: 14,
+  trip: 30,
+  savings: 14,
+  budgetEnd: 3
+};
+
+function reminderDaysFromToday(dateString) {
+  const target = createLocalDate(dateString);
+  const today = createLocalDate(getTodayString());
+
+  if (!target || !today) {
+    return null;
+  }
+
+  return Math.round((target - today) / 86400000);
+}
+
+function getReminderBucket(days, forceAttention = false) {
+  if (forceAttention || (days !== null && days < 0)) {
+    return "attention";
+  }
+
+  if (days !== null && days <= 7) {
+    return "soon";
+  }
+
+  return "later";
+}
+
+function getReminderTimingLabel(days, dateString) {
+  if (days === null) {
+    return dateString ? formatShortDate(dateString) : "";
+  }
+
+  if (days < -1) {
+    return `${Math.abs(days)} days overdue`;
+  }
+
+  if (days === -1) {
+    return "Yesterday";
+  }
+
+  if (days === 0) {
+    return "Today";
+  }
+
+  if (days === 1) {
+    return "Tomorrow";
+  }
+
+  if (days <= 7) {
+    return `In ${days} days`;
+  }
+
+  return dateString ? formatShortDate(dateString) : `In ${days} days`;
+}
+
+function buildSmartReminders() {
+  const reminders = [];
+
+  recurringExpenses.forEach((item) => {
+    if (!isRecurringActive(item) || !item.nextDueDate) {
+      return;
+    }
+
+    const days = reminderDaysFromToday(item.nextDueDate);
+
+    if (days !== null && days <= REMINDER_WINDOWS.recurring) {
+      reminders.push({
+        id: `recurring:${item.id}`,
+        type: "recurring",
+        icon: "↻",
+        title: item.name || "Recurring expense",
+        detail: `${formatCurrency(item.amount || 0, item.currency || "PHP")} · ${getReminderTimingLabel(days, item.nextDueDate)}`,
+        date: item.nextDueDate,
+        days,
+        bucket: getReminderBucket(days),
+        nav: "recurring",
+        priority: days < 0 ? 0 : days === 0 ? 1 : 3
+      });
+    }
+  });
+
+  plannedExpenses.forEach((item) => {
+    if (item.status !== "planned" || !item.targetDate) {
+      return;
+    }
+
+    const days = reminderDaysFromToday(item.targetDate);
+
+    if (days !== null && days <= REMINDER_WINDOWS.planned) {
+      reminders.push({
+        id: `planned:${item.id}`,
+        type: "planned",
+        icon: "☆",
+        title: item.title || "Planned purchase",
+        detail: `${formatCurrency(item.amount || 0, item.currency || "PHP")} · ${getReminderTimingLabel(days, item.targetDate)}`,
+        date: item.targetDate,
+        days,
+        bucket: getReminderBucket(days),
+        nav: "planned",
+        priority: days < 0 ? 0 : days === 0 ? 1 : 4
+      });
+    }
+  });
+
+  trips.forEach((trip) => {
+    if (!trip.startDate) {
+      return;
+    }
+
+    const days = reminderDaysFromToday(trip.startDate);
+
+    if (days !== null && days >= 0 && days <= REMINDER_WINDOWS.trip) {
+      reminders.push({
+        id: `trip:${trip.id}`,
+        type: "trip",
+        icon: "✈️",
+        title: trip.name || trip.destination || "Upcoming trip",
+        detail: days === 0 ? "Your trip starts today ✨" : `${getReminderTimingLabel(days, trip.startDate)} · ${escapeHTML(trip.destination || "Adventure")}`,
+        date: trip.startDate,
+        days,
+        bucket: days <= 7 ? "soon" : "later",
+        nav: "trips",
+        priority: days === 0 ? 1 : days <= 7 ? 2 : 6
+      });
+    }
+  });
+
+  savingsGoals.forEach((goal) => {
+    if (!goal.targetDate || getSavingsGoalProgress(goal) >= 100) {
+      return;
+    }
+
+    const days = reminderDaysFromToday(goal.targetDate);
+
+    if (days !== null && days <= REMINDER_WINDOWS.savings) {
+      const remaining = Math.max(0, Number(goal.targetAmount || 0) - getSavingsGoalSaved(goal));
+
+      reminders.push({
+        id: `savings:${goal.id}`,
+        type: "savings",
+        icon: goal.emoji || "🌱",
+        title: goal.name || "Savings goal",
+        detail: `${formatCurrency(remaining, goal.currency || "PHP")} left · ${getReminderTimingLabel(days, goal.targetDate)}`,
+        date: goal.targetDate,
+        days,
+        bucket: getReminderBucket(days),
+        nav: "savings",
+        priority: days < 0 ? 0 : days <= 3 ? 2 : 5
+      });
+    }
+  });
+
+  budgets.forEach((budget) => {
+    const percent = getBudgetUsagePercent(budget);
+
+    if (percent >= 80) {
+      reminders.push({
+        id: `budget-usage:${budget.id}`,
+        type: "budget",
+        icon: "♡",
+        title: percent >= 100 ? `${budget.name} needs a look` : `${budget.name} is getting full`,
+        detail: `${Math.round(percent)}% of your ${getPeriodLabel(budget).toLowerCase()} budget used`,
+        date: "",
+        days: null,
+        bucket: percent >= 100 ? "attention" : "soon",
+        nav: "budgets",
+        priority: percent >= 100 ? 0 : 2
+      });
+    }
+
+    if (budget.period === "custom" && budget.endDate) {
+      const days = reminderDaysFromToday(budget.endDate);
+
+      if (days !== null && days >= 0 && days <= REMINDER_WINDOWS.budgetEnd) {
+        reminders.push({
+          id: `budget-end:${budget.id}`,
+          type: "budget",
+          icon: "♡",
+          title: `${budget.name} is wrapping up`,
+          detail: `Budget period ends ${getReminderTimingLabel(days, budget.endDate).toLowerCase()}`,
+          date: budget.endDate,
+          days,
+          bucket: days <= 1 ? "soon" : "later",
+          nav: "budgets",
+          priority: 3
+        });
+      }
+    }
+  });
+
+  return reminders.sort((a, b) => {
+    if (a.priority !== b.priority) {
+      return a.priority - b.priority;
+    }
+
+    const aDays = a.days === null ? 9999 : a.days;
+    const bDays = b.days === null ? 9999 : b.days;
+
+    return aDays - bDays;
+  });
+}
+
+function reminderTypeLabel(type) {
+  const labels = {
+    recurring: "Recurring",
+    planned: "Planned",
+    trip: "Trip",
+    savings: "Savings",
+    budget: "Budget"
+  };
+
+  return labels[type] || "Reminder";
+}
+
+function createReminderCardHTML(reminder, compact = false) {
+  return `
+    <button
+      class="smart-reminder-card ${reminder.bucket} ${compact ? "compact" : ""}"
+      type="button"
+      data-reminder-nav="${escapeHTML(reminder.nav)}"
+    >
+      <span class="smart-reminder-icon">${reminder.icon}</span>
+      <span class="smart-reminder-copy">
+        <span class="smart-reminder-meta">
+          <small>${escapeHTML(reminderTypeLabel(reminder.type))}</small>
+          <em>${escapeHTML(
+            reminder.days !== null
+              ? getReminderTimingLabel(reminder.days, reminder.date)
+              : reminder.bucket === "attention"
+                ? "Needs attention"
+                : "Worth a look"
+          )}</em>
+        </span>
+        <strong>${escapeHTML(reminder.title)}</strong>
+        <p>${reminder.detail}</p>
+      </span>
+      <span class="smart-reminder-arrow">›</span>
+    </button>
+  `;
+}
+
+function renderSmartReminders() {
+  const reminders = buildSmartReminders();
+  const list = document.getElementById("reminderList");
+  const empty = document.getElementById("reminderEmpty");
+  const attentionCount = document.getElementById("reminderAttentionCount");
+  const summaryCopy = document.getElementById("reminderSummaryCopy");
+  const drawerBadge = document.getElementById("drawerReminderBadge");
+
+  const attention = reminders.filter((item) => item.bucket === "attention").length;
+  const soon = reminders.filter((item) => item.bucket === "soon").length;
+
+  if (attentionCount) {
+    attentionCount.textContent = String(attention + soon);
+  }
+
+  if (summaryCopy) {
+    summaryCopy.textContent =
+      reminders.length === 0
+        ? "All quiet for now 🌸"
+        : attention > 0
+          ? `${attention} ${attention === 1 ? "thing needs" : "things need"} a little attention`
+          : soon > 0
+            ? `${soon} ${soon === 1 ? "thing is" : "things are"} coming up soon`
+            : "A few things are on the horizon";
+  }
+
+  if (drawerBadge) {
+    const badgeCount = attention + soon;
+    drawerBadge.hidden = badgeCount === 0;
+    drawerBadge.textContent = String(Math.min(99, badgeCount));
+  }
+
+  if (list && empty) {
+    const visible =
+      activeReminderFilter === "all"
+        ? reminders
+        : reminders.filter((item) => item.bucket === activeReminderFilter);
+
+    list.innerHTML = visible.map((item) => createReminderCardHTML(item)).join("");
+    empty.hidden = visible.length > 0;
+
+    if (visible.length === 0) {
+      const title = empty.querySelector("h3");
+      const copy = empty.querySelector("p");
+
+      if (title) {
+        title.textContent = activeReminderFilter === "all" ? "All quiet" : "Nothing here";
+      }
+
+      if (copy) {
+        copy.textContent =
+          activeReminderFilter === "all"
+            ? "Momo will bring things here automatically when something gets closer."
+            : "Try another reminder filter.";
+      }
+    }
+  }
+
+  renderHomeSmartReminders(reminders);
+}
+
+function renderHomeSmartReminders(reminders = buildSmartReminders()) {
+  const section = document.getElementById("homeRemindersSection");
+  const list = document.getElementById("homeReminderList");
+
+  if (!section || !list) {
+    return;
+  }
+
+  const visible = reminders.slice(0, 3);
+
+  if (visible.length === 0) {
+    list.innerHTML = `
+      <div class="home-reminder-all-clear">
+        <span>🌸</span>
+        <div>
+          <strong>All quiet for now</strong>
+          <p>Momo will nudge you here when something gets closer.</p>
+        </div>
+      </div>
+    `;
+    return;
+  }
+
+  list.innerHTML = visible.map((item) => createReminderCardHTML(item, true)).join("");
+}
+
+document.querySelectorAll("[data-reminder-filter]").forEach((button) => {
+  button.addEventListener("click", () => {
+    activeReminderFilter = button.dataset.reminderFilter || "all";
+
+    document.querySelectorAll("[data-reminder-filter]").forEach((item) => {
+      item.classList.toggle("active", item === button);
+    });
+
+    renderSmartReminders();
+  });
+});
+
+document.addEventListener("click", (event) => {
+  const reminder = event.target.closest("[data-reminder-nav]");
+
+  if (!reminder) {
+    return;
+  }
+
+  const destination = reminder.dataset.reminderNav;
+
+  if (destination) {
+    showScreen(destination);
+  }
+});
+
+
 // ========================================
 // RENDER EVERYTHING
 // ========================================
@@ -33714,6 +34090,11 @@ function renderAll() {
     [
       "Home summary",
       renderHomeSummary
+    ],
+
+    [
+      "Smart reminders",
+      renderSmartReminders
     ],
 
     [
