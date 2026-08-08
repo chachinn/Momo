@@ -6189,6 +6189,1038 @@ function populateExpenseTripDropdown() {
 }
 
 
+
+const expenseSettlementSection =
+  document.getElementById(
+    "expenseSettlementSection"
+  );
+
+
+const expenseSharedToggle =
+  document.getElementById(
+    "expenseSharedToggle"
+  );
+
+
+const expenseSettlementFields =
+  document.getElementById(
+    "expenseSettlementFields"
+  );
+
+
+const expenseSettlementPayer =
+  document.getElementById(
+    "expenseSettlementPayer"
+  );
+
+
+const expenseSettlementSplitMode =
+  document.getElementById(
+    "expenseSettlementSplitMode"
+  );
+
+
+const expenseSettlementParticipants =
+  document.getElementById(
+    "expenseSettlementParticipants"
+  );
+
+
+function getExpenseSettlementTrip() {
+
+  return trips.find(
+    (
+      trip
+    ) =>
+      trip.id ===
+      expenseTrip?.value
+  ) ||
+    null;
+
+}
+
+
+function getExpenseSettlementContext(
+  createIfMissing =
+    false
+) {
+
+  const trip =
+    getExpenseSettlementTrip();
+
+
+  if (
+    !trip
+  ) {
+
+    return {
+      trip: null,
+      settlement: null
+    };
+
+  }
+
+
+  return {
+    trip,
+    settlement:
+      getSettlementForTrip(
+        trip.id,
+        createIfMissing
+      )
+  };
+
+}
+
+
+function getExpenseSettlementAmount(
+  trip
+) {
+
+  if (
+    !trip
+  ) {
+
+    return 0;
+
+  }
+
+
+  return convertCurrency(
+    Number(
+      amountInput?.value ||
+      0
+    ),
+    currencySelect?.value ||
+      "PHP",
+    trip.currency ||
+      "PHP"
+  );
+
+}
+
+
+function renderExpenseSettlementParticipants(
+  expense =
+    null
+) {
+
+  if (
+    !expenseSettlementParticipants
+  ) {
+
+    return;
+
+  }
+
+
+  const {
+    trip,
+    settlement
+  } =
+    getExpenseSettlementContext(
+      true
+    );
+
+
+  if (
+    !trip ||
+    !settlement
+  ) {
+
+    expenseSettlementParticipants.innerHTML =
+      "";
+
+
+    return;
+
+  }
+
+
+  const splitMode =
+    expenseSettlementSplitMode?.value ||
+    "equal";
+
+
+  const existingShares =
+    new Map(
+      (
+        Array.isArray(
+          expense?.settlementShares
+        )
+          ? expense.settlementShares
+          : []
+      ).map(
+        (
+          share
+        ) => [
+          share.personId,
+          Number(
+            share.amount ||
+            0
+          )
+        ]
+      )
+    );
+
+
+  const hasStoredShares =
+    existingShares.size >
+    0;
+
+
+  expenseSettlementParticipants.innerHTML =
+    settlement.people
+      .map(
+        (
+          person
+        ) => {
+
+          const selected =
+            hasStoredShares
+              ? existingShares.has(
+                  person.id
+                )
+              : true;
+
+
+          return `
+            <label class="shared-participant-row expense-linked-participant">
+
+              <input
+                type="checkbox"
+                data-expense-settlement-person="${escapeHTML(
+                  person.id
+                )}"
+                ${
+                  selected
+                    ? "checked"
+                    : ""
+                }
+              >
+
+              <span class="shared-participant-avatar">
+                ${escapeHTML(
+                  person.name
+                    .slice(
+                      0,
+                      1
+                    )
+                    .toUpperCase()
+                )}
+              </span>
+
+              <strong>
+                ${escapeHTML(
+                  person.name
+                )}
+              </strong>
+
+              ${
+                splitMode ===
+                "exact"
+                  ? `
+                      <input
+                        class="shared-exact-amount"
+                        type="number"
+                        inputmode="decimal"
+                        min="0"
+                        step="0.01"
+                        data-expense-settlement-exact="${escapeHTML(
+                          person.id
+                        )}"
+                        value="${
+                          existingShares.has(
+                            person.id
+                          )
+                            ? existingShares.get(
+                                person.id
+                              )
+                            : ""
+                        }"
+                        placeholder="0"
+                      >
+                    `
+                  : `
+                      <span class="shared-equal-label">
+                        Equal
+                      </span>
+                    `
+              }
+
+            </label>
+          `;
+
+        }
+      )
+      .join("");
+
+}
+
+
+function updateExpenseSettlementValidation() {
+
+  const validation =
+    document.getElementById(
+      "expenseSettlementValidation"
+    );
+
+
+  if (
+    !validation
+  ) {
+
+    return;
+
+  }
+
+
+  if (
+    !expenseSharedToggle?.checked
+  ) {
+
+    validation.textContent =
+      "";
+
+
+    validation.classList.remove(
+      "error"
+    );
+
+
+    return;
+
+  }
+
+
+  const {
+    trip,
+    settlement
+  } =
+    getExpenseSettlementContext(
+      true
+    );
+
+
+  if (
+    !trip ||
+    !settlement
+  ) {
+
+    validation.textContent =
+      "Choose a trip first.";
+
+
+    validation.classList.add(
+      "error"
+    );
+
+
+    return;
+
+  }
+
+
+  const selected =
+    Array.from(
+      document.querySelectorAll(
+        "#expenseSettlementParticipants [data-expense-settlement-person]:checked"
+      )
+    );
+
+
+  if (
+    selected.length ===
+    0
+  ) {
+
+    validation.textContent =
+      "Choose at least one person.";
+
+
+    validation.classList.add(
+      "error"
+    );
+
+
+    return;
+
+  }
+
+
+  const settlementAmount =
+    getExpenseSettlementAmount(
+      trip
+    );
+
+
+  const splitMode =
+    expenseSettlementSplitMode?.value ||
+    "equal";
+
+
+  if (
+    splitMode ===
+    "equal"
+  ) {
+
+    validation.classList.remove(
+      "error"
+    );
+
+
+    validation.textContent =
+      `${selected.length} ${
+        selected.length ===
+        1
+          ? "person"
+          : "people"
+      } · ${formatSettlementAmount(
+        settlementAmount,
+        trip.currency
+      )} split equally.`;
+
+    return;
+
+  }
+
+
+  const exactTotal =
+    selected.reduce(
+      (
+        total,
+        checkbox
+      ) => {
+
+        const personId =
+          checkbox.dataset
+            .expenseSettlementPerson;
+
+
+        const input =
+          document.querySelector(
+            `[data-expense-settlement-exact="${CSS.escape(
+              personId
+            )}"]`
+          );
+
+
+        return total +
+          Number(
+            input?.value ||
+            0
+          );
+
+      },
+      0
+    );
+
+
+  const invalid =
+    Math.abs(
+      exactTotal -
+      settlementAmount
+    ) >
+    0.01;
+
+
+  validation.classList.toggle(
+    "error",
+    invalid
+  );
+
+
+  validation.textContent =
+    `Assigned ${formatSettlementAmount(
+      exactTotal,
+      trip.currency
+    )} of ${formatSettlementAmount(
+      settlementAmount,
+      trip.currency
+    )}.`;
+
+}
+
+
+function renderExpenseSettlementControls(
+  expense =
+    null
+) {
+
+  if (
+    !expenseSettlementSection ||
+    !expenseSharedToggle ||
+    !expenseSettlementFields
+  ) {
+
+    return;
+
+  }
+
+
+  const trip =
+    getExpenseSettlementTrip();
+
+
+  if (
+    !trip
+  ) {
+
+    expenseSettlementSection.hidden =
+      true;
+
+
+    expenseSharedToggle.checked =
+      false;
+
+
+    expenseSettlementFields.hidden =
+      true;
+
+
+    return;
+
+  }
+
+
+  expenseSettlementSection.hidden =
+    false;
+
+
+  const settlement =
+    getSettlementForTrip(
+      trip.id,
+      true
+    );
+
+
+  const editingSameTrip =
+    Boolean(
+      expense &&
+      expense.tripId ===
+        trip.id
+    );
+
+
+  expenseSharedToggle.checked =
+    editingSameTrip
+      ? Boolean(
+          expense.settlementShared
+        )
+      : false;
+
+
+  expenseSettlementFields.hidden =
+    !expenseSharedToggle.checked;
+
+
+  const tripName =
+    document.getElementById(
+      "expenseSettlementTripName"
+    );
+
+
+  const currencyNote =
+    document.getElementById(
+      "expenseSettlementCurrencyNote"
+    );
+
+
+  if (
+    tripName
+  ) {
+
+    tripName.textContent =
+      `${trip.name} settlement`;
+
+  }
+
+
+  if (
+    currencyNote
+  ) {
+
+    currencyNote.textContent =
+      currencySelect?.value &&
+      currencySelect.value !==
+        trip.currency
+        ? `Settlement uses ${trip.currency}; Momo converts this ${currencySelect.value} expense automatically.`
+        : `Settlement currency: ${trip.currency}`;
+
+  }
+
+
+  if (
+    expenseSettlementPayer
+  ) {
+
+    expenseSettlementPayer.innerHTML =
+      settlement.people
+        .map(
+          (
+            person
+          ) =>
+            `
+              <option value="${escapeHTML(
+                person.id
+              )}">
+                ${escapeHTML(
+                  person.name
+                )}
+              </option>
+            `
+        )
+        .join("");
+
+
+    const storedPayer =
+      editingSameTrip
+        ? expense.settlementPayerId
+        : "";
+
+
+    expenseSettlementPayer.value =
+      settlement.people.some(
+        (
+          person
+        ) =>
+          person.id ===
+          storedPayer
+      )
+        ? storedPayer
+        : (
+            settlement.people.find(
+              (
+                person
+              ) =>
+                person.isYou
+            )?.id ||
+            settlement.people[
+              0
+            ]?.id ||
+            ""
+          );
+
+  }
+
+
+  if (
+    expenseSettlementSplitMode
+  ) {
+
+    expenseSettlementSplitMode.value =
+      editingSameTrip &&
+      expense.settlementSplitMode ===
+        "exact"
+        ? "exact"
+        : "equal";
+
+  }
+
+
+  renderExpenseSettlementParticipants(
+    editingSameTrip
+      ? expense
+      : null
+  );
+
+
+  updateExpenseSettlementValidation();
+
+}
+
+
+function collectExpenseSettlementData(
+  selectedTrip,
+  previous =
+    null
+) {
+
+  if (
+    !selectedTrip ||
+    !expenseSharedToggle?.checked
+  ) {
+
+    return {
+      settlementShared:
+        false,
+      settlementPayerId:
+        "",
+      settlementSplitMode:
+        "",
+      settlementShares:
+        [],
+      settlementAmount:
+        0,
+      settlementCurrency:
+        ""
+    };
+
+  }
+
+
+  const settlement =
+    getSettlementForTrip(
+      selectedTrip.id,
+      true
+    );
+
+
+  const payerId =
+    expenseSettlementPayer?.value ||
+    "";
+
+
+  const checkedIds =
+    Array.from(
+      document.querySelectorAll(
+        "#expenseSettlementParticipants [data-expense-settlement-person]:checked"
+      )
+    ).map(
+      (
+        checkbox
+      ) =>
+        checkbox.dataset
+          .expenseSettlementPerson
+    );
+
+
+  if (
+    !settlement ||
+    !settlement.people.some(
+      (
+        person
+      ) =>
+        person.id ===
+        payerId
+    )
+  ) {
+
+    throw new Error(
+      "Choose who paid this expense."
+    );
+
+  }
+
+
+  if (
+    checkedIds.length ===
+    0
+  ) {
+
+    throw new Error(
+      "Choose at least one person to split this expense with."
+    );
+
+  }
+
+
+  const settlementAmount =
+    getExpenseSettlementAmount(
+      selectedTrip
+    );
+
+
+  if (
+    !Number.isFinite(
+      settlementAmount
+    ) ||
+    settlementAmount <=
+    0
+  ) {
+
+    throw new Error(
+      "Enter a valid expense amount."
+    );
+
+  }
+
+
+  const splitMode =
+    expenseSettlementSplitMode?.value ===
+      "exact"
+      ? "exact"
+      : "equal";
+
+
+  let shares =
+    [];
+
+
+  if (
+    splitMode ===
+    "equal"
+  ) {
+
+    const rawShare =
+      settlementAmount /
+      checkedIds.length;
+
+
+    let assigned =
+      0;
+
+
+    shares =
+      checkedIds.map(
+        (
+          personId,
+          index
+        ) => {
+
+          const shareAmount =
+            index ===
+              checkedIds.length -
+              1
+              ? settlementAmount -
+                assigned
+              : Math.round(
+                  rawShare *
+                  100
+                ) /
+                100;
+
+
+          assigned +=
+            shareAmount;
+
+
+          return {
+            personId,
+            amount:
+              shareAmount
+          };
+
+        }
+      );
+
+  } else {
+
+    shares =
+      checkedIds.map(
+        (
+          personId
+        ) => {
+
+          const input =
+            document.querySelector(
+              `[data-expense-settlement-exact="${CSS.escape(
+                personId
+              )}"]`
+            );
+
+
+          return {
+            personId,
+            amount:
+              Number(
+                input?.value ||
+                0
+              )
+          };
+
+        }
+      );
+
+
+    const total =
+      shares.reduce(
+        (
+          sum,
+          share
+        ) =>
+          sum +
+          share.amount,
+        0
+      );
+
+
+    if (
+      Math.abs(
+        total -
+        settlementAmount
+      ) >
+      0.01
+    ) {
+
+      throw new Error(
+        "Exact settlement shares must add up to the expense amount."
+      );
+
+    }
+
+  }
+
+
+  return {
+    settlementShared:
+      true,
+    settlementPayerId:
+      payerId,
+    settlementSplitMode:
+      splitMode,
+    settlementShares:
+      shares,
+    settlementAmount:
+      settlementAmount,
+    settlementCurrency:
+      selectedTrip.currency ||
+      "PHP",
+    settlementLinkedAt:
+      previous?.settlementLinkedAt ||
+      new Date()
+        .toISOString()
+  };
+
+}
+
+
+expenseTrip?.addEventListener(
+  "change",
+  () => {
+
+    renderExpenseSettlementControls();
+
+  }
+);
+
+
+expenseSharedToggle
+  ?.addEventListener(
+    "change",
+    async () => {
+
+      expenseSettlementFields.hidden =
+        !expenseSharedToggle.checked;
+
+
+      if (
+        expenseSharedToggle.checked
+      ) {
+
+        const {
+          settlement
+        } =
+          getExpenseSettlementContext(
+            true
+          );
+
+
+        if (
+          settlement
+        ) {
+
+          await saveTravelSettlements();
+
+
+          renderExpenseSettlementControls();
+
+        }
+
+      }
+
+
+      updateExpenseSettlementValidation();
+
+    }
+  );
+
+
+expenseSettlementSplitMode
+  ?.addEventListener(
+    "change",
+    () => {
+
+      const currentExpense =
+        expenses.find(
+          (
+            expense
+          ) =>
+            expense.id ===
+            (
+              expenseIdInput?.value ||
+              editingExpenseId
+            )
+        );
+
+
+      renderExpenseSettlementParticipants(
+        currentExpense
+      );
+
+
+      updateExpenseSettlementValidation();
+
+    }
+  );
+
+
+expenseSettlementParticipants
+  ?.addEventListener(
+    "change",
+    updateExpenseSettlementValidation
+  );
+
+
+expenseSettlementParticipants
+  ?.addEventListener(
+    "input",
+    updateExpenseSettlementValidation
+  );
+
+
+amountInput?.addEventListener(
+  "input",
+  updateExpenseSettlementValidation
+);
+
+
+currencySelect?.addEventListener(
+  "change",
+  () => {
+
+    const currentExpense =
+      expenses.find(
+        (
+          expense
+        ) =>
+          expense.id ===
+          (
+            expenseIdInput?.value ||
+            editingExpenseId
+          )
+      );
+
+
+    renderExpenseSettlementControls(
+      currentExpense
+    );
+
+  }
+);
+
+
+document
+  .getElementById(
+    "openTravelSettlementFromExpense"
+  )
+  ?.addEventListener(
+    "click",
+    () => {
+
+      activeSettlementTripId =
+        expenseTrip?.value ||
+        "";
+
+
+      showScreen(
+        "settlement"
+      );
+
+    }
+  );
+
+
 expenseBudget?.addEventListener(
   "change",
   () => {
@@ -10776,6 +11808,8 @@ function resetExpenseForm() {
 
   renderExpenseTagSuggestions();
 
+  renderExpenseSettlementControls();
+
 }
 
 
@@ -10795,6 +11829,24 @@ function prepareExpenseForm() {
       getTodayString();
 
   }
+
+
+  const currentExpense =
+    expenses.find(
+      (
+        expense
+      ) =>
+        expense.id ===
+        (
+          expenseIdInput?.value ||
+          editingExpenseId
+        )
+    );
+
+
+  renderExpenseSettlementControls(
+    currentExpense
+  );
 
 }
 
@@ -10940,6 +11992,11 @@ function openExpenseEditor(
 
 
   updateExpenseConversion();
+
+
+  renderExpenseSettlementControls(
+    expense
+  );
 
 }
 
@@ -11665,6 +12722,32 @@ expenseForm?.addEventListener(
       );
 
 
+    let settlementData;
+
+
+    try {
+
+      settlementData =
+        collectExpenseSettlementData(
+          selectedTrip,
+          previous
+        );
+
+    } catch (
+      error
+    ) {
+
+      showToast(
+        error.message ||
+        "Check the settlement split."
+      );
+
+
+      return;
+
+    }
+
+
     const expense = {
 
       id:
@@ -11742,6 +12825,8 @@ expenseForm?.addEventListener(
         selectedTrip?.id ||
         "",
 
+      ...settlementData,
+
       createdAt:
         previous?.createdAt ||
         new Date()
@@ -11758,6 +12843,15 @@ expenseForm?.addEventListener(
       STORES.expenses,
       expense
     );
+
+
+    if (
+      expense.settlementShared
+    ) {
+
+      await saveTravelSettlements();
+
+    }
 
 
     if (
@@ -21297,6 +22391,147 @@ function normalizeSharedExpenseShares(
 }
 
 
+
+function getLinkedExpenseSettlementEntries(
+  settlement
+) {
+
+  if (
+    !settlement?.tripId
+  ) {
+
+    return [];
+
+  }
+
+
+  const trip =
+    trips.find(
+      (
+        item
+      ) =>
+        item.id ===
+        settlement.tripId
+    );
+
+
+  if (
+    !trip
+  ) {
+
+    return [];
+
+  }
+
+
+  return expenses
+    .filter(
+      (
+        expense
+      ) =>
+        expense.tripId ===
+          settlement.tripId &&
+        Boolean(
+          expense.settlementShared
+        ) &&
+        Boolean(
+          expense.settlementPayerId
+        ) &&
+        Array.isArray(
+          expense.settlementShares
+        ) &&
+        expense.settlementShares.length >
+          0
+    )
+    .map(
+      (
+        expense
+      ) => {
+
+        const settlementAmount =
+          Number(
+            expense.settlementAmount
+          ) >
+          0
+            ? Number(
+                expense.settlementAmount
+              )
+            : convertCurrency(
+                expense.amount,
+                expense.currency,
+                trip.currency ||
+                  "PHP"
+              );
+
+
+        return {
+          id:
+            `linked_${expense.id}`,
+          source:
+            "expense",
+          sourceExpenseId:
+            expense.id,
+          title:
+            expense.title,
+          amount:
+            settlementAmount,
+          currency:
+            trip.currency ||
+            "PHP",
+          originalAmount:
+            expense.amount,
+          originalCurrency:
+            expense.currency,
+          date:
+            expense.date,
+          payerId:
+            expense.settlementPayerId,
+          splitMode:
+            expense.settlementSplitMode ||
+            "equal",
+          shares:
+            expense.settlementShares,
+          notes:
+            expense.notes ||
+            "",
+          createdAt:
+            expense.createdAt,
+          updatedAt:
+            expense.updatedAt
+        };
+
+      }
+    );
+
+}
+
+
+function getAllSettlementExpenseEntries(
+  settlement
+) {
+
+  return [
+    ...(
+      settlement?.expenses ||
+      []
+    ).map(
+      (
+        expense
+      ) => ({
+        ...expense,
+        source:
+          expense.source ||
+          "settlement"
+      })
+    ),
+    ...getLinkedExpenseSettlementEntries(
+      settlement
+    )
+  ];
+
+}
+
+
 function calculateSettlementBalances(
   settlement
 ) {
@@ -21322,9 +22557,8 @@ function calculateSettlementBalances(
   );
 
 
-  (
-    settlement?.expenses ||
-    []
+  getAllSettlementExpenseEntries(
+    settlement
   ).forEach(
     (
       expense
@@ -21865,9 +23099,8 @@ function renderSettlementPeople(
 
 
             const isUsed =
-              (
-                settlement.expenses ||
-                []
+              getAllSettlementExpenseEntries(
+                settlement
               ).some(
                 (
                   expense
@@ -22127,9 +23360,8 @@ function renderSettlementExpenses(
 
 
   const expensesList =
-    (
-      settlement.expenses ||
-      []
+    getAllSettlementExpenseEntries(
+      settlement
     )
       .slice()
       .sort(
@@ -22246,24 +23478,45 @@ function renderSettlementExpenses(
 
               <div class="settlement-history-actions">
 
-                <button
-                  type="button"
-                  data-edit-shared-expense="${escapeHTML(
-                    expense.id
-                  )}"
-                >
-                  Edit
-                </button>
+                ${
+                  expense.source ===
+                  "expense"
+                    ? `
+                        <button
+                          type="button"
+                          class="settlement-linked-expense-action"
+                          data-open-linked-expense="${escapeHTML(
+                            expense.sourceExpenseId
+                          )}"
+                        >
+                          Open Expense
+                        </button>
 
-                <button
-                  type="button"
-                  class="danger"
-                  data-delete-shared-expense="${escapeHTML(
-                    expense.id
-                  )}"
-                >
-                  Delete
-                </button>
+                        <span class="settlement-linked-badge">
+                          Linked from Momo
+                        </span>
+                      `
+                    : `
+                        <button
+                          type="button"
+                          data-edit-shared-expense="${escapeHTML(
+                            expense.id
+                          )}"
+                        >
+                          Edit
+                        </button>
+
+                        <button
+                          type="button"
+                          class="danger"
+                          data-delete-shared-expense="${escapeHTML(
+                            expense.id
+                          )}"
+                        >
+                          Delete
+                        </button>
+                      `
+                }
 
               </div>
 
@@ -22273,6 +23526,47 @@ function renderSettlementExpenses(
         }
       )
       .join("");
+
+
+  list
+    .querySelectorAll(
+      "[data-open-linked-expense]"
+    )
+    .forEach(
+      (
+        button
+      ) => {
+
+        button.addEventListener(
+          "click",
+          () => {
+
+            const expense =
+              expenses.find(
+                (
+                  item
+                ) =>
+                  item.id ===
+                  button.dataset
+                    .openLinkedExpense
+              );
+
+
+            if (
+              expense
+            ) {
+
+              openExpenseEditor(
+                expense
+              );
+
+            }
+
+          }
+        );
+
+      }
+    );
 
 
   list
@@ -22724,9 +24018,8 @@ function renderTravelSettlement() {
 
 
   const totalShared =
-    (
-      settlement.expenses ||
-      []
+    getAllSettlementExpenseEntries(
+      settlement
     ).reduce(
       (
         total,

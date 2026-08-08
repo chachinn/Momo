@@ -777,6 +777,84 @@
               </select>
             </label>
 
+            <section
+              id="expenseSettlementSection"
+              class="expense-settlement-section"
+              hidden
+            >
+              <label class="expense-shared-toggle">
+                <span>
+                  <strong>Shared Expense</strong>
+                  <small>
+                    Include this expense in Travel Settlement.
+                  </small>
+                </span>
+
+                <input
+                  id="expenseSharedToggle"
+                  type="checkbox"
+                >
+                <span class="appearance-switch" aria-hidden="true"></span>
+              </label>
+
+              <div
+                id="expenseSettlementFields"
+                class="expense-settlement-fields"
+                hidden
+              >
+                <div class="expense-settlement-heading">
+                  <div>
+                    <strong id="expenseSettlementTripName">
+                      Trip settlement
+                    </strong>
+                    <small id="expenseSettlementCurrencyNote"></small>
+                  </div>
+
+                  <button
+                    id="openTravelSettlementFromExpense"
+                    class="text-btn"
+                    type="button"
+                  >
+                    Manage People
+                  </button>
+                </div>
+
+                <div class="expense-settlement-grid">
+                  <label>
+                    <span>Paid By</span>
+                    <select id="expenseSettlementPayer"></select>
+                  </label>
+
+                  <label>
+                    <span>Split Method</span>
+                    <select id="expenseSettlementSplitMode">
+                      <option value="equal">Split Equally</option>
+                      <option value="exact">Exact Amounts</option>
+                    </select>
+                  </label>
+                </div>
+
+                <div class="expense-settlement-split">
+                  <div class="shared-split-heading">
+                    <strong>Split Between</strong>
+                    <small id="expenseSettlementSplitHelp">
+                      Choose everyone who shared this expense.
+                    </small>
+                  </div>
+
+                  <div
+                    id="expenseSettlementParticipants"
+                    class="shared-participant-list"
+                  ></div>
+                </div>
+
+                <div
+                  id="expenseSettlementValidation"
+                  class="shared-expense-validation"
+                ></div>
+              </div>
+            </section>
+
             <label class="form-row">
               <span>Payment Method</span>
               <select

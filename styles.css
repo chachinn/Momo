@@ -8782,3 +8782,252 @@ body.wallpaper-enabled .trip-date-calendar {
   }
 }
 
+
+
+/* ========================================
+   EXPENSE → TRAVEL SETTLEMENT INTEGRATION
+======================================== */
+
+.expense-settlement-section {
+  padding:
+    11px 14px;
+  border-top:
+    1px solid
+    var(--border);
+  background:
+    color-mix(
+      in srgb,
+      var(--blush) 24%,
+      transparent
+    );
+}
+
+.expense-shared-toggle {
+  position:
+    relative;
+  min-height:
+    52px;
+  display:
+    flex;
+  align-items:
+    center;
+  justify-content:
+    space-between;
+  gap:
+    14px;
+}
+
+.expense-shared-toggle > span:first-child {
+  display:
+    grid;
+  gap:
+    3px;
+}
+
+.expense-shared-toggle strong {
+  font-size:
+    11px;
+}
+
+.expense-shared-toggle small {
+  color:
+    var(--text-soft);
+  font-size:
+    8px;
+  line-height:
+    1.4;
+}
+
+.expense-shared-toggle > input {
+  position:
+    absolute;
+  opacity:
+    0;
+  pointer-events:
+    none;
+}
+
+.expense-settlement-fields {
+  margin-top:
+    10px;
+  padding-top:
+    12px;
+  border-top:
+    1px solid
+    var(--border);
+}
+
+.expense-settlement-heading {
+  display:
+    flex;
+  justify-content:
+    space-between;
+  align-items:
+    flex-start;
+  gap:
+    10px;
+  margin-bottom:
+    11px;
+}
+
+.expense-settlement-heading > div {
+  min-width:
+    0;
+}
+
+.expense-settlement-heading strong,
+.expense-settlement-heading small {
+  display:
+    block;
+}
+
+.expense-settlement-heading strong {
+  font-family:
+    Georgia,
+    serif;
+  font-size:
+    13px;
+}
+
+.expense-settlement-heading small {
+  margin-top:
+    3px;
+  color:
+    var(--text-soft);
+  font-size:
+    8px;
+  line-height:
+    1.4;
+}
+
+.expense-settlement-heading .text-btn {
+  flex:
+    0 0 auto;
+  font-size:
+    8px;
+}
+
+.expense-settlement-grid {
+  display:
+    grid;
+  grid-template-columns:
+    repeat(
+      2,
+      minmax(
+        0,
+        1fr
+      )
+    );
+  gap:
+    9px;
+}
+
+.expense-settlement-grid label {
+  min-width:
+    0;
+}
+
+.expense-settlement-grid label > span {
+  display:
+    block;
+  margin-bottom:
+    5px;
+  color:
+    var(--text-soft);
+  font-size:
+    8px;
+  font-weight:
+    800;
+}
+
+.expense-settlement-grid select {
+  width:
+    100%;
+  min-width:
+    0;
+  min-height:
+    43px;
+  padding:
+    0 9px;
+  border:
+    1px solid
+    var(--border);
+  border-radius:
+    13px;
+  background:
+    var(--surface);
+  color:
+    var(--text);
+}
+
+.expense-settlement-split {
+  margin-top:
+    10px;
+}
+
+.expense-linked-participant {
+  grid-template-columns:
+    20px
+    29px
+    minmax(
+      0,
+      1fr
+    )
+    auto;
+}
+
+.expense-linked-participant
+.shared-participant-avatar {
+  width:
+    29px;
+  height:
+    29px;
+}
+
+.expense-settlement-detail strong {
+  color:
+    var(--rose);
+}
+
+.settlement-linked-expense-action {
+  grid-column:
+    1 / 2;
+}
+
+.settlement-linked-badge {
+  display:
+    grid;
+  place-items:
+    center;
+  border-left:
+    1px solid
+    var(--border);
+  color:
+    var(--text-soft);
+  font-size:
+    8px;
+  font-weight:
+    700;
+}
+
+body.wallpaper-enabled
+.expense-settlement-section {
+  background:
+    color-mix(
+      in srgb,
+      var(--surface) 68%,
+      transparent
+    );
+  -webkit-backdrop-filter:
+    blur(10px);
+  backdrop-filter:
+    blur(10px);
+}
+
+@media (max-width: 355px) {
+  .expense-settlement-grid {
+    grid-template-columns:
+      1fr;
+  }
+}
+
