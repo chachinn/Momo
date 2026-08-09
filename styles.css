@@ -15844,3 +15844,55 @@ textarea {
     pan-y
     pinch-zoom;
 }
+
+
+/* ========================================
+   MOMO 1.2.2 — SMOOTHER INTERACTIVE EDGE SWIPE
+======================================== */
+
+.side-drawer {
+  will-change: transform;
+  backface-visibility: hidden;
+  -webkit-backface-visibility: hidden;
+}
+
+.side-drawer.edge-dragging {
+  transition: none !important;
+  box-shadow:
+    14px 0 34px
+    rgba(73, 58, 58, 0.14);
+}
+
+.drawer-overlay {
+  opacity: 1;
+  will-change: opacity;
+}
+
+.drawer-overlay.edge-dragging {
+  transition: none !important;
+}
+
+.screen.active {
+  backface-visibility: hidden;
+  -webkit-backface-visibility: hidden;
+}
+
+.screen.active.edge-swipe-dragging {
+  position: relative;
+  z-index: 2;
+  transition: none !important;
+  will-change:
+    transform,
+    opacity;
+  box-shadow:
+    -12px 0 28px
+    rgba(73, 58, 58, 0.04);
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .side-drawer,
+  .drawer-overlay,
+  .screen.active {
+    transition: none !important;
+  }
+}

@@ -1,6 +1,6 @@
 // ========================================
 // MOMO
-// Momo 1.2.1 — Shared Expense Layout + Edge Swipe Navigation
+// Momo 1.2.2 — Interactive Edge Swipe
 // CLEAN FOUNDATION + FUNCTIONAL TRIPS
 // ========================================
 
@@ -3589,6 +3589,48 @@ const closeDrawerButton =
 
 function openDrawer() {
 
+  if (
+    sideDrawer
+  ) {
+
+    sideDrawer.classList.remove(
+      "edge-dragging"
+    );
+
+
+    sideDrawer.style.removeProperty(
+      "transform"
+    );
+
+
+    sideDrawer.style.removeProperty(
+      "transition"
+    );
+
+  }
+
+
+  if (
+    drawerOverlay
+  ) {
+
+    drawerOverlay.classList.remove(
+      "edge-dragging"
+    );
+
+
+    drawerOverlay.style.removeProperty(
+      "opacity"
+    );
+
+
+    drawerOverlay.style.removeProperty(
+      "transition"
+    );
+
+  }
+
+
   sideDrawer?.classList.add(
     "open"
   );
@@ -3624,6 +3666,48 @@ function openDrawer() {
 
 
 function closeDrawer() {
+
+  if (
+    sideDrawer
+  ) {
+
+    sideDrawer.classList.remove(
+      "edge-dragging"
+    );
+
+
+    sideDrawer.style.removeProperty(
+      "transform"
+    );
+
+
+    sideDrawer.style.removeProperty(
+      "transition"
+    );
+
+  }
+
+
+  if (
+    drawerOverlay
+  ) {
+
+    drawerOverlay.classList.remove(
+      "edge-dragging"
+    );
+
+
+    drawerOverlay.style.removeProperty(
+      "opacity"
+    );
+
+
+    drawerOverlay.style.removeProperty(
+      "transition"
+    );
+
+  }
+
 
   sideDrawer?.classList.remove(
     "open"
@@ -4111,15 +4195,19 @@ document.addEventListener(
 
 
 // ========================================
-// IOS-STYLE LEFT EDGE SWIPE NAVIGATION
+// IOS-STYLE INTERACTIVE LEFT EDGE SWIPE
 // ========================================
 
 const EDGE_SWIPE_START_PX =
-  24;
+  26;
 
 
 const EDGE_SWIPE_TRIGGER_PX =
-  72;
+  70;
+
+
+const EDGE_SWIPE_VELOCITY_TRIGGER =
+  0.42;
 
 
 let edgeSwipePointerId =
@@ -4134,8 +4222,215 @@ let edgeSwipeStartY =
   0;
 
 
+let edgeSwipeLastX =
+  0;
+
+
+let edgeSwipeLastTime =
+  0;
+
+
 let edgeSwipeActive =
   false;
+
+
+let edgeSwipeHorizontal =
+  false;
+
+
+let edgeSwipeMode =
+  "";
+
+
+let edgeSwipeScreen =
+  null;
+
+
+function getActiveScreenElement() {
+
+  return document.querySelector(
+    ".screen.active"
+  );
+
+}
+
+
+function resetEdgeSwipeVisuals(
+  animate =
+    false
+) {
+
+  if (
+    edgeSwipeScreen
+  ) {
+
+    if (
+      animate
+    ) {
+
+      edgeSwipeScreen.style.transition =
+        "transform 180ms cubic-bezier(0.22, 0.8, 0.32, 1), opacity 180ms ease";
+
+    } else {
+
+      edgeSwipeScreen.style.removeProperty(
+        "transition"
+      );
+
+    }
+
+
+    edgeSwipeScreen.style.transform =
+      "translate3d(0, 0, 0)";
+
+
+    edgeSwipeScreen.style.opacity =
+      "1";
+
+
+    edgeSwipeScreen.classList.remove(
+      "edge-swipe-dragging"
+    );
+
+
+    if (
+      animate
+    ) {
+
+      setTimeout(
+        () => {
+
+          edgeSwipeScreen?.style.removeProperty(
+            "transform"
+          );
+
+
+          edgeSwipeScreen?.style.removeProperty(
+            "opacity"
+          );
+
+
+          edgeSwipeScreen?.style.removeProperty(
+            "transition"
+          );
+
+        },
+        210
+      );
+
+    } else {
+
+      edgeSwipeScreen.style.removeProperty(
+        "transform"
+      );
+
+
+      edgeSwipeScreen.style.removeProperty(
+        "opacity"
+      );
+
+    }
+
+  }
+
+
+  if (
+    sideDrawer
+  ) {
+
+    sideDrawer.classList.remove(
+      "edge-dragging"
+    );
+
+
+    if (
+      animate
+    ) {
+
+      sideDrawer.style.transition =
+        "transform 190ms cubic-bezier(0.22, 0.8, 0.32, 1)";
+
+    } else {
+
+      sideDrawer.style.removeProperty(
+        "transition"
+      );
+
+    }
+
+
+    sideDrawer.style.removeProperty(
+      "transform"
+    );
+
+  }
+
+
+  if (
+    drawerOverlay
+  ) {
+
+    drawerOverlay.classList.remove(
+      "edge-dragging"
+    );
+
+
+    if (
+      animate
+    ) {
+
+      drawerOverlay.style.transition =
+        "opacity 170ms ease";
+
+
+      drawerOverlay.style.opacity =
+        "0";
+
+
+      setTimeout(
+        () => {
+
+          if (
+            !sideDrawer?.classList.contains(
+              "open"
+            )
+          ) {
+
+            drawerOverlay.hidden =
+              true;
+
+          }
+
+
+          drawerOverlay.style.removeProperty(
+            "opacity"
+          );
+
+
+          drawerOverlay.style.removeProperty(
+            "transition"
+          );
+
+        },
+        190
+      );
+
+    } else {
+
+      drawerOverlay.style.removeProperty(
+        "opacity"
+      );
+
+
+      drawerOverlay.style.removeProperty(
+        "transition"
+      );
+
+    }
+
+  }
+
+}
 
 
 function canStartEdgeSwipe(
@@ -4201,8 +4496,50 @@ document.addEventListener(
       event.clientY;
 
 
+    edgeSwipeLastX =
+      event.clientX;
+
+
+    edgeSwipeLastTime =
+      performance.now();
+
+
     edgeSwipeActive =
       true;
+
+
+    edgeSwipeHorizontal =
+      false;
+
+
+    edgeSwipeMode =
+      topLevelScreens.includes(
+        currentScreenName
+      )
+        ? "drawer"
+        : "back";
+
+
+    edgeSwipeScreen =
+      edgeSwipeMode ===
+        "back"
+        ? getActiveScreenElement()
+        : null;
+
+
+    try {
+
+      event.target.setPointerCapture?.(
+        event.pointerId
+      );
+
+    } catch (
+      error
+    ) {
+
+      // Pointer capture is optional on older iOS builds.
+
+    }
 
   },
   {
@@ -4230,8 +4567,11 @@ document.addEventListener(
 
 
     const dx =
-      event.clientX -
-      edgeSwipeStartX;
+      Math.max(
+        0,
+        event.clientX -
+        edgeSwipeStartX
+      );
 
 
     const dy =
@@ -4240,17 +4580,167 @@ document.addEventListener(
 
 
     if (
-      Math.abs(
-        dy
-      ) >
-      Math.abs(
-        dx
-      ) +
-      12
+      !edgeSwipeHorizontal
     ) {
 
-      edgeSwipeActive =
+      if (
+        dx <
+          7 &&
+        Math.abs(
+          dy
+        ) <
+          7
+      ) {
+
+        return;
+
+      }
+
+
+      if (
+        Math.abs(
+          dy
+        ) >
+        dx
+      ) {
+
+        edgeSwipeActive =
+          false;
+
+
+        resetEdgeSwipeVisuals();
+
+
+        return;
+
+      }
+
+
+      edgeSwipeHorizontal =
+        true;
+
+    }
+
+
+    const now =
+      performance.now();
+
+
+    edgeSwipeLastX =
+      event.clientX;
+
+
+    edgeSwipeLastTime =
+      now;
+
+
+    if (
+      edgeSwipeMode ===
+        "drawer"
+    ) {
+
+      if (
+        !sideDrawer ||
+        !drawerOverlay
+      ) {
+
+        return;
+
+      }
+
+
+      const drawerWidth =
+        Math.max(
+          1,
+          sideDrawer
+            .getBoundingClientRect()
+            .width
+        );
+
+
+      const progress =
+        Math.max(
+          0,
+          Math.min(
+            1,
+            dx /
+            drawerWidth
+          )
+        );
+
+
+      drawerOverlay.hidden =
         false;
+
+
+      drawerOverlay.classList.add(
+        "edge-dragging"
+      );
+
+
+      sideDrawer.classList.add(
+        "edge-dragging"
+      );
+
+
+      sideDrawer.style.transform =
+        `translate3d(${(-100 + progress * 100)}%, 0, 0)`;
+
+
+      drawerOverlay.style.opacity =
+        String(
+          progress
+        );
+
+    } else if (
+      edgeSwipeScreen
+    ) {
+
+      const screenWidth =
+        Math.max(
+          1,
+          window.innerWidth
+        );
+
+
+      const progress =
+        Math.max(
+          0,
+          Math.min(
+            1,
+            dx /
+            Math.min(
+              180,
+              screenWidth *
+                0.42
+            )
+          )
+        );
+
+
+      const translate =
+        Math.min(
+          dx *
+            0.34,
+          62
+        );
+
+
+      edgeSwipeScreen.classList.add(
+        "edge-swipe-dragging"
+      );
+
+
+      edgeSwipeScreen.style.transform =
+        `translate3d(${translate}px, 0, 0)`;
+
+
+      edgeSwipeScreen.style.opacity =
+        String(
+          1 -
+          progress *
+            0.08
+        );
 
     }
 
@@ -4284,14 +4774,22 @@ function finishEdgeSwipe(
       null;
 
 
+    resetEdgeSwipeVisuals(
+      true
+    );
+
+
     return;
 
   }
 
 
   const dx =
-    event.clientX -
-    edgeSwipeStartX;
+    Math.max(
+      0,
+      event.clientX -
+      edgeSwipeStartX
+    );
 
 
   const dy =
@@ -4299,16 +4797,56 @@ function finishEdgeSwipe(
     edgeSwipeStartY;
 
 
+  const now =
+    performance.now();
+
+
+  const elapsed =
+    Math.max(
+      1,
+      now -
+      edgeSwipeLastTime
+    );
+
+
+  const velocity =
+    Math.max(
+      0,
+      (
+        event.clientX -
+        edgeSwipeLastX
+      ) /
+      elapsed
+    );
+
+
   const isRightSwipe =
-    dx >=
-      EDGE_SWIPE_TRIGGER_PX &&
+    edgeSwipeHorizontal &&
     Math.abs(
       dx
     ) >
     Math.abs(
       dy
     ) *
-      1.25;
+      1.15 &&
+    (
+      dx >=
+        EDGE_SWIPE_TRIGGER_PX ||
+      (
+        dx >=
+          34 &&
+        velocity >=
+          EDGE_SWIPE_VELOCITY_TRIGGER
+      )
+    );
+
+
+  const completedMode =
+    edgeSwipeMode;
+
+
+  const completedScreen =
+    edgeSwipeScreen;
 
 
   edgeSwipeActive =
@@ -4319,27 +4857,91 @@ function finishEdgeSwipe(
     null;
 
 
+  edgeSwipeHorizontal =
+    false;
+
+
+  edgeSwipeMode =
+    "";
+
+
+  edgeSwipeScreen =
+    null;
+
+
   if (
     !isRightSwipe
   ) {
 
+    if (
+      completedScreen
+    ) {
+
+      edgeSwipeScreen =
+        completedScreen;
+
+    }
+
+
+    resetEdgeSwipeVisuals(
+      true
+    );
+
+
+    edgeSwipeScreen =
+      null;
+
+
     return;
 
   }
 
 
-  /*
-    Main tabs behave like the app root: a left-edge swipe opens
-    Momo's navigation drawer. Secondary screens behave like
-    iOS drill-down screens and go back to where the user came from.
-  */
   if (
-    topLevelScreens.includes(
-      currentScreenName
-    )
+    completedMode ===
+      "drawer"
   ) {
 
-    openDrawer();
+    if (
+      sideDrawer
+    ) {
+
+      sideDrawer.style.transition =
+        "transform 190ms cubic-bezier(0.22, 0.8, 0.32, 1)";
+
+
+      sideDrawer.style.transform =
+        "translate3d(0, 0, 0)";
+
+    }
+
+
+    if (
+      drawerOverlay
+    ) {
+
+      drawerOverlay.hidden =
+        false;
+
+
+      drawerOverlay.style.transition =
+        "opacity 170ms ease";
+
+
+      drawerOverlay.style.opacity =
+        "1";
+
+    }
+
+
+    setTimeout(
+      () => {
+
+        openDrawer();
+
+      },
+      175
+    );
 
 
     return;
@@ -4347,7 +4949,56 @@ function finishEdgeSwipe(
   }
 
 
-  navigateBackOneScreen();
+  if (
+    completedScreen
+  ) {
+
+    completedScreen.style.transition =
+      "transform 160ms cubic-bezier(0.22, 0.8, 0.32, 1), opacity 150ms ease";
+
+
+    completedScreen.style.transform =
+      "translate3d(92px, 0, 0)";
+
+
+    completedScreen.style.opacity =
+      "0.94";
+
+
+    setTimeout(
+      () => {
+
+        completedScreen.style.removeProperty(
+          "transform"
+        );
+
+
+        completedScreen.style.removeProperty(
+          "opacity"
+        );
+
+
+        completedScreen.style.removeProperty(
+          "transition"
+        );
+
+
+        completedScreen.classList.remove(
+          "edge-swipe-dragging"
+        );
+
+
+        navigateBackOneScreen();
+
+      },
+      135
+    );
+
+  } else {
+
+    navigateBackOneScreen();
+
+  }
 
 }
 
@@ -4372,6 +5023,23 @@ document.addEventListener(
 
     edgeSwipePointerId =
       null;
+
+
+    edgeSwipeHorizontal =
+      false;
+
+
+    resetEdgeSwipeVisuals(
+      true
+    );
+
+
+    edgeSwipeScreen =
+      null;
+
+
+    edgeSwipeMode =
+      "";
 
   },
   {
