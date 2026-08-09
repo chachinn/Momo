@@ -1,6 +1,6 @@
 // ========================================
 // MOMO
-// Momo 1.2.2 — Interactive Edge Swipe
+// Momo 1.3.0 — Performance and Stability
 // CLEAN FOUNDATION + FUNCTIONAL TRIPS
 // ========================================
 
@@ -842,6 +842,8 @@ async function performCleanStartIfNeeded() {
 
 async function loadAppData() {
 
+  let settingsRecords = [];
+
   [
 
     expenses,
@@ -854,7 +856,9 @@ async function loadAppData() {
 
     recurringExpenses,
 
-    plannedExpenses
+    plannedExpenses,
+
+    settingsRecords
 
   ] = await Promise.all([
 
@@ -880,15 +884,13 @@ async function loadAppData() {
 
     getAllRecords(
       STORES.planned
+    ),
+
+    getAllRecords(
+      STORES.settings
     )
 
   ]);
-
-
-  const settingsRecords =
-    await getAllRecords(
-      STORES.settings
-    );
 
 
   const favoriteSetting =
@@ -4059,6 +4061,21 @@ function showScreen(
   }
 
 
+  if (name === "activity") {
+    renderActivityTransactions();
+  }
+
+
+  if (name === "receipts") {
+    renderReceiptGallery();
+  }
+
+
+  if (name === "savings") {
+    renderSavingsGoals();
+  }
+
+
   if (
     name ===
     "reports"
@@ -4244,6 +4261,10 @@ let edgeSwipeMode =
 
 let edgeSwipeScreen =
   null;
+
+
+let edgeSwipeDrawerWidth =
+  1;
 
 
 function getActiveScreenElement() {
@@ -4527,6 +4548,12 @@ document.addEventListener(
         : null;
 
 
+    edgeSwipeDrawerWidth =
+      edgeSwipeMode === "drawer" && sideDrawer
+        ? Math.max(1, sideDrawer.getBoundingClientRect().width)
+        : 1;
+
+
     try {
 
       event.target.setPointerCapture?.(
@@ -4649,22 +4676,13 @@ document.addEventListener(
       }
 
 
-      const drawerWidth =
-        Math.max(
-          1,
-          sideDrawer
-            .getBoundingClientRect()
-            .width
-        );
-
-
       const progress =
         Math.max(
           0,
           Math.min(
             1,
             dx /
-            drawerWidth
+            edgeSwipeDrawerWidth
           )
         );
 
@@ -18075,6 +18093,10 @@ function updateActivityFilterUI() {
 }
 
 
+const ACTIVITY_RENDER_BATCH = 50;
+let activityRenderLimit = ACTIVITY_RENDER_BATCH;
+
+
 function renderActivityTransactions() {
 
   const activity =
@@ -18170,20 +18192,37 @@ function renderActivityTransactions() {
     true;
 
 
+  const visibleActivityExpenses =
+    filtered.slice(0, activityRenderLimit);
+
+
   activity.innerHTML =
-    filtered
+    visibleActivityExpenses
       .map(
         (expense) =>
           renderTransaction(
             expense
           )
       )
-      .join("");
+      .join("") +
+    (visibleActivityExpenses.length < filtered.length
+      ? `<button class="secondary-button momo-load-more" type="button" data-load-more-activity>Load more (${filtered.length - visibleActivityExpenses.length} remaining)</button>`
+      : "");
 
 
   attachExpenseDetailActions();
 
 }
+
+
+document.addEventListener("click", (event) => {
+  if (!event.target.closest("[data-load-more-activity]")) {
+    return;
+  }
+
+  activityRenderLimit += ACTIVITY_RENDER_BATCH;
+  renderActivityTransactions();
+});
 
 
 activityFilterToggle
@@ -18594,7 +18633,8 @@ function renderTransactions() {
 
 
   if (
-    activity
+    activity &&
+    currentScreenName === "activity"
   ) {
 
     renderActivityTransactions();
@@ -18848,7 +18888,7 @@ function renderExpenseSettlementDetail(
         <div>
           <span class="expense-history-section-icon">🤝</span>
           <div>
-            <small>Travel Settlement</small>
+            <small>Shared Settlement</small>
             <strong>Shared expense</strong>
           </div>
         </div>
@@ -36027,6 +36067,10 @@ function getFilteredReceiptExpenses() {
 }
 
 
+const RECEIPT_RENDER_BATCH = 48;
+let receiptRenderLimit = RECEIPT_RENDER_BATCH;
+
+
 function renderReceiptGallery() {
 
   const grid =
@@ -36162,8 +36206,12 @@ function renderReceiptGallery() {
     true;
 
 
+  const visibleReceipts =
+    filtered.slice(0, receiptRenderLimit);
+
+
   grid.innerHTML =
-    filtered
+    visibleReceipts
       .map(
         (expense) => {
 
@@ -36196,6 +36244,7 @@ function renderReceiptGallery() {
                     "Expense receipt"
                   )}"
                   loading="lazy"
+                  decoding="async"
                 >
 
                 <span class="receipt-gallery-amount">
@@ -36279,7 +36328,10 @@ function renderReceiptGallery() {
 
         }
       )
-      .join("");
+      .join("") +
+    (visibleReceipts.length < filtered.length
+      ? `<button class="secondary-button momo-load-more" type="button" data-load-more-receipts>Load more (${filtered.length - visibleReceipts.length} remaining)</button>`
+      : "");
 
 
   grid
@@ -36319,6 +36371,16 @@ function renderReceiptGallery() {
     );
 
 }
+
+
+document.getElementById("receiptGalleryGrid")?.addEventListener("click", (event) => {
+  if (!event.target.closest("[data-load-more-receipts]")) {
+    return;
+  }
+
+  receiptRenderLimit += RECEIPT_RENDER_BATCH;
+  renderReceiptGallery();
+});
 
 
 [
@@ -37368,71 +37430,33 @@ function renderAll() {
     ],
 
     [
-      "Budgets",
-      renderBudgets
-    ],
-
-    [
-      "Trips",
-      renderTrips
-    ],
-
-    [
       "Transactions",
       renderTransactions
-    ],
-
-    [
-      "Calendar",
-      renderCalendar
-    ],
-
-    [
-      "Recurring expenses",
-      renderRecurringExpenses
-    ],
-
-    [
-      "Planned expenses",
-      renderPlannedExpenses
-    ],
-
-    [
-      "Favorite Quick Add",
-      renderFavoriteQuickAdd
-    ],
-
-    [
-      "Payables",
-      renderPayables
-    ],
-
-    [
-      "Savings goals",
-      renderSavingsGoals
-    ],
-
-    [
-      "Travel Settlement",
-      renderTravelSettlement
-    ],
-
-    [
-      "Receipt Gallery",
-      renderReceiptGallery
-    ],
-
-    [
-      "Backup status",
-      renderBackupStatus
-    ],
-
-    [
-      "Reports",
-      renderReportSummary
     ]
 
   ];
+
+
+  const activeScreenRenderers = {
+    budgets: ["Budgets", renderBudgets],
+    trips: ["Trips", renderTrips],
+    calendar: ["Calendar", renderCalendar],
+    recurring: ["Recurring expenses", renderRecurringExpenses],
+    planned: ["Planned expenses", renderPlannedExpenses],
+    add: ["Favorite Quick Add", renderFavoriteQuickAdd],
+    payables: ["Payables", renderPayables],
+    savings: ["Savings goals", renderSavingsGoals],
+    settlement: ["Shared Settlement", renderTravelSettlement],
+    receipts: ["Receipt Gallery", renderReceiptGallery],
+    backup: ["Backup status", renderBackupStatus],
+    reports: ["Reports", renderReportSummary]
+  };
+
+
+  const activeStep = activeScreenRenderers[currentScreenName];
+  if (activeStep) {
+    renderSteps.push(activeStep);
+  }
 
 
   let failedSections =
@@ -37821,14 +37845,15 @@ const MOMO_HELP_TOPICS = {
 
   settlement: {
     emoji: "🤝",
-    title: "Travel Settlement",
-    short: "Travel Settlement records shared trip costs locally and works out a simple way for people to settle what they owe.",
-    intro: "Use this when different people paid for shared things during a trip. Nobody else needs to have Momo.",
+    title: "Shared Settlement",
+    short: "Shared Settlement records everyday, custom-category, and trip costs locally and works out who owes whom.",
+    intro: "Use Daily Life for regular splitting, create categories such as Eating Out, Household, Dates, or Friends, or choose a particular trip.",
     steps: [
-      "Open Travel Settlement from the menu.",
-      "Choose the trip you want to settle.",
+      "Open Shared Settlement from the menu.",
+      "Choose Daily Life, a custom category, or a trip settlement.",
       "Add the people involved.",
-      "Record shared expenses, who paid, and the relevant shares.",
+      "Record who paid, then split equally or enter exact shares.",
+      "The entered currency may differ from the base currency; Momo preserves the original amount and converts it for settlement calculations.",
       "Review balances and Momo's suggested settlement transfers.",
       "Record payments as people settle up."
     ],

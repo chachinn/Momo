@@ -1,10 +1,10 @@
 // ========================================
 // MOMO SERVICE WORKER
-// Momo 1.2.2 — stable network-first PWA shell
+// Momo 1.3.0 — stable network-first PWA shell
 // ========================================
 
 const CACHE_NAME =
-  "momo-runtime-shell-v1.2.2";
+  "momo-runtime-shell-v1.3.0";
 
 
 const APP_SHELL = [
@@ -14,8 +14,8 @@ const APP_SHELL = [
   "./app.js",
   "./firebase-momo.js",
   "./manifest.json",
-  "./icon-192.png",
-  "./icon-512.png"
+  "./icons/icon-192.png",
+  "./icons/icon-512.png"
 ];
 
 

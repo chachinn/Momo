@@ -15896,3 +15896,15 @@ textarea {
     transition: none !important;
   }
 }
+.momo-load-more {
+  display: block;
+  width: min(100%, 320px);
+  margin: 18px auto 6px;
+  grid-column: 1 / -1;
+}
+
+.edge-swipe-dragging,
+.side-drawer.edge-dragging,
+.drawer-overlay.edge-dragging {
+  will-change: transform, opacity;
+}

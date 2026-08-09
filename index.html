@@ -17,10 +17,10 @@
   <meta name="apple-mobile-web-app-title" content="Momo">
 
   <title>Momo — Spending Diary</title>
-  <meta name="momo-app-version" content="1.2.2">
+  <meta name="momo-app-version" content="1.3.0">
 
   <link rel="manifest" href="manifest.json">
-  <link rel="apple-touch-icon" href="icon-192.png">
+  <link rel="apple-touch-icon" href="icons/icon-192.png">
   <link rel="stylesheet" href="styles.css">
 </head>
 
@@ -1082,7 +1082,7 @@
                 <span>
                   <strong>Shared Expense</strong>
                   <small>
-                    Include this expense in Travel Settlement.
+                    Include this expense in Shared Settlement.
                   </small>
                 </span>
 
@@ -2211,7 +2211,7 @@
             <p>
               Creates one complete Momo backup file containing expenses, photos,
               budgets, trips, recurring and planned expenses, Quick Add templates,
-              savings, Travel Settlement, trip shopping lists, monthly income,
+              savings, Shared Settlement, trip shopping lists, monthly income,
               appearance settings, and other local Momo data.
             </p>
           </div>
@@ -2735,7 +2735,7 @@
               <button class="guide-link" type="button" data-guide-topic="trips"><span>✈️</span><div><strong>Create & use a trip</strong><small>Keep travel spending grouped together.</small></div><b>›</b></button>
               <button class="guide-link" type="button" data-guide-topic="converter"><span>💱</span><div><strong>Currency Converter</strong><small>Convert a number or a whole calculation.</small></div><b>›</b></button>
               <button class="guide-link" type="button" data-guide-topic="shopping"><span>🛍️</span><div><strong>Things I Want to Buy</strong><small>Plan and track trip shopping separately.</small></div><b>›</b></button>
-              <button class="guide-link" type="button" data-guide-topic="settlement"><span>🤝</span><div><strong>Travel Settlement</strong><small>Work out who owes whom after shared costs.</small></div><b>›</b></button>
+              <button class="guide-link" type="button" data-guide-topic="settlement"><span>🤝</span><div><strong>Shared Settlement</strong><small>Work out who owes whom after shared costs.</small></div><b>›</b></button>
             </div>
           </details>
 
@@ -2862,9 +2862,9 @@
         <div id="welcomeTourTrack" class="tutorial-track">
           <article class="tutorial-slide active" data-tutorial-slide="0">
             <div class="tutorial-art tutorial-art-welcome"><span class="tutorial-big-peach">🍑</span><i>✦</i><i>✿</i></div>
-            <p class="tutorial-kicker">HELLO, PEACH</p>
+            <p class="tutorial-kicker">WELCOME TO MOMO</p>
             <h2 id="welcomeTourTitle">Your money,<br>your way.</h2>
-            <p>Momo keeps spending, saving, trips, and everyday money in one soft little place.</p>
+            <p>Track spending, budgets, trips, and savings in one offline-first place.</p>
           </article>
 
           <article class="tutorial-slide" data-tutorial-slide="1">
@@ -2872,36 +2872,36 @@
               <div class="tutorial-fake-expense"><span>🍙</span><div><strong>FamilyMart</strong><small>Food & Drinks · Receipt attached</small></div><b>¥1,280</b></div>
               <div class="tutorial-fake-expense secondary"><span>🚕</span><div><strong>Grab</strong><small>Transportation · GCash</small></div><b>₱185</b></div>
             </div>
-            <p class="tutorial-kicker">TRACK WHAT YOU SPEND</p>
+            <p class="tutorial-kicker">ADDING SPENDING</p>
             <h2>Every purchase has a place.</h2>
-            <p>Add expenses, choose how you paid, attach receipts, organize purchases, and find them again later.</p>
+            <p>Tap Add, choose a category or trip, then optionally attach a receipt, location, and notes.</p>
           </article>
 
           <article class="tutorial-slide" data-tutorial-slide="2">
             <div class="tutorial-art">
               <div class="tutorial-fake-snapshot"><small>MONTHLY SNAPSHOT</small><strong>₱12,480</strong><div><span style="width:58%"></span></div><p>58% of your budget used</p></div>
             </div>
-            <p class="tutorial-kicker">SEE THE BIGGER PICTURE</p>
-            <h2>Plan gently. Know more.</h2>
-            <p>Set budgets, add monthly income, follow savings goals, and see useful spending patterns without turning Momo into a bank.</p>
+            <p class="tutorial-kicker">SWIPE SHORTCUTS</p>
+            <h2>Move around naturally.</h2>
+            <p>Swipe an expense right to Edit or left to Delete. Swipe from the left edge for the menu, or to go Back on a secondary screen.</p>
           </article>
 
           <article class="tutorial-slide" data-tutorial-slide="3">
             <div class="tutorial-art">
               <div class="tutorial-fake-trip"><span>🇯🇵</span><div><small>NEXT ADVENTURE</small><strong>Tokyo · October 2026</strong><p>¥42,850 spent · travel tools together</p></div></div>
             </div>
-            <p class="tutorial-kicker">TAKE MOMO TRAVELING</p>
-            <h2>Going somewhere?<br>Bring Momo.</h2>
-            <p>Create a trip, track foreign-currency spending, plan purchases, keep a shopping list, and settle shared expenses.</p>
+            <p class="tutorial-kicker">PLAN AHEAD</p>
+            <h2>Plan gently. Know more.</h2>
+            <p>Use budgets, planned and recurring expenses, savings goals, and Smart Reminders to see what is ahead.</p>
           </article>
 
           <article class="tutorial-slide" data-tutorial-slide="4">
             <div class="tutorial-art tutorial-feature-cloud">
               <span>⚡ Quick Add</span><span>🧠 Merchant Memory</span><span>↻ Recurring</span><span>☆ Planned</span><span>⌕ Smart Search</span>
             </div>
-            <p class="tutorial-kicker">MOMO REMEMBERS</p>
-            <h2>The more you use it,<br>the easier it gets.</h2>
-            <p>Templates, merchant suggestions, planning tools, and search help cut down repetitive work.</p>
+            <p class="tutorial-kicker">SHARED SETTLEMENT</p>
+            <h2>Split costs clearly.</h2>
+            <p>Use Daily Life, custom categories, or trips. Add people, choose Paid By, split equally or exactly, and record multi-currency repayments.</p>
           </article>
 
           <article class="tutorial-slide" data-tutorial-slide="5">
@@ -2909,9 +2909,16 @@
               <div class="tutorial-theme-orbs" aria-hidden="true"><i class="peach"></i><i class="sakura"></i><i class="lavender"></i><i class="sky"></i><i class="mint"></i><i class="butter"></i></div>
               <div class="tutorial-wallpaper-card">✿<span>your wallpaper</span></div>
             </div>
-            <p class="tutorial-kicker">MAKE MOMO YOURS</p>
-            <h2>Your Momo,<br>your colors.</h2>
-            <p>Choose a theme, add your own wallpaper, and make your money space feel like yours. Your data stays local and can be backed up anytime.</p>
+            <p class="tutorial-kicker">TRAVEL WITH MOMO</p>
+            <h2>Going somewhere?<br>Bring Momo.</h2>
+            <p>Create trips, set trip and daily budgets, follow dates in Calendar, and settle shared trip spending.</p>
+          </article>
+
+          <article class="tutorial-slide" data-tutorial-slide="6">
+            <div class="tutorial-art tutorial-feature-cloud"><span>Offline first</span><span>Optional cloud backup</span><span>Backup &amp; restore</span></div>
+            <p class="tutorial-kicker">SAFE &amp; YOURS</p>
+            <h2>Your data stays<br>in your hands.</h2>
+            <p>Momo works from local data offline. An account and cloud backup are optional, and you can export or restore a full backup anytime.</p>
           </article>
         </div>
 
@@ -2923,6 +2930,7 @@
             <button type="button" data-tour-dot="3" aria-label="Slide 4"></button>
             <button type="button" data-tour-dot="4" aria-label="Slide 5"></button>
             <button type="button" data-tour-dot="5" aria-label="Slide 6"></button>
+            <button type="button" data-tour-dot="6" aria-label="Slide 7"></button>
           </div>
 
           <div class="tutorial-actions">
