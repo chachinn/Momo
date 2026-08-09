@@ -1,6 +1,6 @@
 // ========================================
 // MOMO
-// Momo 1.3.2 — Navigation Simplification Patch
+// Momo 1.3.3 — Local-First Architecture Patch
 // CLEAN FOUNDATION + FUNCTIONAL TRIPS
 // ========================================
 
@@ -253,6 +253,18 @@ const LOCAL_KEYS = {
 
   converterB:
     "momo_converter_currency_b",
+
+  appearanceTheme:
+    "momo_appearance_theme",
+
+  appearanceWallpaperEnabled:
+    "momo_appearance_wallpaper_enabled",
+
+  appearanceOverlay:
+    "momo_appearance_overlay",
+
+  appearanceLocalMigrated:
+    "momo_appearance_local_v1",
 
   cleanStart:
     "momo_clean_start_v1"
@@ -917,16 +929,145 @@ async function loadAppData() {
     );
 
 
+  const legacyAppearance =
+    appearanceSetting?.value &&
+    typeof appearanceSetting.value ===
+      "object"
+      ? appearanceSetting.value
+      : {};
+
+
+  const savedTheme =
+    localStorage.getItem(
+      LOCAL_KEYS.appearanceTheme
+    );
+
+
+  const savedWallpaperEnabled =
+    localStorage.getItem(
+      LOCAL_KEYS.appearanceWallpaperEnabled
+    );
+
+
+  const savedOverlay =
+    localStorage.getItem(
+      LOCAL_KEYS.appearanceOverlay
+    );
+
+
   appearancePreferences = {
     ...APPEARANCE_DEFAULTS,
-    ...(
-      appearanceSetting?.value &&
-      typeof appearanceSetting.value ===
-        "object"
-        ? appearanceSetting.value
-        : {}
-    )
+    wallpaperData:
+      legacyAppearance.wallpaperData ||
+      "",
+    theme:
+      savedTheme ||
+      legacyAppearance.theme ||
+      APPEARANCE_DEFAULTS.theme,
+    wallpaperEnabled:
+      savedWallpaperEnabled ===
+        null
+        ? Boolean(
+            legacyAppearance.wallpaperEnabled
+          )
+        : savedWallpaperEnabled ===
+          "true",
+    overlay:
+      savedOverlay ||
+      legacyAppearance.overlay ||
+      APPEARANCE_DEFAULTS.overlay
   };
+
+
+  /*
+    One-time backward-compatible migration:
+    small device preferences move to localStorage, while the
+    potentially large wallpaper image stays in IndexedDB.
+  */
+  if (
+    localStorage.getItem(
+      LOCAL_KEYS.appearanceLocalMigrated
+    ) !==
+      "yes"
+  ) {
+
+    localStorage.setItem(
+      LOCAL_KEYS.appearanceTheme,
+      appearancePreferences.theme
+    );
+
+
+    localStorage.setItem(
+      LOCAL_KEYS.appearanceWallpaperEnabled,
+      String(
+        Boolean(
+          appearancePreferences.wallpaperEnabled
+        )
+      )
+    );
+
+
+    localStorage.setItem(
+      LOCAL_KEYS.appearanceOverlay,
+      appearancePreferences.overlay
+    );
+
+
+    localStorage.setItem(
+      LOCAL_KEYS.appearanceLocalMigrated,
+      "yes"
+    );
+
+
+    if (
+      appearanceSetting &&
+      (
+        Object.hasOwn(
+          legacyAppearance,
+          "theme"
+        ) ||
+        Object.hasOwn(
+          legacyAppearance,
+          "wallpaperEnabled"
+        ) ||
+        Object.hasOwn(
+          legacyAppearance,
+          "overlay"
+        )
+      )
+    ) {
+
+      try {
+
+        await putRecord(
+          STORES.settings,
+          {
+            key:
+              APPEARANCE_SETTING_KEY,
+            value: {
+              wallpaperData:
+                appearancePreferences.wallpaperData
+            },
+            updatedAt:
+              new Date()
+                .toISOString()
+          }
+        );
+
+      } catch (
+        error
+      ) {
+
+        console.warn(
+          "Could not finish local appearance migration:",
+          error
+        );
+
+      }
+
+    }
+
+  }
 
 
   const savingsGoalsSetting =
@@ -2203,13 +2344,48 @@ function renderAppearanceControls() {
 
 async function saveAppearancePreferences() {
 
+  /*
+    Small device-specific preferences stay in localStorage.
+    The wallpaper image can be large, so it remains in IndexedDB.
+    Nothing here requires Firebase or Firestore.
+  */
+  localStorage.setItem(
+    LOCAL_KEYS.appearanceTheme,
+    appearancePreferences.theme
+  );
+
+
+  localStorage.setItem(
+    LOCAL_KEYS.appearanceWallpaperEnabled,
+    String(
+      Boolean(
+        appearancePreferences.wallpaperEnabled
+      )
+    )
+  );
+
+
+  localStorage.setItem(
+    LOCAL_KEYS.appearanceOverlay,
+    appearancePreferences.overlay
+  );
+
+
+  localStorage.setItem(
+    LOCAL_KEYS.appearanceLocalMigrated,
+    "yes"
+  );
+
+
   await putRecord(
     STORES.settings,
     {
       key:
         APPEARANCE_SETTING_KEY,
       value: {
-        ...appearancePreferences
+        wallpaperData:
+          appearancePreferences.wallpaperData ||
+          ""
       },
       updatedAt:
         new Date()
@@ -27733,6 +27909,21 @@ async function buildMomoBackup() {
         localStorage.getItem(
           LOCAL_KEYS.converterB
         ) ||
+        "",
+      appearanceTheme:
+        localStorage.getItem(
+          LOCAL_KEYS.appearanceTheme
+        ) ||
+        "",
+      appearanceWallpaperEnabled:
+        localStorage.getItem(
+          LOCAL_KEYS.appearanceWallpaperEnabled
+        ) ||
+        "",
+      appearanceOverlay:
+        localStorage.getItem(
+          LOCAL_KEYS.appearanceOverlay
+        ) ||
         ""
     }
   };
@@ -28676,6 +28867,62 @@ async function restoreMomoBackup(
 
     localStorage.removeItem(
       LOCAL_KEYS.converterB
+    );
+
+  }
+
+
+  if (
+    preferences.appearanceTheme
+  ) {
+
+    localStorage.setItem(
+      LOCAL_KEYS.appearanceTheme,
+      preferences.appearanceTheme
+    );
+
+  }
+
+
+  if (
+    preferences.appearanceWallpaperEnabled !==
+      undefined &&
+    preferences.appearanceWallpaperEnabled !==
+      ""
+  ) {
+
+    localStorage.setItem(
+      LOCAL_KEYS.appearanceWallpaperEnabled,
+      String(
+        preferences.appearanceWallpaperEnabled
+      )
+    );
+
+  }
+
+
+  if (
+    preferences.appearanceOverlay
+  ) {
+
+    localStorage.setItem(
+      LOCAL_KEYS.appearanceOverlay,
+      preferences.appearanceOverlay
+    );
+
+  }
+
+
+  if (
+    preferences.appearanceTheme ||
+    preferences.appearanceWallpaperEnabled !==
+      undefined ||
+    preferences.appearanceOverlay
+  ) {
+
+    localStorage.setItem(
+      LOCAL_KEYS.appearanceLocalMigrated,
+      "yes"
     );
 
   }

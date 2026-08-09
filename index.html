@@ -17,7 +17,7 @@
   <meta name="apple-mobile-web-app-title" content="Momo">
 
   <title>Momo — Spending Diary</title>
-  <meta name="momo-app-version" content="1.3.2">
+  <meta name="momo-app-version" content="1.3.3">
 
   <link rel="manifest" href="manifest.json">
   <link rel="apple-touch-icon" href="icons/icon-192.png">
@@ -285,7 +285,7 @@
           <span class="drawer-icon">☁</span>
           <span class="drawer-copy">
             <strong id="drawerAccountTitle">Account & Cloud</strong>
-            <small id="drawerAccountSubtitle">Sign in to protect your Momo data.</small>
+            <small id="drawerAccountSubtitle">Using Momo on this device.</small>
           </span>
           <span class="drawer-arrow">›</span>
         </button>
@@ -2561,9 +2561,9 @@
         <div id="cloudSignedOut">
           <section class="cloud-welcome-card">
             <div class="cloud-welcome-icon" aria-hidden="true">☁️</div>
-            <p class="section-kicker">KEEP YOUR MOMO SAFE</p>
-            <h2>Sign in when you want a cloud copy.</h2>
-            <p>Your everyday Momo data still lives on this device and works without an account.</p>
+            <p class="section-kicker">LOCAL BY DEFAULT</p>
+            <h2>Using Momo on this device.</h2>
+            <p>Your Momo data is stored locally. Sign in only if you want an optional cloud backup or restore.</p>
           </section>
 
           <section class="card cloud-auth-card">
@@ -2622,11 +2622,11 @@
             <div class="cloud-backup-status-grid">
               <div class="cloud-last-backup">
                 <span>Cloud copy</span>
-                <strong id="cloudCopyStatus">Checking…</strong>
+                <strong id="cloudCopyStatus">Tap ↻ to check</strong>
               </div>
               <div class="cloud-last-backup">
                 <span>Last cloud backup</span>
-                <strong id="cloudLastBackup">Checking…</strong>
+                <strong id="cloudLastBackup">Not checked yet</strong>
               </div>
               <div class="cloud-last-backup cloud-backup-owner">
                 <span>Backup account</span>
@@ -2639,7 +2639,7 @@
 
             <div class="cloud-safety-note">
               <span>🍑</span>
-              <p><strong>Local-first by design.</strong> Momo does not automatically overwrite either copy. Cloud upload and restore happen only when you choose them.</p>
+              <p><strong>Local-first by design.</strong> Signing in does not sync or replace your local records. Cloud upload and restore happen only when you choose them.</p>
             </div>
           </section>
 
@@ -2647,7 +2647,7 @@
             <span>🖼️</span>
             <div>
               <strong>Photos stay local for now</strong>
-              <p>Receipt photos and custom wallpaper images are intentionally excluded from cloud backup to keep Momo lightweight and avoid unnecessary storage costs. Your normal JSON backup still protects them.</p>
+              <p>Receipt photos, wallpaper images, theme choices, and other device preferences stay local. Your normal JSON backup can still protect your complete local Momo.</p>
             </div>
           </section>
 

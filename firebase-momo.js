@@ -51,6 +51,11 @@ const MEDIA_KEYS = new Set([
 ]);
 const LOCAL_STORAGE_PREFIX = "momo_";
 
+// Device-specific settings stay on this device even when the user signs in.
+const DEVICE_LOCAL_SETTING_KEYS = new Set([
+  "appearance_preferences"
+]);
+
 let currentUser = null;
 let cloudMetadata = null;
 let busy = false;
@@ -134,17 +139,6 @@ function recordKey(record, index) {
   return encodeURIComponent(String(raw)).replaceAll(".", "%2E");
 }
 
-function localPreferenceSnapshot() {
-  const values = {};
-  for (let i = 0; i < localStorage.length; i += 1) {
-    const key = localStorage.key(i);
-    if (key?.startsWith(LOCAL_STORAGE_PREFIX)) {
-      values[key] = localStorage.getItem(key);
-    }
-  }
-  return values;
-}
-
 async function snapshotMomoData() {
   const db = await openLocalDatabase();
   try {
@@ -152,13 +146,18 @@ async function snapshotMomoData() {
     const stores = {};
     for (const storeName of storeNames) {
       const records = await readStore(db, storeName);
-      stores[storeName] = records.map((record) => sanitizeForCloud(record));
+      const cloudRecords =
+        storeName === "settings"
+          ? records.filter((record) => !DEVICE_LOCAL_SETTING_KEYS.has(record?.key))
+          : records;
+
+      stores[storeName] = cloudRecords.map((record) => sanitizeForCloud(record));
     }
     return {
       stores,
-      localPreferences: localPreferenceSnapshot(),
       storeNames,
-      omittedMedia: true
+      omittedMedia: true,
+      devicePreferencesLocalOnly: true
     };
   } finally {
     db.close();
@@ -220,7 +219,7 @@ async function uploadCloudBackup() {
       cloudBackupVersion: 1,
       storeNames: snapshot.storeNames,
       mediaPolicy: "local-only",
-      localPreferences: snapshot.localPreferences
+      devicePreferencesPolicy: "local-only"
     }, { merge: true });
 
     await refreshCloudMetadata();
@@ -252,6 +251,8 @@ async function existingLocalPhotos(db) {
 
 async function restoreCloudBackup() {
   if (!currentUser || busy) return;
+
+  // Login and restore are deliberately separate actions. Nothing is restored automatically.
   if (!cloudMetadata?.exists) {
     toast("There is no cloud backup to restore yet.");
     return;
@@ -281,22 +282,21 @@ async function restoreCloudBackup() {
             photo: photoMap.get(String(record.id)) || record.photo || ""
           }));
         }
+
+        if (storeName === "settings") {
+          const currentSettings = await readStore(db, "settings");
+          const localOnly = currentSettings.filter((record) => DEVICE_LOCAL_SETTING_KEYS.has(record?.key));
+          const cloudSafe = records.filter((record) => !DEVICE_LOCAL_SETTING_KEYS.has(record?.key));
+          records = [...cloudSafe, ...localOnly];
+        }
+
         await clearAndWriteStore(db, storeName, records);
       }
     } finally {
       db.close();
     }
 
-    const preferences = cloudMetadata.data?.localPreferences;
-    if (preferences && typeof preferences === "object") {
-      Object.entries(preferences).forEach(([key, value]) => {
-        if (key.startsWith(LOCAL_STORAGE_PREFIX) && typeof value === "string") {
-          localStorage.setItem(key, value);
-        }
-      });
-    }
-
-toast("Cloud copy restored. Reloading Momo…");
+    toast("Cloud copy restored. Device appearance and preferences were kept local. Reloading Momo…");
 
 // Give Safari/iOS enough time to fully release IndexedDB
 // after the restore transactions and database connection have closed.
@@ -412,10 +412,10 @@ function showSignedOut() {
   const drawerTitle = byId("drawerAccountTitle");
   const drawerSubtitle = byId("drawerAccountSubtitle");
   if (drawerTitle) drawerTitle.textContent = "Account & Cloud";
-  if (drawerSubtitle) drawerSubtitle.textContent = "Sign in to protect your Momo data.";
+  if (drawerSubtitle) drawerSubtitle.textContent = "Using Momo on this device.";
   const verificationRow = byId("cloudEmailVerificationRow");
   if (verificationRow) verificationRow.hidden = true;
-  setStatus("Not signed in");
+  setStatus("Local mode", "success");
 }
 
 function showSignedIn(user) {
@@ -431,7 +431,16 @@ function showSignedIn(user) {
   if (byId("drawerAccountTitle")) byId("drawerAccountTitle").textContent = name;
   if (byId("drawerAccountSubtitle")) byId("drawerAccountSubtitle").textContent = "Cloud backup available";
   updateEmailVerificationUI(user);
-  setStatus("Signed in", "success");
+  setStatus("Signed in · local data active", "success");
+
+  const copyStatus = byId("cloudCopyStatus");
+  const last = byId("cloudLastBackup");
+  const owner = byId("cloudBackupOwner");
+  const restoreButton = byId("restoreCloudBackup");
+  if (copyStatus) copyStatus.textContent = "Tap ↻ to check";
+  if (last) last.textContent = "Not checked yet";
+  if (owner) owner.textContent = user.email || user.displayName || "This account";
+  if (restoreButton) restoreButton.disabled = true;
 }
 
 async function googleSignIn() {
@@ -549,7 +558,8 @@ async function init() {
       return;
     }
     showSignedIn(user);
-    await refreshCloudMetadata();
+    // Authentication is optional. Do not read Firestore on routine app startup.
+    // Cloud metadata is fetched only when the user explicitly asks for it.
   });
 }
 
