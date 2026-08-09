@@ -15835,76 +15835,9 @@ textarea {
   min-height: 50px;
 }
 
-/*
-  The edge gesture uses only the first 24px of the screen.
-  Keep normal controls and expense-card horizontal swipe behavior intact.
-*/
-.screen {
-  touch-action:
-    pan-y
-    pinch-zoom;
-}
-
-
-/* ========================================
-   MOMO 1.2.2 — SMOOTHER INTERACTIVE EDGE SWIPE
-======================================== */
-
-.side-drawer {
-  will-change: transform;
-  backface-visibility: hidden;
-  -webkit-backface-visibility: hidden;
-}
-
-.side-drawer.edge-dragging {
-  transition: none !important;
-  box-shadow:
-    14px 0 34px
-    rgba(73, 58, 58, 0.14);
-}
-
-.drawer-overlay {
-  opacity: 1;
-  will-change: opacity;
-}
-
-.drawer-overlay.edge-dragging {
-  transition: none !important;
-}
-
-.screen.active {
-  backface-visibility: hidden;
-  -webkit-backface-visibility: hidden;
-}
-
-.screen.active.edge-swipe-dragging {
-  position: relative;
-  z-index: 2;
-  transition: none !important;
-  will-change:
-    transform,
-    opacity;
-  box-shadow:
-    -12px 0 28px
-    rgba(73, 58, 58, 0.04);
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .side-drawer,
-  .drawer-overlay,
-  .screen.active {
-    transition: none !important;
-  }
-}
 .momo-load-more {
   display: block;
   width: min(100%, 320px);
   margin: 18px auto 6px;
   grid-column: 1 / -1;
-}
-
-.edge-swipe-dragging,
-.side-drawer.edge-dragging,
-.drawer-overlay.edge-dragging {
-  will-change: transform, opacity;
 }
