@@ -17,7 +17,7 @@
   <meta name="apple-mobile-web-app-title" content="Momo">
 
   <title>Momo — Spending Diary</title>
-  <meta name="momo-app-version" content="1.0.0">
+  <meta name="momo-app-version" content="1.1.0">
 
   <link rel="manifest" href="manifest.json">
   <link rel="apple-touch-icon" href="icon-192.png">
@@ -254,8 +254,8 @@
         >
           <span class="drawer-icon">🤝</span>
           <span class="drawer-copy">
-            <strong>Travel Settlement</strong>
-            <small>Split shared trip costs and see who owes whom.</small>
+            <strong>Shared Settlement</strong>
+            <small>Split everyday or trip costs and see who owes whom.</small>
           </span>
           <span class="drawer-arrow">›</span>
         </button>
@@ -1520,10 +1520,10 @@
       >
         <div class="page-heading">
           <div>
-            <p class="eyebrow">Split the trip</p>
-            <h1>Travel Settlement</h1>
+            <p class="eyebrow">Split together</p>
+            <h1>Shared Settlement</h1>
             <p class="page-description">
-              Track shared costs locally and see the simplest way to settle up.
+              Split dinner, groceries, dates, household costs, or travel spending and see the simplest way to settle up.
             </p>
           </div>
 
@@ -1531,7 +1531,7 @@
             class="context-help-btn"
             type="button"
             data-help-topic="settlement"
-            aria-label="How Travel Settlement works"
+            aria-label="How Shared Settlement works"
           >
             ?
           </button>
@@ -1539,14 +1539,14 @@
 
         <section class="card settlement-trip-picker">
           <label>
-            <span>Trip</span>
+            <span>Settlement for</span>
             <select id="settlementTripSelect">
-              <option value="">Choose a trip</option>
+              <option value="__momo_daily_life__">🏠 Daily Life</option>
             </select>
           </label>
 
           <p id="settlementTripHint" class="muted small">
-            Choose a trip to start splitting expenses.
+            Choose Daily Life or one of your trips.
           </p>
         </section>
 
@@ -1575,7 +1575,7 @@
           <section class="section-block settlement-section">
             <div class="section-title-row">
               <div>
-                <p class="section-kicker">Travelers</p>
+                <p class="section-kicker">Everyone sharing</p>
                 <h2>People</h2>
               </div>
 
@@ -1650,7 +1650,7 @@
               <span class="empty-icon">🍜</span>
               <h3>No shared expenses yet</h3>
               <p>
-                Add a shared meal, ticket, taxi, hotel, or anything else you split.
+                Add dinner, groceries, tickets, Grab, household costs, or anything else you split.
               </p>
             </div>
           </section>
@@ -1687,9 +1687,9 @@
           hidden
         >
           <span class="empty-icon">✈️</span>
-          <h3>Create a trip first</h3>
+          <h3>Daily Life is ready</h3>
           <p>
-            Travel Settlement belongs to a trip, so add a trip before splitting costs.
+            You can split everyday expenses without creating a trip.
           </p>
           <button
             class="secondary-btn"

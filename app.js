@@ -1,6 +1,6 @@
 // ========================================
 // MOMO
-// Momo 1.0.0 — Release Build
+// Momo 1.1.0 — Shared Settlement + Multi-Currency
 // CLEAN FOUNDATION + FUNCTIONAL TRIPS
 // ========================================
 
@@ -95,6 +95,10 @@ let tripShoppingPhotoPromise =
 
 const TRAVEL_SETTLEMENT_SETTING_KEY =
   "travel_settlements";
+
+const DAILY_LIFE_SETTLEMENT_ID =
+  "__momo_daily_life__";
+
 
 
 let travelSettlements = [];
@@ -7470,7 +7474,9 @@ function updateExpenseSettlementValidation() {
 
 function renderExpenseSettlementControls(
   expense =
-    null
+    null,
+  preserveToggle =
+    false
 ) {
 
   if (
@@ -7528,12 +7534,18 @@ function renderExpenseSettlementControls(
     );
 
 
-  expenseSharedToggle.checked =
-    editingSameTrip
-      ? Boolean(
-          expense.settlementShared
-        )
-      : false;
+  if (
+    !preserveToggle
+  ) {
+
+    expenseSharedToggle.checked =
+      editingSameTrip
+        ? Boolean(
+            expense.settlementShared
+          )
+        : false;
+
+  }
 
 
   expenseSettlementFields.hidden =
@@ -7939,7 +7951,30 @@ expenseSharedToggle
           await saveTravelSettlements();
 
 
-          renderExpenseSettlementControls();
+          const currentExpense =
+            expenses.find(
+              (
+                expense
+              ) =>
+                expense.id ===
+                (
+                  expenseIdInput?.value ||
+                  editingExpenseId
+                )
+            ) ||
+            null;
+
+
+          /*
+            Important:
+            preserveToggle=true keeps the switch ON while the
+            settlement controls are populated for a new expense.
+            Previously this rerender reset new expenses to OFF.
+          */
+          renderExpenseSettlementControls(
+            currentExpense,
+            true
+          );
 
         }
 
@@ -28900,9 +28935,27 @@ function createEmptyTravelSettlement(
   tripId
 ) {
 
+  const linkedTrip =
+    trips.find(
+      (
+        trip
+      ) =>
+        trip.id ===
+        tripId
+    );
+
+
   return {
     tripId:
       tripId,
+    currency:
+      tripId ===
+        DAILY_LIFE_SETTLEMENT_ID
+        ? "PHP"
+        : (
+            linkedTrip?.currency ||
+            "PHP"
+          ),
     people: [
       {
         id:
@@ -28973,6 +29026,35 @@ function getSettlementForTrip(
 
 
 function getActiveSettlementTrip() {
+
+  if (
+    activeSettlementTripId ===
+      DAILY_LIFE_SETTLEMENT_ID
+  ) {
+
+    const settlement =
+      getSettlementForTrip(
+        DAILY_LIFE_SETTLEMENT_ID,
+        false
+      );
+
+
+    return {
+      id:
+        DAILY_LIFE_SETTLEMENT_ID,
+      name:
+        "Daily Life",
+      destination:
+        "Everyday",
+      currency:
+        settlement?.currency ||
+        "PHP",
+      isDailyLife:
+        true
+    };
+
+  }
+
 
   return trips.find(
     (
@@ -29549,7 +29631,14 @@ function calculateSettlementTransfers(
 
 function getSettlementTripCurrency() {
 
+  const settlement =
+    getActiveTravelSettlement(
+      false
+    );
+
+
   return (
+    settlement?.currency ||
     getActiveSettlementTrip()
       ?.currency ||
     "PHP"
@@ -29571,13 +29660,14 @@ function renderSettlementTripOptions() {
 
   const previous =
     activeSettlementTripId ||
-    settlementTripSelect.value;
+    settlementTripSelect.value ||
+    DAILY_LIFE_SETTLEMENT_ID;
 
 
   settlementTripSelect.innerHTML =
     `
-      <option value="">
-        Choose a trip
+      <option value="${DAILY_LIFE_SETTLEMENT_ID}">
+        🏠 Daily Life
       </option>
     ` +
     trips
@@ -29589,7 +29679,7 @@ function renderSettlementTripOptions() {
             <option value="${escapeHTML(
               trip.id
             )}">
-              ${escapeHTML(
+              ✈ ${escapeHTML(
                 trip.name
               )}
             </option>
@@ -29598,38 +29688,31 @@ function renderSettlementTripOptions() {
       .join("");
 
 
-  if (
+  const validSelection =
+    previous ===
+      DAILY_LIFE_SETTLEMENT_ID ||
     trips.some(
       (
         trip
       ) =>
         trip.id ===
         previous
-    )
-  ) {
-
-    settlementTripSelect.value =
-      previous;
+    );
 
 
-    activeSettlementTripId =
-      previous;
-
-  } else if (
-    trips.length ===
-    1
-  ) {
-
-    activeSettlementTripId =
-      trips[
-        0
-      ].id;
+  activeSettlementTripId =
+    validSelection
+      ? previous
+      : DAILY_LIFE_SETTLEMENT_ID;
 
 
-    settlementTripSelect.value =
-      activeSettlementTripId;
+  settlementTripSelect.value =
+    activeSettlementTripId;
 
-  }
+
+  getActiveTravelSettlement(
+    true
+  );
 
 }
 
@@ -30154,11 +30237,31 @@ function renderSettlementExpenses(
                   </small>
                 </div>
 
-                <b>
-                  ${formatSettlementAmount(
-                    expense.amount,
-                    currency
-                  )}
+                <b class="settlement-history-amount">
+                  ${
+                    expense.originalCurrency &&
+                    expense.originalCurrency !==
+                      currency
+                      ? `
+                          <span>
+                            ${formatCurrency(
+                              expense.originalAmount ??
+                              expense.amount,
+                              expense.originalCurrency
+                            )}
+                          </span>
+                          <small>
+                            ≈ ${formatSettlementAmount(
+                              expense.amount,
+                              currency
+                            )}
+                          </small>
+                        `
+                      : formatSettlementAmount(
+                          expense.amount,
+                          currency
+                        )
+                  }
                 </b>
 
               </div>
@@ -30565,46 +30668,6 @@ function renderTravelSettlement() {
 
 
   if (
-    trips.length ===
-    0
-  ) {
-
-    if (
-      workspace
-    ) {
-
-      workspace.hidden =
-        true;
-
-    }
-
-
-    if (
-      noTrips
-    ) {
-
-      noTrips.hidden =
-        false;
-
-    }
-
-
-    if (
-      settlementTripSelect
-    ) {
-
-      settlementTripSelect.disabled =
-        true;
-
-    }
-
-
-    return;
-
-  }
-
-
-  if (
     noTrips
   ) {
 
@@ -30628,41 +30691,22 @@ function renderTravelSettlement() {
     !activeSettlementTripId
   ) {
 
-    if (
-      workspace
-    ) {
-
-      workspace.hidden =
-        true;
-
-    }
-
-
-    if (
-      hint
-    ) {
-
-      hint.textContent =
-        "Choose a trip to start splitting expenses.";
-
-    }
-
-
-    return;
+    activeSettlementTripId =
+      DAILY_LIFE_SETTLEMENT_ID;
 
   }
 
 
-  const trip =
+  const context =
     getActiveSettlementTrip();
 
 
   if (
-    !trip
+    !context
   ) {
 
     activeSettlementTripId =
-      "";
+      DAILY_LIFE_SETTLEMENT_ID;
 
 
     renderTravelSettlement();
@@ -30679,8 +30723,29 @@ function renderTravelSettlement() {
     );
 
 
+  if (
+    !settlement
+  ) {
+
+    return;
+
+  }
+
+
+  if (
+    !settlement.currency
+  ) {
+
+    settlement.currency =
+      context.currency ||
+      "PHP";
+
+  }
+
+
   const currency =
-    trip.currency ||
+    settlement.currency ||
+    context.currency ||
     "PHP";
 
 
@@ -30699,7 +30764,9 @@ function renderTravelSettlement() {
   ) {
 
     hint.textContent =
-      `${trip.destination || trip.name} · ${currency} · Settlement entries do not add to Momo spending totals.`;
+      context.isDailyLife
+        ? `Everyday shared costs · ${currency} settlement · Great for meals, groceries, dates, Grab, and household spending.`
+        : `${context.destination || context.name} · ${currency} settlement · Linked trip expenses can appear here automatically.`;
 
   }
 
@@ -31251,13 +31318,16 @@ function openSharedExpenseModal(
   document.getElementById(
     "sharedExpenseAmount"
   ).value =
-    expense?.amount ||
+    expense?.originalAmount ??
+    expense?.amount ??
     "";
 
 
   document.getElementById(
     "sharedExpenseCurrency"
   ).value =
+    expense?.originalCurrency ||
+    expense?.currency ||
     trip.currency ||
     "PHP";
 
@@ -31265,7 +31335,7 @@ function openSharedExpenseModal(
   document.getElementById(
     "sharedExpenseCurrency"
   ).disabled =
-    true;
+    false;
 
 
   document.getElementById(
@@ -31678,7 +31748,7 @@ settlementPersonForm
       ) {
 
         showToast(
-          "That person is already in this trip."
+          "That person is already in this settlement."
         );
 
 
@@ -31796,6 +31866,16 @@ document
 
 document
   .getElementById(
+    "sharedExpenseCurrency"
+  )
+  ?.addEventListener(
+    "change",
+    updateSharedExpenseValidation
+  );
+
+
+document
+  .getElementById(
     "sharedExpenseParticipants"
   )
   ?.addEventListener(
@@ -31852,6 +31932,50 @@ sharedExpenseForm
         );
 
 
+      const entryCurrency =
+        document.getElementById(
+          "sharedExpenseCurrency"
+        ).value ||
+        "PHP";
+
+
+      const settlementCurrency =
+        settlement.currency ||
+        trip.currency ||
+        "PHP";
+
+
+      const convertedAmount =
+        convertCurrency(
+          amount,
+          entryCurrency,
+          settlementCurrency
+        );
+
+
+      if (
+        !Number.isFinite(
+          amount
+        ) ||
+        amount <=
+        0 ||
+        !Number.isFinite(
+          convertedAmount
+        ) ||
+        convertedAmount <=
+        0
+      ) {
+
+        showToast(
+          "Enter a valid shared expense amount."
+        );
+
+
+        return;
+
+      }
+
+
       const splitMode =
         document.getElementById(
           "sharedExpenseSplitMode"
@@ -31897,7 +32021,7 @@ sharedExpenseForm
       ) {
 
         const baseShare =
-          amount /
+          convertedAmount /
           checkedIds.length;
 
 
@@ -31916,7 +32040,7 @@ sharedExpenseForm
                 index ===
                   checkedIds.length -
                   1
-                  ? amount -
+                  ? convertedAmount -
                     assigned
                   : Math.round(
                       baseShare *
@@ -31941,7 +32065,7 @@ sharedExpenseForm
 
       } else {
 
-        shares =
+        const enteredShares =
           checkedIds.map(
             (
               personId
@@ -31970,7 +32094,7 @@ sharedExpenseForm
 
 
         const exactTotal =
-          shares.reduce(
+          enteredShares.reduce(
             (
               total,
               share
@@ -32000,6 +32124,49 @@ sharedExpenseForm
           return;
 
         }
+
+
+        let assignedConverted =
+          0;
+
+
+        shares =
+          enteredShares.map(
+            (
+              share,
+              index
+            ) => {
+
+              const convertedShare =
+                index ===
+                  enteredShares.length -
+                  1
+                  ? convertedAmount -
+                    assignedConverted
+                  : Math.round(
+                      convertCurrency(
+                        share.amount,
+                        entryCurrency,
+                        settlementCurrency
+                      ) *
+                      100
+                    ) /
+                    100;
+
+
+              assignedConverted +=
+                convertedShare;
+
+
+              return {
+                personId:
+                  share.personId,
+                amount:
+                  convertedShare
+              };
+
+            }
+          );
 
       }
 
@@ -32032,10 +32199,13 @@ sharedExpenseForm
           ).value
             .trim(),
         amount:
-          amount,
+          convertedAmount,
         currency:
-          trip.currency ||
-          "PHP",
+          settlementCurrency,
+        originalAmount:
+          amount,
+        originalCurrency:
+          entryCurrency,
         date:
           document.getElementById(
             "sharedExpenseDate"

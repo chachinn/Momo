@@ -1,10 +1,10 @@
 // ========================================
 // MOMO SERVICE WORKER
-// Momo 1.0 — stable network-first PWA shell
+// Momo 1.1.0 — stable network-first PWA shell
 // ========================================
 
 const CACHE_NAME =
-  "momo-runtime-shell-v1.0.0";
+  "momo-runtime-shell-v1.1.0";
 
 
 const APP_SHELL = [
