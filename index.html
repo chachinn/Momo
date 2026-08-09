@@ -17,7 +17,7 @@
   <meta name="apple-mobile-web-app-title" content="Momo">
 
   <title>Momo — Spending Diary</title>
-  <meta name="momo-app-version" content="1.1.0">
+  <meta name="momo-app-version" content="1.2.1">
 
   <link rel="manifest" href="manifest.json">
   <link rel="apple-touch-icon" href="icon-192.png">
@@ -1538,16 +1538,41 @@
         </div>
 
         <section class="card settlement-trip-picker">
-          <label>
-            <span>Settlement for</span>
-            <select id="settlementTripSelect">
-              <option value="__momo_daily_life__">🏠 Daily Life</option>
-            </select>
-          </label>
+          <div class="settlement-picker-heading">
+            <label>
+              <span>Settlement for</span>
+              <select id="settlementTripSelect">
+                <option value="__momo_daily_life__">🏠 Daily Life</option>
+              </select>
+            </label>
+
+            <button
+              id="addSettlementCategoryButton"
+              class="settlement-add-category-btn"
+              type="button"
+              aria-label="Add settlement category"
+            >
+              ＋ Category
+            </button>
+          </div>
 
           <p id="settlementTripHint" class="muted small">
-            Choose Daily Life or one of your trips.
+            Choose Daily Life, one of your own categories, or a trip.
           </p>
+
+          <div
+            id="settlementCategoryActions"
+            class="settlement-category-actions"
+            hidden
+          >
+            <button
+              id="deleteSettlementCategoryButton"
+              class="text-btn danger-text-btn"
+              type="button"
+            >
+              Delete this category
+            </button>
+          </div>
         </section>
 
         <div id="settlementWorkspace" hidden>
@@ -3001,6 +3026,89 @@
 
 
     <!-- ========================================
+         SETTLEMENT CATEGORY MODAL
+    ========================================= -->
+    <div
+      id="settlementCategoryModal"
+      class="modal-backdrop"
+      hidden
+    >
+      <section
+        class="modal-card settlement-small-modal"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="settlementCategoryTitle"
+      >
+        <div class="modal-header">
+          <div>
+            <p class="eyebrow">New shared space</p>
+            <h2 id="settlementCategoryTitle">Add Category</h2>
+          </div>
+
+          <button
+            id="closeSettlementCategory"
+            class="icon-btn soft"
+            type="button"
+            aria-label="Close category"
+          >
+            ×
+          </button>
+        </div>
+
+        <form id="settlementCategoryForm">
+          <div class="settlement-category-form-grid">
+            <label class="modal-field settlement-category-emoji-field">
+              <span>Emoji</span>
+              <input
+                id="settlementCategoryEmoji"
+                type="text"
+                maxlength="4"
+                value="🍽️"
+                aria-label="Category emoji"
+              >
+            </label>
+
+            <label class="modal-field">
+              <span>Name</span>
+              <input
+                id="settlementCategoryName"
+                type="text"
+                maxlength="40"
+                placeholder="Eating Out"
+                required
+              >
+            </label>
+          </div>
+
+          <label class="modal-field">
+            <span>Base Currency</span>
+            <select id="settlementCategoryCurrency">
+              <option value="PHP">PHP</option>
+              <option value="JPY">JPY</option>
+              <option value="USD">USD</option>
+              <option value="GBP">GBP</option>
+              <option value="HKD">HKD</option>
+              <option value="SGD">SGD</option>
+              <option value="CNY">CNY</option>
+            </select>
+          </label>
+
+          <p class="settlement-category-help">
+            This category gets its own people, balances, shared expenses, and settlement history.
+          </p>
+
+          <button
+            class="primary-button settlement-modal-save"
+            type="submit"
+          >
+            Create Category
+          </button>
+        </form>
+      </section>
+    </div>
+
+
+    <!-- ========================================
          SHARED EXPENSE MODAL
     ========================================= -->
     <div
@@ -3072,8 +3180,8 @@
             </label>
           </div>
 
-          <div class="modal-field-row settlement-two-column">
-            <label>
+          <div class="shared-expense-meta-stack">
+            <label class="modal-field shared-expense-date-field">
               <span>Date</span>
               <input
                 id="sharedExpenseDate"
@@ -3082,7 +3190,7 @@
               >
             </label>
 
-            <label>
+            <label class="modal-field shared-expense-payer-field">
               <span>Paid By</span>
               <select
                 id="sharedExpensePayer"

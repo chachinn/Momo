@@ -15689,3 +15689,158 @@ textarea {
     font-size: 10px;
   }
 }
+
+
+/* ========================================
+   MOMO 1.2.0 — CUSTOM SETTLEMENT CATEGORIES
+======================================== */
+
+.settlement-picker-heading {
+  display: grid;
+  grid-template-columns:
+    minmax(0, 1fr)
+    auto;
+  align-items: end;
+  gap: 10px;
+}
+
+.settlement-picker-heading label {
+  min-width: 0;
+}
+
+.settlement-add-category-btn {
+  min-height: 46px;
+  padding: 0 13px;
+  border:
+    1px solid
+    var(--border);
+  border-radius: 16px;
+  background:
+    color-mix(
+      in srgb,
+      var(--blush) 68%,
+      white
+    );
+  color: var(--rose);
+  font-size: 10px;
+  font-weight: 800;
+  white-space: nowrap;
+}
+
+.settlement-category-actions {
+  margin-top: 8px;
+  padding-top: 8px;
+  border-top:
+    1px solid
+    var(--border);
+  text-align: right;
+}
+
+.settlement-category-actions[hidden] {
+  display: none;
+}
+
+.danger-text-btn {
+  color: var(--danger);
+}
+
+.settlement-category-form-grid {
+  display: grid;
+  grid-template-columns:
+    82px
+    minmax(0, 1fr);
+  gap: 10px;
+}
+
+.settlement-category-emoji-field input {
+  text-align: center;
+  font-size: 22px !important;
+}
+
+.settlement-category-help {
+  margin:
+    10px 0
+    0;
+  color: var(--text-soft);
+  font-size: 9px;
+  line-height: 1.5;
+}
+
+#settlementTripSelect optgroup {
+  font-weight: 700;
+}
+
+@media (max-width: 360px) {
+  .settlement-picker-heading {
+    grid-template-columns:
+      1fr;
+  }
+
+  .settlement-add-category-btn {
+    width: 100%;
+  }
+}
+
+
+/* ========================================
+   MOMO 1.2.1 — SHARED EXPENSE META LAYOUT
+======================================== */
+
+.shared-expense-meta-stack {
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 10px;
+  margin-top: 10px;
+}
+
+.shared-expense-meta-stack .modal-field {
+  min-width: 0;
+}
+
+.shared-expense-meta-stack .modal-field > span {
+  display: block;
+  margin-bottom: 6px;
+  color: var(--text-soft);
+  font-size: 10px;
+  font-weight: 800;
+}
+
+.shared-expense-meta-stack input,
+.shared-expense-meta-stack select {
+  width: 100%;
+  min-width: 0;
+  min-height: 48px;
+  padding:
+    0
+    14px;
+  border:
+    1px solid
+    var(--border);
+  border-radius: 16px;
+  background:
+    color-mix(
+      in srgb,
+      var(--surface) 88%,
+      var(--blush)
+    );
+  color: var(--text);
+  text-align: left;
+}
+
+.shared-expense-date-field input {
+  min-height: 50px;
+}
+
+.shared-expense-payer-field select {
+  min-height: 50px;
+}
+
+/*
+  The edge gesture uses only the first 24px of the screen.
+  Keep normal controls and expense-card horizontal swipe behavior intact.
+*/
+.screen {
+  touch-action:
+    pan-y
+    pinch-zoom;
+}

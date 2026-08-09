@@ -1,6 +1,6 @@
 // ========================================
 // MOMO
-// Momo 1.1.0 — Shared Settlement + Multi-Currency
+// Momo 1.2.1 — Shared Expense Layout + Edge Swipe Navigation
 // CLEAN FOUNDATION + FUNCTIONAL TRIPS
 // ========================================
 
@@ -98,6 +98,24 @@ const TRAVEL_SETTLEMENT_SETTING_KEY =
 
 const DAILY_LIFE_SETTLEMENT_ID =
   "__momo_daily_life__";
+
+
+const SETTLEMENT_CATEGORY_PREFIX =
+  "__momo_category__";
+
+
+function isSettlementCategoryId(
+  id
+) {
+
+  return String(
+    id ||
+    ""
+  ).startsWith(
+    SETTLEMENT_CATEGORY_PREFIX
+  );
+
+}
 
 
 
@@ -3737,9 +3755,130 @@ const topLevelScreens = [
 ];
 
 
+
+let currentScreenName =
+  document.querySelector(
+    ".screen.active"
+  )?.dataset.screen ||
+  "home";
+
+
+const screenHistory =
+  [];
+
+
+function getVisibleModalBackdrop() {
+
+  return Array.from(
+    document.querySelectorAll(
+      ".modal-backdrop"
+    )
+  ).find(
+    (
+      modal
+    ) =>
+      !modal.hidden
+  ) ||
+    null;
+
+}
+
+
+function navigateBackOneScreen() {
+
+  if (
+    getVisibleModalBackdrop()
+  ) {
+
+    return false;
+
+  }
+
+
+  const previous =
+    screenHistory.pop();
+
+
+  if (
+    previous
+  ) {
+
+    showScreen(
+      previous,
+      {
+        fromHistory:
+          true
+      }
+    );
+
+
+    return true;
+
+  }
+
+
+  if (
+    !topLevelScreens.includes(
+      currentScreenName
+    )
+  ) {
+
+    showScreen(
+      "home",
+      {
+        fromHistory:
+          true
+      }
+    );
+
+
+    return true;
+
+  }
+
+
+  return false;
+
+}
+
+
 function showScreen(
-  name
+  name,
+  options =
+    {}
 ) {
+
+  const previousScreen =
+    currentScreenName;
+
+
+  if (
+    !options.fromHistory &&
+    previousScreen &&
+    previousScreen !==
+      name
+  ) {
+
+    screenHistory.push(
+      previousScreen
+    );
+
+
+    if (
+      screenHistory.length >
+      20
+    ) {
+
+      screenHistory.shift();
+
+    }
+
+  }
+
+
+  currentScreenName =
+    name;
+
 
   screens.forEach(
     (screen) => {
@@ -3967,6 +4106,277 @@ document.addEventListener(
 
     }
 
+  }
+);
+
+
+// ========================================
+// IOS-STYLE LEFT EDGE SWIPE NAVIGATION
+// ========================================
+
+const EDGE_SWIPE_START_PX =
+  24;
+
+
+const EDGE_SWIPE_TRIGGER_PX =
+  72;
+
+
+let edgeSwipePointerId =
+  null;
+
+
+let edgeSwipeStartX =
+  0;
+
+
+let edgeSwipeStartY =
+  0;
+
+
+let edgeSwipeActive =
+  false;
+
+
+function canStartEdgeSwipe(
+  event
+) {
+
+  if (
+    event.clientX >
+      EDGE_SWIPE_START_PX ||
+    sideDrawer?.classList.contains(
+      "open"
+    ) ||
+    getVisibleModalBackdrop()
+  ) {
+
+    return false;
+
+  }
+
+
+  if (
+    event.target.closest(
+      "input, select, textarea, [contenteditable='true']"
+    )
+  ) {
+
+    return false;
+
+  }
+
+
+  return true;
+
+}
+
+
+document.addEventListener(
+  "pointerdown",
+  (
+    event
+  ) => {
+
+    if (
+      !canStartEdgeSwipe(
+        event
+      )
+    ) {
+
+      return;
+
+    }
+
+
+    edgeSwipePointerId =
+      event.pointerId;
+
+
+    edgeSwipeStartX =
+      event.clientX;
+
+
+    edgeSwipeStartY =
+      event.clientY;
+
+
+    edgeSwipeActive =
+      true;
+
+  },
+  {
+    passive:
+      true
+  }
+);
+
+
+document.addEventListener(
+  "pointermove",
+  (
+    event
+  ) => {
+
+    if (
+      !edgeSwipeActive ||
+      event.pointerId !==
+        edgeSwipePointerId
+    ) {
+
+      return;
+
+    }
+
+
+    const dx =
+      event.clientX -
+      edgeSwipeStartX;
+
+
+    const dy =
+      event.clientY -
+      edgeSwipeStartY;
+
+
+    if (
+      Math.abs(
+        dy
+      ) >
+      Math.abs(
+        dx
+      ) +
+      12
+    ) {
+
+      edgeSwipeActive =
+        false;
+
+    }
+
+  },
+  {
+    passive:
+      true
+  }
+);
+
+
+function finishEdgeSwipe(
+  event
+) {
+
+  if (
+    !edgeSwipeActive ||
+    (
+      event.pointerId !==
+        undefined &&
+      event.pointerId !==
+        edgeSwipePointerId
+    )
+  ) {
+
+    edgeSwipeActive =
+      false;
+
+
+    edgeSwipePointerId =
+      null;
+
+
+    return;
+
+  }
+
+
+  const dx =
+    event.clientX -
+    edgeSwipeStartX;
+
+
+  const dy =
+    event.clientY -
+    edgeSwipeStartY;
+
+
+  const isRightSwipe =
+    dx >=
+      EDGE_SWIPE_TRIGGER_PX &&
+    Math.abs(
+      dx
+    ) >
+    Math.abs(
+      dy
+    ) *
+      1.25;
+
+
+  edgeSwipeActive =
+    false;
+
+
+  edgeSwipePointerId =
+    null;
+
+
+  if (
+    !isRightSwipe
+  ) {
+
+    return;
+
+  }
+
+
+  /*
+    Main tabs behave like the app root: a left-edge swipe opens
+    Momo's navigation drawer. Secondary screens behave like
+    iOS drill-down screens and go back to where the user came from.
+  */
+  if (
+    topLevelScreens.includes(
+      currentScreenName
+    )
+  ) {
+
+    openDrawer();
+
+
+    return;
+
+  }
+
+
+  navigateBackOneScreen();
+
+}
+
+
+document.addEventListener(
+  "pointerup",
+  finishEdgeSwipe,
+  {
+    passive:
+      true
+  }
+);
+
+
+document.addEventListener(
+  "pointercancel",
+  () => {
+
+    edgeSwipeActive =
+      false;
+
+
+    edgeSwipePointerId =
+      null;
+
+  },
+  {
+    passive:
+      true
   }
 );
 
@@ -28925,6 +29335,19 @@ const settlementPaymentModal =
   );
 
 
+
+const settlementCategoryModal =
+  document.getElementById(
+    "settlementCategoryModal"
+  );
+
+
+const settlementCategoryForm =
+  document.getElementById(
+    "settlementCategoryForm"
+  );
+
+
 const settlementPaymentForm =
   document.getElementById(
     "settlementPaymentForm"
@@ -28945,12 +29368,41 @@ function createEmptyTravelSettlement(
     );
 
 
+  const isDailyLife =
+    tripId ===
+      DAILY_LIFE_SETTLEMENT_ID;
+
+
+  const isCategory =
+    isSettlementCategoryId(
+      tripId
+    );
+
+
   return {
     tripId:
       tripId,
+    kind:
+      isDailyLife
+        ? "daily-life"
+        : (
+            isCategory
+              ? "category"
+              : "trip"
+          ),
+    name:
+      isDailyLife
+        ? "Daily Life"
+        : (
+            linkedTrip?.name ||
+            ""
+          ),
+    emoji:
+      isDailyLife
+        ? "🏠"
+        : "",
     currency:
-      tripId ===
-        DAILY_LIFE_SETTLEMENT_ID
+      isDailyLife
         ? "PHP"
         : (
             linkedTrip?.currency ||
@@ -29049,9 +29501,52 @@ function getActiveSettlementTrip() {
       currency:
         settlement?.currency ||
         "PHP",
+      emoji:
+        "🏠",
       isDailyLife:
         true
     };
+
+  }
+
+
+  if (
+    isSettlementCategoryId(
+      activeSettlementTripId
+    )
+  ) {
+
+    const settlement =
+      getSettlementForTrip(
+        activeSettlementTripId,
+        false
+      );
+
+
+    if (
+      settlement
+    ) {
+
+      return {
+        id:
+          settlement.tripId,
+        name:
+          settlement.name ||
+          "Shared Category",
+        destination:
+          settlement.name ||
+          "Shared Category",
+        currency:
+          settlement.currency ||
+          "PHP",
+        emoji:
+          settlement.emoji ||
+          "🤝",
+        isCategory:
+          true
+      };
+
+    }
 
   }
 
@@ -29664,33 +30159,105 @@ function renderSettlementTripOptions() {
     DAILY_LIFE_SETTLEMENT_ID;
 
 
+  const categorySettlements =
+    travelSettlements
+      .filter(
+        (
+          settlement
+        ) =>
+          settlement?.kind ===
+            "category" ||
+          isSettlementCategoryId(
+            settlement?.tripId
+          )
+      )
+      .sort(
+        (
+          a,
+          b
+        ) =>
+          String(
+            a.name ||
+            ""
+          ).localeCompare(
+            String(
+              b.name ||
+              ""
+            )
+          )
+      );
+
+
   settlementTripSelect.innerHTML =
     `
       <option value="${DAILY_LIFE_SETTLEMENT_ID}">
         🏠 Daily Life
       </option>
     ` +
-    trips
-      .map(
-        (
-          trip
-        ) =>
+    (
+      categorySettlements.length
+        ? `
+            <optgroup label="My Categories">
+              ${categorySettlements
+                .map(
+                  (
+                    settlement
+                  ) =>
+                    `
+                      <option value="${escapeHTML(
+                        settlement.tripId
+                      )}">
+                        ${escapeHTML(
+                          settlement.emoji ||
+                          "🤝"
+                        )} ${escapeHTML(
+                          settlement.name ||
+                          "Shared Category"
+                        )}
+                      </option>
+                    `
+                )
+                .join("")}
+            </optgroup>
           `
-            <option value="${escapeHTML(
-              trip.id
-            )}">
-              ✈ ${escapeHTML(
-                trip.name
-              )}
-            </option>
+        : ""
+    ) +
+    (
+      trips.length
+        ? `
+            <optgroup label="Trips">
+              ${trips
+                .map(
+                  (
+                    trip
+                  ) =>
+                    `
+                      <option value="${escapeHTML(
+                        trip.id
+                      )}">
+                        ✈ ${escapeHTML(
+                          trip.name
+                        )}
+                      </option>
+                    `
+                )
+                .join("")}
+            </optgroup>
           `
-      )
-      .join("");
+        : ""
+    );
 
 
   const validSelection =
     previous ===
       DAILY_LIFE_SETTLEMENT_ID ||
+    categorySettlements.some(
+      (
+        settlement
+      ) =>
+        settlement.tripId ===
+        previous
+    ) ||
     trips.some(
       (
         trip
@@ -30766,7 +31333,11 @@ function renderTravelSettlement() {
     hint.textContent =
       context.isDailyLife
         ? `Everyday shared costs · ${currency} settlement · Great for meals, groceries, dates, Grab, and household spending.`
-        : `${context.destination || context.name} · ${currency} settlement · Linked trip expenses can appear here automatically.`;
+        : (
+            context.isCategory
+              ? `${context.emoji || "🤝"} ${context.name} · ${currency} settlement · Your own shared-expense category.`
+              : `${context.destination || context.name} · ${currency} settlement · Linked trip expenses can appear here automatically.`
+          );
 
   }
 
@@ -30841,6 +31412,22 @@ function renderTravelSettlement() {
     currency
   );
 
+
+  const categoryActions =
+    document.getElementById(
+      "settlementCategoryActions"
+    );
+
+
+  if (
+    categoryActions
+  ) {
+
+    categoryActions.hidden =
+      !context.isCategory;
+
+  }
+
 }
 
 
@@ -30905,6 +31492,73 @@ function populateSettlementPersonSelects() {
       }
 
     }
+  );
+
+}
+
+
+function openSettlementCategoryModal() {
+
+  if (
+    !settlementCategoryModal
+  ) {
+
+    return;
+
+  }
+
+
+  document.getElementById(
+    "settlementCategoryName"
+  ).value =
+    "";
+
+
+  document.getElementById(
+    "settlementCategoryEmoji"
+  ).value =
+    "🍽️";
+
+
+  document.getElementById(
+    "settlementCategoryCurrency"
+  ).value =
+    "PHP";
+
+
+  settlementCategoryModal.hidden =
+    false;
+
+
+  document.body.classList.add(
+    "drawer-open"
+  );
+
+
+  requestAnimationFrame(
+    () =>
+      document.getElementById(
+        "settlementCategoryName"
+      )?.focus()
+  );
+
+}
+
+
+function closeSettlementCategoryModal() {
+
+  if (
+    settlementCategoryModal
+  ) {
+
+    settlementCategoryModal.hidden =
+      true;
+
+  }
+
+
+  document.body.classList.remove(
+    "drawer-open"
   );
 
 }
@@ -31544,6 +32198,250 @@ settlementTripSelect
 
 document
   .getElementById(
+    "deleteSettlementCategoryButton"
+  )
+  ?.addEventListener(
+    "click",
+    async () => {
+
+      const context =
+        getActiveSettlementTrip();
+
+
+      if (
+        !context?.isCategory
+      ) {
+
+        return;
+
+      }
+
+
+      const settlement =
+        getActiveTravelSettlement(
+          false
+        );
+
+
+      const hasHistory =
+        Boolean(
+          settlement &&
+          (
+            (
+              settlement.expenses ||
+              []
+            ).length ||
+            (
+              settlement.payments ||
+              []
+            ).length
+          )
+        );
+
+
+      const confirmed =
+        window.confirm(
+          hasHistory
+            ? `Delete "${context.name}" and all of its shared-expense history?`
+            : `Delete "${context.name}"?`
+        );
+
+
+      if (
+        !confirmed
+      ) {
+
+        return;
+
+      }
+
+
+      travelSettlements =
+        travelSettlements.filter(
+          (
+            item
+          ) =>
+            item.tripId !==
+            activeSettlementTripId
+        );
+
+
+      activeSettlementTripId =
+        DAILY_LIFE_SETTLEMENT_ID;
+
+
+      await saveTravelSettlements();
+
+
+      renderTravelSettlement();
+
+
+      showToast(
+        "Settlement category deleted"
+      );
+
+    }
+  );
+
+
+document
+  .getElementById(
+    "addSettlementCategoryButton"
+  )
+  ?.addEventListener(
+    "click",
+    openSettlementCategoryModal
+  );
+
+
+document
+  .getElementById(
+    "closeSettlementCategory"
+  )
+  ?.addEventListener(
+    "click",
+    closeSettlementCategoryModal
+  );
+
+
+settlementCategoryForm
+  ?.addEventListener(
+    "submit",
+    async (
+      event
+    ) => {
+
+      event.preventDefault();
+
+
+      const name =
+        document.getElementById(
+          "settlementCategoryName"
+        ).value
+          .trim();
+
+
+      const emoji =
+        document.getElementById(
+          "settlementCategoryEmoji"
+        ).value
+          .trim() ||
+        "🤝";
+
+
+      const currency =
+        document.getElementById(
+          "settlementCategoryCurrency"
+        ).value ||
+        "PHP";
+
+
+      if (
+        !name
+      ) {
+
+        showToast(
+          "Give this settlement category a name."
+        );
+
+
+        return;
+
+      }
+
+
+      const duplicate =
+        travelSettlements.some(
+          (
+            settlement
+          ) =>
+            (
+              settlement?.kind ===
+                "category" ||
+              isSettlementCategoryId(
+                settlement?.tripId
+              )
+            ) &&
+            String(
+              settlement.name ||
+              ""
+            )
+              .trim()
+              .toLowerCase() ===
+              name.toLowerCase()
+        );
+
+
+      if (
+        duplicate
+      ) {
+
+        showToast(
+          "You already have a settlement category with that name."
+        );
+
+
+        return;
+
+      }
+
+
+      const categoryId =
+        `${SETTLEMENT_CATEGORY_PREFIX}${generateId(
+          "group"
+        )}`;
+
+
+      const settlement =
+        createEmptyTravelSettlement(
+          categoryId
+        );
+
+
+      settlement.kind =
+        "category";
+
+
+      settlement.name =
+        name;
+
+
+      settlement.emoji =
+        emoji;
+
+
+      settlement.currency =
+        currency;
+
+
+      travelSettlements.push(
+        settlement
+      );
+
+
+      activeSettlementTripId =
+        categoryId;
+
+
+      await saveTravelSettlements();
+
+
+      closeSettlementCategoryModal();
+
+
+      renderTravelSettlement();
+
+
+      showToast(
+        `${emoji} ${name} created`
+      );
+
+    }
+  );
+
+
+document
+  .getElementById(
     "addSettlementPersonButton"
   )
   ?.addEventListener(
@@ -31633,7 +32531,8 @@ document
 [
   settlementPersonModal,
   sharedExpenseModal,
-  settlementPaymentModal
+  settlementPaymentModal,
+  settlementCategoryModal
 ].forEach(
   (
     modal
@@ -31669,9 +32568,16 @@ document
 
           closeSharedExpenseModal();
 
-        } else {
+        } else if (
+          modal ===
+          settlementPaymentModal
+        ) {
 
           closeSettlementPaymentModal();
+
+        } else {
+
+          closeSettlementCategoryModal();
 
         }
 
