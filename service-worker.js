@@ -1,16 +1,18 @@
 // ========================================
 // MOMO SERVICE WORKER
-// Stable network-first PWA shell
+// Momo 1.0 — stable network-first PWA shell
 // ========================================
 
 const CACHE_NAME =
-  "momo-runtime-shell";
+  "momo-runtime-shell-v1.0.0";
+
 
 const APP_SHELL = [
   "./",
   "./index.html",
   "./styles.css",
   "./app.js",
+  "./firebase-momo.js",
   "./manifest.json",
   "./icon-192.png",
   "./icon-512.png"
@@ -139,9 +141,44 @@ function isAppShellRequest(
       "/app.js"
     ) ||
     url.pathname.endsWith(
+      "/firebase-momo.js"
+    ) ||
+    url.pathname.endsWith(
       "/manifest.json"
     )
   );
+
+}
+
+
+async function cacheSuccessfulResponse(
+  request,
+  response
+) {
+
+  if (
+    !response ||
+    !response.ok
+  ) {
+
+    return response;
+
+  }
+
+
+  const cache =
+    await caches.open(
+      CACHE_NAME
+    );
+
+
+  await cache.put(
+    request,
+    response.clone()
+  );
+
+
+  return response;
 
 }
 
@@ -186,37 +223,11 @@ self.addEventListener(
           .then(
             (
               response
-            ) => {
-
-              if (
-                response &&
-                response.ok
-              ) {
-
-                const copy =
-                  response.clone();
-
-
-                caches
-                  .open(
-                    CACHE_NAME
-                  )
-                  .then(
-                    (
-                      cache
-                    ) =>
-                      cache.put(
-                        request,
-                        copy
-                      )
-                  );
-
-              }
-
-
-              return response;
-
-            }
+            ) =>
+              cacheSuccessfulResponse(
+                request,
+                response
+              )
           )
           .catch(
             async () => {
@@ -238,7 +249,7 @@ self.addEventListener(
 
               if (
                 request.mode ===
-                "navigate"
+                  "navigate"
               ) {
 
                 return (
@@ -246,7 +257,6 @@ self.addEventListener(
                     "./index.html"
                   )
                 );
-
               }
 
 
@@ -270,7 +280,7 @@ self.addEventListener(
           request
         )
         .then(
-          (
+          async (
             cached
           ) => {
 
@@ -283,38 +293,15 @@ self.addEventListener(
             }
 
 
-            return fetch(
-              request
-            ).then(
-              (
-                response
-              ) => {
-
-                if (
-                  response &&
-                  response.ok
-                ) {
-
-                  caches
-                    .open(
-                      CACHE_NAME
-                    )
-                    .then(
-                      (
-                        cache
-                      ) =>
-                        cache.put(
-                          request,
-                          response.clone()
-                        )
-                    );
-
-                }
+            const response =
+              await fetch(
+                request
+              );
 
 
-                return response;
-
-              }
+            return cacheSuccessfulResponse(
+              request,
+              response
             );
 
           }

@@ -14806,3 +14806,772 @@ body.tutorial-open {
     transition: none;
   }
 }
+
+
+/* ========================================
+   MOMO 1.0 — HOME FINAL POLISH
+======================================== */
+
+.momo-home {
+  padding-left: 15px;
+  padding-right: 15px;
+}
+
+.momo-home-welcome {
+  min-height: 180px;
+  margin-bottom: 20px;
+  padding: 22px 21px;
+}
+
+.momo-home-section {
+  margin-top: 25px;
+}
+
+.momo-home-section-heading {
+  min-height: 44px;
+  margin-bottom: 11px;
+}
+
+.momo-home-section-heading h2 {
+  overflow-wrap: anywhere;
+}
+
+.momo-section-link {
+  min-width: 44px;
+  min-height: 38px;
+  margin: -7px -6px -6px 0;
+  padding: 7px 6px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: flex-end;
+  white-space: nowrap;
+}
+
+.momo-month-dashboard {
+  overflow: hidden;
+}
+
+.momo-dashboard-spent-row {
+  gap: 12px;
+}
+
+.momo-dashboard-spent-row > div:first-child {
+  min-width: 0;
+}
+
+#homeMonthSpent {
+  overflow-wrap: anywhere;
+}
+
+.momo-month-comparison {
+  flex: 0 0 auto;
+  max-width: 48%;
+  text-align: right;
+}
+
+.momo-dashboard-primary-grid {
+  align-items: stretch;
+}
+
+.momo-dashboard-primary-stat {
+  min-width: 0;
+  min-height: 112px;
+}
+
+.momo-dashboard-primary-stat strong,
+.momo-dashboard-primary-stat em {
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.momo-dashboard-primary-stat strong {
+  overflow-wrap: anywhere;
+}
+
+.momo-dashboard-insight-grid {
+  align-items: stretch;
+}
+
+.momo-dashboard-insight {
+  min-width: 0;
+}
+
+.momo-dashboard-insight strong {
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  overflow-wrap: anywhere;
+}
+
+.momo-reminders-home .home-reminder-list {
+  gap: 8px;
+}
+
+.momo-reminders-home .smart-reminder-card.compact {
+  min-height: 68px;
+}
+
+.momo-reminders-home .smart-reminder-copy p {
+  display: -webkit-box;
+  overflow: hidden;
+  -webkit-line-clamp: 2;
+  -webkit-box-orient: vertical;
+}
+
+#homeTripSnapshot:empty {
+  display: none;
+}
+
+.momo-adventure-card,
+.momo-adventure-empty {
+  min-height: 104px;
+}
+
+.momo-adventure-money > div {
+  min-width: 0;
+}
+
+.momo-adventure-money strong {
+  max-width: 100%;
+  overflow-wrap: anywhere;
+}
+
+.momo-lately-list {
+  display: grid;
+  gap: 9px;
+}
+
+.momo-lately-list .transaction-swipe-shell {
+  margin: 0;
+}
+
+.momo-lately-list .transaction-row {
+  min-height: 66px;
+}
+
+.momo-lately-list .transaction-main {
+  min-width: 0;
+}
+
+.momo-lately-list .transaction-main > strong {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.momo-lately-list .transaction-value {
+  max-width: 112px;
+}
+
+.momo-lately-list .transaction-value strong,
+.momo-lately-list .transaction-value span {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.momo-home .compact-empty {
+  min-height: 118px;
+  padding: 24px 18px;
+  border: 1px dashed var(--momo-hairline, var(--border));
+  border-radius: 22px;
+  background: rgba(255, 255, 255, 0.52);
+}
+
+.momo-home .compact-empty .empty-icon {
+  margin-bottom: 7px;
+  font-size: 27px;
+}
+
+.momo-home .compact-empty h3 {
+  margin-bottom: 4px;
+}
+
+@media (max-width: 375px) {
+  .momo-home {
+    padding-left: 13px;
+    padding-right: 13px;
+  }
+
+  .momo-home-welcome {
+    min-height: 166px;
+    grid-template-columns: minmax(0, 1fr) 72px;
+    padding: 20px 18px;
+  }
+
+  .momo-home-welcome h1 {
+    font-size: clamp(32px, 10vw, 42px);
+  }
+
+  .momo-welcome-peach {
+    width: 70px;
+    height: 70px;
+  }
+
+  .momo-welcome-peach > span {
+    font-size: 39px;
+  }
+
+  .momo-dashboard-primary-stat {
+    min-height: 104px;
+  }
+
+  .momo-lately-list .transaction-row {
+    grid-template-columns: 38px minmax(0, 1fr) auto;
+    gap: 8px;
+  }
+
+  .momo-lately-list .thumb {
+    width: 38px;
+    height: 38px;
+  }
+
+  .momo-lately-list .transaction-value {
+    max-width: 96px;
+  }
+}
+
+@media (max-width: 340px) {
+  .momo-dashboard-primary-grid,
+  .momo-dashboard-insight-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .momo-dashboard-primary-stat {
+    min-height: 82px;
+  }
+
+  .momo-month-comparison {
+    max-width: 42%;
+  }
+}
+
+
+/* ========================================
+   MOMO 1.0 — EXPENSES + ACTIVITY FINAL PASS
+======================================== */
+
+#activityList {
+  display: grid;
+  gap: 9px;
+}
+
+#activityList .transaction-swipe-shell,
+#homeTransactionList .transaction-swipe-shell {
+  width: 100%;
+}
+
+#activityList .transaction-row,
+#homeTransactionList .transaction-row {
+  min-width: 0;
+}
+
+#activityList .transaction-main,
+#homeTransactionList .transaction-main {
+  min-width: 0;
+}
+
+#activityList .transaction-main > strong,
+#homeTransactionList .transaction-main > strong {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+#activityList .transaction-value,
+#homeTransactionList .transaction-value {
+  min-width: 0;
+}
+
+#activityList .transaction-value strong,
+#activityList .transaction-value span,
+#homeTransactionList .transaction-value strong,
+#homeTransactionList .transaction-value span {
+  max-width: 118px;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.activity-active-filters {
+  overflow-x: auto;
+  scrollbar-width: none;
+}
+
+.activity-active-filters::-webkit-scrollbar {
+  display: none;
+}
+
+.activity-active-filters button {
+  min-height: 34px;
+  flex: 0 0 auto;
+}
+
+.activity-filter-panel input,
+.activity-filter-panel select {
+  min-height: 44px;
+}
+
+@media (max-width: 360px) {
+  #activityList .transaction-row,
+  #homeTransactionList .transaction-row {
+    grid-template-columns: 38px minmax(0, 1fr) auto;
+    gap: 8px;
+  }
+
+  #activityList .thumb,
+  #homeTransactionList .thumb {
+    width: 38px;
+    height: 38px;
+  }
+
+  #activityList .transaction-value strong,
+  #activityList .transaction-value span,
+  #homeTransactionList .transaction-value strong,
+  #homeTransactionList .transaction-value span {
+    max-width: 92px;
+  }
+}
+
+
+/* ========================================
+   MOMO 1.0 — BUDGETS FINAL PASS
+======================================== */
+
+#budgetList,
+#homeBudgetList {
+  display: grid;
+  gap: 10px;
+}
+
+.budget-card {
+  min-width: 0;
+}
+
+.budget-card-title {
+  min-width: 0;
+}
+
+.budget-card-title > div:last-child {
+  min-width: 0;
+}
+
+.budget-card-title h3 {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.budget-card-meta {
+  display: block;
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.budget-card-alert-badge {
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.budget-actions {
+  flex: 0 0 auto;
+}
+
+.budget-actions .tiny-btn {
+  min-width: 40px;
+  min-height: 40px;
+}
+
+.budget-numbers > div {
+  min-width: 0;
+}
+
+.budget-numbers strong {
+  max-width: 100%;
+  overflow-wrap: anywhere;
+}
+
+.budget-period-label {
+  overflow-wrap: anywhere;
+}
+
+@media (max-width: 360px) {
+  .budget-card {
+    padding-left: 14px;
+    padding-right: 14px;
+  }
+
+  .budget-card-top {
+    gap: 8px;
+  }
+
+  .budget-emoji {
+    flex: 0 0 auto;
+  }
+
+  .budget-actions {
+    gap: 3px;
+  }
+
+  .budget-actions .tiny-btn {
+    min-width: 36px;
+    min-height: 36px;
+  }
+
+  .budget-numbers {
+    gap: 8px;
+  }
+}
+
+
+/* ========================================
+   MOMO 1.0 — STEP 2 FINAL FUNCTIONAL PASS
+======================================== */
+
+/* Trips */
+.trip-entry-card,
+.trip-dashboard-card,
+.calendar-detail-heading,
+.recurring-card,
+.planned-expense-card,
+.savings-goal-card,
+.payable-item,
+.receipt-gallery-card,
+.report-card {
+  min-width: 0;
+}
+
+.trip-entry-top,
+.trip-entry-money,
+.trip-dashboard-summary-grid,
+.recurring-card-top,
+.recurring-amount-row,
+.planned-expense-top,
+.planned-expense-values,
+.savings-goal-top,
+.savings-goal-numbers {
+  min-width: 0;
+}
+
+.trip-entry-card h3,
+.recurring-card h3,
+.planned-expense-card h3,
+.savings-goal-title strong {
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.trip-entry-actions button,
+.recurring-card-actions .tiny-icon-btn,
+.planned-expense-actions .tiny-icon-btn {
+  min-width: 40px;
+  min-height: 40px;
+}
+
+/* Calendar */
+.calendar-cell {
+  min-width: 0;
+  touch-action: manipulation;
+}
+
+.calendar-day-total {
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.calendar-expense-list {
+  display: grid;
+  gap: 9px;
+}
+
+/* Recurring / Planned */
+.recurring-amount-row > div,
+.planned-expense-values > div,
+.savings-goal-numbers > div {
+  min-width: 0;
+}
+
+.recurring-amount-row strong,
+.planned-expense-values strong,
+.savings-goal-numbers strong {
+  overflow-wrap: anywhere;
+}
+
+.recurring-card-actions,
+.planned-expense-actions {
+  flex-wrap: wrap;
+}
+
+/* Savings */
+.savings-goal-main {
+  min-width: 0;
+}
+
+.savings-goal-percent {
+  flex: 0 0 auto;
+}
+
+/* Payables */
+.payable-item-topline > span,
+.payable-detail-grid > div {
+  min-width: 0;
+}
+
+.payable-item-topline b,
+.payable-detail-grid strong {
+  overflow-wrap: anywhere;
+}
+
+/* Receipts */
+.receipt-gallery-card {
+  overflow: hidden;
+}
+
+.receipt-gallery-copy {
+  min-width: 0;
+}
+
+.receipt-gallery-copy strong,
+.receipt-gallery-copy span,
+.receipt-gallery-copy small {
+  max-width: 100%;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+.receipt-gallery-copy strong,
+.receipt-gallery-copy > span {
+  white-space: nowrap;
+}
+
+/* Reports */
+.report-bar-label,
+.report-bar-value {
+  min-width: 0;
+}
+
+.report-bar-label strong,
+.report-bar-value strong {
+  overflow-wrap: anywhere;
+}
+
+/* Better touch targets across final utility screens */
+.reminder-filter,
+[data-budget-filter],
+[data-planned-filter],
+[data-report-period],
+[data-report-scope] {
+  min-height: 40px;
+}
+
+@media (max-width: 360px) {
+  .trip-entry-money,
+  .recurring-amount-row,
+  .planned-expense-values,
+  .savings-goal-numbers,
+  .payable-detail-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .calendar-day-total {
+    font-size: 7px;
+  }
+
+  .trip-entry-actions button,
+  .recurring-card-actions .tiny-icon-btn,
+  .planned-expense-actions .tiny-icon-btn {
+    min-width: 36px;
+    min-height: 36px;
+  }
+}
+
+
+/* ========================================
+   MOMO 1.0 — IPHONE / PWA RELEASE HARDENING
+======================================== */
+
+html {
+  min-height: 100%;
+  background: var(--bg, #fff9f7);
+  -webkit-text-size-adjust: 100%;
+  text-size-adjust: 100%;
+  overscroll-behavior-x: none;
+}
+
+body {
+  min-height: 100vh;
+  min-height: 100dvh;
+  margin: 0;
+  overflow-x: hidden;
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior-x: none;
+}
+
+button,
+a,
+input,
+select,
+textarea {
+  -webkit-tap-highlight-color: transparent;
+}
+
+button,
+[role="button"] {
+  touch-action: manipulation;
+}
+
+input,
+select,
+textarea {
+  font-size: max(16px, 1em);
+}
+
+/*
+  iOS zooms form fields whose computed font-size is below 16px.
+  Preserve the visual scale using surrounding labels/cards rather
+  than letting Safari unexpectedly zoom the entire PWA.
+*/
+.modal-card input,
+.modal-card select,
+.modal-card textarea,
+.screen input,
+.screen select,
+.screen textarea {
+  font-size: 16px;
+}
+
+.topbar {
+  padding-top:
+    max(
+      env(safe-area-inset-top),
+      0px
+    );
+}
+
+.screen-stack {
+  padding-bottom:
+    calc(
+      var(--bottom-nav-height, 74px) +
+      env(safe-area-inset-bottom) +
+      18px
+    );
+}
+
+.bottom-nav {
+  padding-bottom:
+    max(
+      env(safe-area-inset-bottom),
+      8px
+    );
+}
+
+.side-drawer {
+  padding-top:
+    max(
+      env(safe-area-inset-top),
+      0px
+    );
+  padding-bottom:
+    max(
+      env(safe-area-inset-bottom),
+      14px
+    );
+}
+
+.modal-backdrop {
+  padding-top:
+    max(
+      env(safe-area-inset-top),
+      12px
+    );
+  padding-bottom:
+    max(
+      env(safe-area-inset-bottom),
+      12px
+    );
+}
+
+.modal-card {
+  max-height:
+    calc(
+      100dvh -
+      env(safe-area-inset-top) -
+      env(safe-area-inset-bottom) -
+      24px
+    );
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
+}
+
+.screen,
+.modal-card,
+.side-drawer {
+  scrollbar-width: none;
+}
+
+.screen::-webkit-scrollbar,
+.modal-card::-webkit-scrollbar,
+.side-drawer::-webkit-scrollbar {
+  display: none;
+}
+
+/* Visible keyboard focus without changing the touch aesthetic. */
+:focus {
+  outline: none;
+}
+
+:focus-visible {
+  outline: 3px solid color-mix(in srgb, var(--pink, #efb7c5) 68%, white);
+  outline-offset: 2px;
+}
+
+.momo-offline .topbar::after {
+  content: "Offline";
+  position: absolute;
+  left: 50%;
+  bottom: 4px;
+  transform: translateX(-50%);
+  padding: 2px 8px;
+  border-radius: 999px;
+  background: rgba(255, 255, 255, 0.82);
+  color: var(--text-soft);
+  font-size: 8px;
+  font-weight: 800;
+  letter-spacing: 0.04em;
+  pointer-events: none;
+}
+
+@media (display-mode: standalone) {
+  body {
+    user-select: none;
+    -webkit-user-select: none;
+  }
+
+  input,
+  textarea {
+    user-select: text;
+    -webkit-user-select: text;
+  }
+
+  .app-shell {
+    min-height: 100dvh;
+  }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  *,
+  *::before,
+  *::after {
+    scroll-behavior: auto !important;
+    animation-duration: 0.01ms !important;
+    animation-iteration-count: 1 !important;
+    transition-duration: 0.01ms !important;
+  }
+}

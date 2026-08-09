@@ -1,6 +1,6 @@
 // ========================================
 // MOMO
-// Build: 20260808-7
+// Momo 1.0.0 — Release Build
 // CLEAN FOUNDATION + FUNCTIONAL TRIPS
 // ========================================
 
@@ -4901,10 +4901,31 @@ function isExpenseInsideBudgetPeriod(
   budget
 ) {
 
+  if (
+    !expense?.date
+  ) {
+
+    return false;
+
+  }
+
+
   const expenseDate =
     createLocalDate(
       expense.date
     );
+
+
+  if (
+    !expenseDate ||
+    Number.isNaN(
+      expenseDate.getTime()
+    )
+  ) {
+
+    return false;
+
+  }
 
 
   const today =
@@ -5037,16 +5058,56 @@ function isExpenseInsideBudgetPeriod(
     }
 
 
-    const start =
+    let start =
       createLocalDate(
         budget.startDate
       );
 
 
-    const end =
+    let end =
       createLocalDate(
         budget.endDate
       );
+
+
+    if (
+      !start ||
+      !end ||
+      Number.isNaN(
+        start.getTime()
+      ) ||
+      Number.isNaN(
+        end.getTime()
+      )
+    ) {
+
+      return false;
+
+    }
+
+
+    if (
+      start >
+      end
+    ) {
+
+      [
+        start,
+        end
+      ] = [
+        end,
+        start
+      ];
+
+    }
+
+
+    start.setHours(
+      0,
+      0,
+      0,
+      0
+    );
 
 
     end.setHours(
@@ -5604,6 +5665,18 @@ function getPeriodLabel(
         budget.endDate
       ) {
 
+        if (
+          budget.startDate ===
+          budget.endDate
+        ) {
+
+          return formatDate(
+            budget.startDate
+          );
+
+        }
+
+
         return `${formatDate(
           budget.startDate
         )} – ${formatDate(
@@ -5970,11 +6043,19 @@ function renderBudgets() {
           </span>
 
           <h3>
-            No budgets yet
+            ${
+              budgets.length
+                ? "No matching budgets"
+                : "No budgets yet"
+            }
           </h3>
 
           <p>
-            Tap + to create your first budget.
+            ${
+              budgets.length
+                ? "Try another budget period."
+                : "Tap + to create your first budget."
+            }
           </p>
 
         </div>
@@ -6032,13 +6113,30 @@ function renderBudgets() {
 
     } else {
 
-      homeBudgetList.innerHTML =
-        budgets
-
+      const homeBudgets =
+        [
+          ...budgets
+        ]
+          .sort(
+            (
+              a,
+              b
+            ) =>
+              getBudgetUsagePercent(
+                b
+              ) -
+              getBudgetUsagePercent(
+                a
+              )
+          )
           .slice(
             0,
             3
-          )
+          );
+
+
+      homeBudgetList.innerHTML =
+        homeBudgets
 
           .map(
             (budget) =>
@@ -8867,6 +8965,57 @@ budgetForm?.addEventListener(
     event.preventDefault();
 
 
+    const budgetNameValue =
+      budgetName?.value
+        .trim() ||
+      "";
+
+
+    const budgetAmountValue =
+      Number(
+        budgetAmount?.value ||
+        0
+      );
+
+
+    if (
+      !budgetNameValue
+    ) {
+
+      showToast(
+        "Give this budget a name."
+      );
+
+
+      budgetName?.focus();
+
+
+      return;
+
+    }
+
+
+    if (
+      !Number.isFinite(
+        budgetAmountValue
+      ) ||
+      budgetAmountValue <=
+        0
+    ) {
+
+      showToast(
+        "Enter a budget amount greater than 0."
+      );
+
+
+      budgetAmount?.focus();
+
+
+      return;
+
+    }
+
+
     if (
       budgetPeriod.value ===
         "custom" &&
@@ -8878,6 +9027,26 @@ budgetForm?.addEventListener(
 
       showToast(
         "Choose a budget date. One day is okay."
+      );
+
+
+      openBudgetDateCalendar();
+
+
+      return;
+
+    }
+
+
+    if (
+      budgetPeriod.value ===
+        "custom" &&
+      budgetStartDate.value >
+        budgetEndDate.value
+    ) {
+
+      showToast(
+        "The budget end date can't be before the start date."
       );
 
 
@@ -8910,8 +9079,7 @@ budgetForm?.addEventListener(
         ),
 
       name:
-        budgetName.value
-          .trim(),
+        budgetNameValue,
 
       category:
         budgetCategory.value,
@@ -8927,9 +9095,7 @@ budgetForm?.addEventListener(
           : "",
 
       amount:
-        Number(
-          budgetAmount.value
-        ),
+        budgetAmountValue,
 
       currency:
         budgetCurrency.value,
@@ -9886,13 +10052,22 @@ function renderHomeTripSnapshot() {
       <div class="momo-adventure-date">
 
         <span>
-          ${formatShortDate(
-            trip.startDate
-          )}
-          –
-          ${formatShortDate(
-            trip.endDate
-          )}
+          ${
+            trip.startDate &&
+            trip.endDate &&
+            trip.startDate ===
+              trip.endDate
+
+              ? formatShortDate(
+                  trip.startDate
+                )
+
+              : `${formatShortDate(
+                  trip.startDate
+                )} – ${formatShortDate(
+                  trip.endDate
+                )}`
+          }
         </span>
 
         <strong>
@@ -10796,6 +10971,109 @@ tripForm?.addEventListener(
     event.preventDefault();
 
 
+    const tripNameValue =
+      tripName?.value
+        .trim() ||
+      "";
+
+
+    const tripDestinationValue =
+      tripDestination?.value
+        .trim() ||
+      "";
+
+
+    const tripBudgetValue =
+      Number(
+        tripBudget?.value ||
+        0
+      );
+
+
+    const tripDailyBudgetValue =
+      tripDailyBudget?.value
+        ? Number(
+            tripDailyBudget.value
+          )
+        : 0;
+
+
+    if (
+      !tripNameValue
+    ) {
+
+      showToast(
+        "Give this trip a name."
+      );
+
+
+      tripName?.focus();
+
+
+      return;
+
+    }
+
+
+    if (
+      !tripDestinationValue
+    ) {
+
+      showToast(
+        "Add a destination for this trip."
+      );
+
+
+      tripDestination?.focus();
+
+
+      return;
+
+    }
+
+
+    if (
+      !Number.isFinite(
+        tripBudgetValue
+      ) ||
+      tripBudgetValue <
+        0
+    ) {
+
+      showToast(
+        "Enter a valid trip budget."
+      );
+
+
+      tripBudget?.focus();
+
+
+      return;
+
+    }
+
+
+    if (
+      !Number.isFinite(
+        tripDailyBudgetValue
+      ) ||
+      tripDailyBudgetValue <
+        0
+    ) {
+
+      showToast(
+        "Enter a valid daily budget."
+      );
+
+
+      tripDailyBudget?.focus();
+
+
+      return;
+
+    }
+
+
     if (
       tripStartDate.value &&
       !tripEndDate.value
@@ -10872,12 +11150,10 @@ tripForm?.addEventListener(
         ),
 
       name:
-        tripName.value
-          .trim(),
+        tripNameValue,
 
       destination:
-        tripDestination.value
-          .trim(),
+        tripDestinationValue,
 
       startDate:
         tripStartDate.value,
@@ -10886,21 +11162,13 @@ tripForm?.addEventListener(
         tripEndDate.value,
 
       budget:
-        Number(
-          tripBudget.value
-        ),
+        tripBudgetValue,
 
       currency:
         tripCurrency.value,
 
       dailyBudget:
-        tripDailyBudget.value
-
-          ? Number(
-              tripDailyBudget.value
-            )
-
-          : 0,
+        tripDailyBudgetValue,
 
       notes:
         tripNotes.value
@@ -14919,6 +15187,51 @@ expenseForm?.addEventListener(
     }
 
 
+    const expenseAmountValue =
+      Number(
+        amountInput?.value ||
+        0
+      );
+
+
+    if (
+      !Number.isFinite(
+        expenseAmountValue
+      ) ||
+      expenseAmountValue <=
+        0
+    ) {
+
+      showToast(
+        "Enter an expense amount greater than 0."
+      );
+
+
+      amountInput?.focus();
+
+
+      return;
+
+    }
+
+
+    if (
+      !expenseDate?.value
+    ) {
+
+      showToast(
+        "Choose a date for this expense."
+      );
+
+
+      expenseDate?.focus();
+
+
+      return;
+
+    }
+
+
     const selectedBudget =
       budgets.find(
         (budget) =>
@@ -14989,9 +15302,7 @@ expenseForm?.addEventListener(
         expenseTitleValue,
 
       amount:
-        Number(
-          amountInput.value
-        ),
+        expenseAmountValue,
 
       currency:
         currencySelect.value,
@@ -15848,26 +16159,81 @@ function getFilteredActivityExpenses() {
     activitySortFilter?.value ||
     "newest";
 
-  const minAmount =
-    Number(
-      activityMinAmount?.value ||
-      0
-    );
+  const rawMinAmount =
+    activityMinAmount?.value
+      ? Number(
+          activityMinAmount.value
+        )
+      : null;
 
-  const maxAmount =
+  const rawMaxAmount =
     activityMaxAmount?.value
       ? Number(
           activityMaxAmount.value
         )
       : null;
 
-  const dateFrom =
+
+  const minAmount =
+    rawMinAmount !==
+      null &&
+    rawMaxAmount !==
+      null
+
+      ? Math.min(
+          rawMinAmount,
+          rawMaxAmount
+        )
+
+      : (
+          rawMinAmount ??
+          0
+        );
+
+
+  const maxAmount =
+    rawMinAmount !==
+      null &&
+    rawMaxAmount !==
+      null
+
+      ? Math.max(
+          rawMinAmount,
+          rawMaxAmount
+        )
+
+      : rawMaxAmount;
+
+
+  const rawDateFrom =
     activityDateFrom?.value ||
     "";
 
-  const dateTo =
+  const rawDateTo =
     activityDateTo?.value ||
     "";
+
+
+  const dateFrom =
+    rawDateFrom &&
+    rawDateTo &&
+    rawDateFrom >
+      rawDateTo
+
+      ? rawDateTo
+
+      : rawDateFrom;
+
+
+  const dateTo =
+    rawDateFrom &&
+    rawDateTo &&
+    rawDateFrom >
+      rawDateTo
+
+      ? rawDateFrom
+
+      : rawDateTo;
 
 
   const filtered =
@@ -16094,6 +16460,17 @@ function getFilteredActivityExpenses() {
           ).localeCompare(
             String(
               b.date ||
+              ""
+            )
+          ) ||
+          String(
+            a.createdAt ||
+            a.updatedAt ||
+            ""
+          ).localeCompare(
+            String(
+              b.createdAt ||
+              b.updatedAt ||
               ""
             )
           )
@@ -17036,13 +17413,60 @@ function renderTransactions() {
     home
   ) {
 
-    home.innerHTML =
-      expenses
+    const recentExpenses =
+      [
+        ...expenses
+      ]
+        .sort(
+          (
+            a,
+            b
+          ) => {
 
+            const dateCompare =
+              String(
+                b.date ||
+                ""
+              ).localeCompare(
+                String(
+                  a.date ||
+                  ""
+                )
+              );
+
+
+            if (
+              dateCompare !==
+              0
+            ) {
+
+              return dateCompare;
+
+            }
+
+
+            return String(
+              b.createdAt ||
+              b.updatedAt ||
+              ""
+            ).localeCompare(
+              String(
+                a.createdAt ||
+                a.updatedAt ||
+                ""
+              )
+            );
+
+          }
+        )
         .slice(
           0,
           4
-        )
+        );
+
+
+    home.innerHTML =
+      recentExpenses
 
         .map(
           renderTransaction
@@ -18809,6 +19233,13 @@ document
         true;
 
 
+      selectedExpenseDetailId =
+        "";
+
+
+      closeOpenExpenseSwipes();
+
+
       await loadAppData();
 
 
@@ -19570,17 +20001,34 @@ function getRecurringMonthlyPHP() {
         1;
 
 
+      const recurringFrequency =
+        String(
+          recurring.frequency ||
+          ""
+        ).toLowerCase();
+
+
       if (
-        recurring.frequency ===
-        "Weekly"
+        recurringFrequency ===
+        "weekly"
       ) {
 
         multiplier =
-          4.345;
+          52 /
+          12;
 
       } else if (
-        recurring.frequency ===
-        "Yearly"
+        recurringFrequency ===
+        "quarterly"
+      ) {
+
+        multiplier =
+          1 /
+          3;
+
+      } else if (
+        recurringFrequency ===
+        "yearly"
       ) {
 
         multiplier =
@@ -21210,14 +21658,32 @@ function getReportDateRange() {
     "custom"
   ) {
 
-    const from =
+    const rawFrom =
       reportDateFrom?.value ||
       "";
 
 
-    const to =
+    const rawTo =
       reportDateTo?.value ||
       "";
+
+
+    const from =
+      rawFrom &&
+      rawTo &&
+      rawFrom >
+        rawTo
+        ? rawTo
+        : rawFrom;
+
+
+    const to =
+      rawFrom &&
+      rawTo &&
+      rawFrom >
+        rawTo
+        ? rawFrom
+        : rawTo;
 
 
     return {
@@ -21231,11 +21697,18 @@ function getReportDateRange() {
         from &&
         to
 
-          ? `${formatShortDate(
-              from
-            )} – ${formatShortDate(
-              to
-            )}`
+          ? (
+              from ===
+                to
+                ? formatShortDate(
+                    from
+                  )
+                : `${formatShortDate(
+                    from
+                  )} – ${formatShortDate(
+                    to
+                  )}`
+            )
 
           : "Custom"
     };
@@ -23602,7 +24075,11 @@ function renderCalendar() {
   ) {
 
     selectedCalendarDate =
-      `${monthKey}-01`;
+      today.startsWith(
+        monthKey
+      )
+        ? today
+        : `${monthKey}-01`;
 
   }
 
@@ -24566,6 +25043,74 @@ recurringForm?.addEventListener(
     event.preventDefault();
 
 
+    const recurringNameValue =
+      recurringName?.value
+        .trim() ||
+      "";
+
+
+    const recurringAmountValue =
+      Number(
+        recurringAmount?.value ||
+        0
+      );
+
+
+    if (
+      !recurringNameValue
+    ) {
+
+      showToast(
+        "Give this recurring expense a name."
+      );
+
+
+      recurringName?.focus();
+
+
+      return;
+
+    }
+
+
+    if (
+      !Number.isFinite(
+        recurringAmountValue
+      ) ||
+      recurringAmountValue <=
+        0
+    ) {
+
+      showToast(
+        "Enter a recurring amount greater than 0."
+      );
+
+
+      recurringAmount?.focus();
+
+
+      return;
+
+    }
+
+
+    if (
+      !recurringNextDueDate?.value
+    ) {
+
+      showToast(
+        "Choose the next due date."
+      );
+
+
+      recurringNextDueDate?.focus();
+
+
+      return;
+
+    }
+
+
     if (
       recurringEndDate.value &&
       recurringEndDate.value <
@@ -24603,13 +25148,10 @@ recurringForm?.addEventListener(
         ),
 
       name:
-        recurringName.value
-          .trim(),
+        recurringNameValue,
 
       amount:
-        Number(
-          recurringAmount.value
-        ),
+        recurringAmountValue,
 
       currency:
         recurringCurrency.value,
@@ -24654,8 +25196,11 @@ recurringForm?.addEventListener(
           .trim(),
 
       active:
-        previous?.active ??
-        true,
+        !(
+          recurringEndDate.value &&
+          recurringNextDueDate.value >
+            recurringEndDate.value
+        ),
 
       createdAt:
         previous?.createdAt ||
@@ -25711,6 +26256,57 @@ plannedExpenseForm?.addEventListener(
     event.preventDefault();
 
 
+    const plannedTitleValue =
+      plannedExpenseTitle?.value
+        .trim() ||
+      "";
+
+
+    const plannedAmountValue =
+      Number(
+        plannedExpenseAmount?.value ||
+        0
+      );
+
+
+    if (
+      !plannedTitleValue
+    ) {
+
+      showToast(
+        "Give this planned expense a title."
+      );
+
+
+      plannedExpenseTitle?.focus();
+
+
+      return;
+
+    }
+
+
+    if (
+      !Number.isFinite(
+        plannedAmountValue
+      ) ||
+      plannedAmountValue <=
+        0
+    ) {
+
+      showToast(
+        "Enter an expected amount greater than 0."
+      );
+
+
+      plannedExpenseAmount?.focus();
+
+
+      return;
+
+    }
+
+
     const existingId =
       plannedExpenseId.value;
 
@@ -25732,13 +26328,10 @@ plannedExpenseForm?.addEventListener(
         ),
 
       title:
-        plannedExpenseTitle.value
-          .trim(),
+        plannedTitleValue,
 
       amount:
-        Number(
-          plannedExpenseAmount.value
-        ),
+        plannedAmountValue,
 
       currency:
         plannedExpenseCurrency.value,
@@ -28177,6 +28770,10 @@ function renderBackupStatus() {
       trips.length
     ],
     [
+      "backupPayableCount",
+      cards.length
+    ],
+    [
       "backupRecurringCount",
       recurringExpenses.length
     ],
@@ -28245,7 +28842,7 @@ function renderBackupStatus() {
     coverage.textContent =
       `Full backup includes ${Object.values(
         STORES
-      ).length} database stores plus local converter preferences.`;
+      ).length} database stores, including Payables, plus local converter preferences.`;
 
   }
 
@@ -33214,7 +33811,9 @@ savingsContributionForm
       ) {
 
         showToast(
-          "Enter a valid contribution amount."
+          !date
+            ? "Choose a contribution date."
+            : "Enter a contribution amount greater than 0."
         );
 
 
@@ -33518,14 +34117,32 @@ function getFilteredReceiptExpenses() {
     "";
 
 
-  const from =
+  const rawFrom =
     receiptDateFrom?.value ||
     "";
 
 
-  const to =
+  const rawTo =
     receiptDateTo?.value ||
     "";
+
+
+  const from =
+    rawFrom &&
+    rawTo &&
+    rawFrom >
+      rawTo
+      ? rawTo
+      : rawFrom;
+
+
+  const to =
+    rawFrom &&
+    rawTo &&
+    rawFrom >
+      rawTo
+      ? rawFrom
+      : rawTo;
 
 
   return getReceiptExpenses()
@@ -34216,7 +34833,47 @@ async function savePayable(event) {
     createdAt: existing?.createdAt || new Date().toISOString(),
     updatedAt: new Date().toISOString()
   };
-  if (!record.name || record.balance < 0) return;
+  if (!record.name) {
+    showToast("Give this payable a name.");
+    document.getElementById("payableName")?.focus();
+    return;
+  }
+
+  if (!Number.isFinite(record.balance) || record.balance < 0) {
+    showToast("Enter a valid remaining balance.");
+    document.getElementById("payableBalance")?.focus();
+    return;
+  }
+
+  if (!Number.isFinite(record.originalAmount) || record.originalAmount < 0) {
+    showToast("Enter a valid original amount.");
+    document.getElementById("payableOriginalAmount")?.focus();
+    return;
+  }
+
+  if (!Number.isFinite(record.regularPayment) || record.regularPayment < 0) {
+    showToast("Enter a valid regular payment amount.");
+    document.getElementById("payableRegularPayment")?.focus();
+    return;
+  }
+
+  if (record.type === "installment") {
+    record.installmentCount = Math.max(0, Math.floor(record.installmentCount || 0));
+    record.installmentsPaid = Math.max(
+      0,
+      Math.min(
+        record.installmentCount || Number.MAX_SAFE_INTEGER,
+        Math.floor(record.installmentsPaid || 0)
+      )
+    );
+  }
+
+  if (record.type === "credit-card") {
+    record.statementDay = record.statementDay
+      ? Math.max(1, Math.min(31, Math.floor(record.statementDay)))
+      : 0;
+  }
+
   await putRecord(STORES.cards, record);
   const index = cards.findIndex((item) => String(item.id) === String(id));
   if (index >= 0) cards[index] = record;
@@ -34300,12 +34957,33 @@ async function recordPayablePayment(event) {
   const item = cards.find((entry) => String(entry.id) === String(id));
   if (!item) return;
   const amount = Number(document.getElementById("payablePaymentAmount").value || 0);
-  if (!(amount > 0)) return;
-  const actualAmount = Math.min(amount, getPayableBalance(item));
+  const paymentDate = document.getElementById("payablePaymentDate").value;
+
+  if (!Number.isFinite(amount) || !(amount > 0)) {
+    showToast("Enter a payment amount greater than 0.");
+    document.getElementById("payablePaymentAmount")?.focus();
+    return;
+  }
+
+  if (!paymentDate) {
+    showToast("Choose the payment date.");
+    document.getElementById("payablePaymentDate")?.focus();
+    return;
+  }
+
+  const currentBalance = getPayableBalance(item);
+
+  if (currentBalance <= 0) {
+    showToast("This payable is already fully paid 🌸");
+    closePayablePayment();
+    return;
+  }
+
+  const actualAmount = Math.min(amount, currentBalance);
   const payment = {
     id: generateId("payment"),
     amount: actualAmount,
-    date: document.getElementById("payablePaymentDate").value || getTodayString(),
+    date: paymentDate,
     note: document.getElementById("payablePaymentNote").value.trim()
   };
   const nextBalance = Math.max(0, getPayableBalance(item) - actualAmount);
@@ -34492,7 +35170,7 @@ function buildSmartReminders() {
         type: "trip",
         icon: "✈️",
         title: trip.name || trip.destination || "Upcoming trip",
-        detail: days === 0 ? "Your trip starts today ✨" : `${getReminderTimingLabel(days, trip.startDate)} · ${escapeHTML(trip.destination || "Adventure")}`,
+        detail: days === 0 ? "Your trip starts today ✨" : `${getReminderTimingLabel(days, trip.startDate)} · ${trip.destination || "Adventure"}`,
         date: trip.startDate,
         days,
         bucket: days <= 7 ? "soon" : "later",
@@ -34609,7 +35287,7 @@ function createReminderCardHTML(reminder, compact = false) {
           )}</em>
         </span>
         <strong>${escapeHTML(reminder.title)}</strong>
-        <p>${reminder.detail}</p>
+        <p>${escapeHTML(reminder.detail)}</p>
       </span>
       <span class="smart-reminder-arrow">›</span>
     </button>
@@ -34728,6 +35406,176 @@ document.addEventListener("click", (event) => {
     showScreen(destination);
   }
 });
+
+
+
+
+// ========================================
+// MOMO 1.0 — APP LIFECYCLE + CONNECTIVITY
+// ========================================
+
+let momoWasOffline =
+  !navigator.onLine;
+
+
+function updateMomoConnectivityState(
+  announce =
+    false
+) {
+
+  const offline =
+    !navigator.onLine;
+
+
+  document.documentElement
+    .classList.toggle(
+      "momo-offline",
+      offline
+    );
+
+
+  if (
+    announce
+  ) {
+
+    if (
+      offline
+    ) {
+
+      showToast(
+        "You’re offline — Momo is using the data saved on this device."
+      );
+
+    } else if (
+      momoWasOffline
+    ) {
+
+      showToast(
+        "Back online ✨"
+      );
+
+    }
+
+  }
+
+
+  momoWasOffline =
+    offline;
+
+}
+
+
+window.addEventListener(
+  "offline",
+  () =>
+    updateMomoConnectivityState(
+      true
+    )
+);
+
+
+window.addEventListener(
+  "online",
+  () =>
+    updateMomoConnectivityState(
+      true
+    )
+);
+
+
+updateMomoConnectivityState();
+
+
+let momoLastResumeDate =
+  getTodayString();
+
+
+document.addEventListener(
+  "visibilitychange",
+  () => {
+
+    if (
+      document.visibilityState !==
+        "visible"
+    ) {
+
+      return;
+
+    }
+
+
+    const today =
+      getTodayString();
+
+
+    /*
+      Re-render when Momo is resumed on a different day.
+      This keeps Today, reminders, recurring dates, budgets,
+      calendar markers, and trip countdowns from looking stale.
+    */
+    if (
+      today !==
+      momoLastResumeDate
+    ) {
+
+      momoLastResumeDate =
+        today;
+
+
+      try {
+
+        renderAll();
+
+      } catch (
+        error
+      ) {
+
+        console.error(
+          "Momo could not refresh after resume:",
+          error
+        );
+
+      }
+
+    }
+
+  }
+);
+
+
+window.addEventListener(
+  "pageshow",
+  (
+    event
+  ) => {
+
+    /*
+      iOS Safari can restore a page from the back-forward cache.
+      Refresh lightweight date-sensitive UI when that happens.
+    */
+    if (
+      event.persisted
+    ) {
+
+      try {
+
+        renderAll();
+
+      } catch (
+        error
+      ) {
+
+        console.error(
+          "Momo could not refresh after page restore:",
+          error
+        );
+
+      }
+
+    }
+
+  }
+);
 
 
 // ========================================
