@@ -15243,92 +15243,131 @@ function renderTransaction(
         );
 
 
+  const expenseId =
+    escapeHTML(
+      expense.id
+    );
+
+
   return `
 
-    <article
-      class="transaction-row transaction-row-openable"
-      data-expense-detail-id="${escapeHTML(
-        expense.id
-      )}"
-      tabindex="0"
-      aria-label="View ${escapeHTML(
-        expense.title ||
-          "Untitled"
-      )} expense details"
+    <div
+      class="transaction-swipe-shell"
+      data-expense-swipe-id="${expenseId}"
     >
 
-      <div class="thumb">
+      <button
+        class="transaction-swipe-action transaction-swipe-edit"
+        type="button"
+        data-swipe-edit-expense="${expenseId}"
+        aria-label="Edit ${escapeHTML(
+          expense.title ||
+            "expense"
+        )}"
+      >
+        <span>✎</span>
+        <strong>Edit</strong>
+      </button>
 
-        ${thumbnail}
 
-      </div>
+      <button
+        class="transaction-swipe-action transaction-swipe-delete"
+        type="button"
+        data-swipe-delete-expense="${expenseId}"
+        aria-label="Delete ${escapeHTML(
+          expense.title ||
+            "expense"
+        )}"
+      >
+        <span>⌫</span>
+        <strong>Delete</strong>
+      </button>
 
 
-      <div class="transaction-main">
+      <article
+        class="transaction-row transaction-row-openable transaction-swipe-content"
+        data-expense-detail-id="${expenseId}"
+        tabindex="0"
+        aria-label="View ${escapeHTML(
+          expense.title ||
+            "Untitled"
+        )} expense details"
+      >
 
-        <strong>
+        <div class="thumb">
 
-          ${escapeHTML(
-            expense.title ||
-              "Untitled expense"
+          ${thumbnail}
+
+        </div>
+
+
+        <div class="transaction-main">
+
+          <strong>
+
+            ${escapeHTML(
+              expense.title ||
+                "Untitled expense"
+            )}
+
+          </strong>
+
+
+          <span>
+
+            ${escapeHTML(
+              expense.category
+            )}
+
+            •
+
+            ${escapeHTML(
+              expense.paymentMethod
+            )}
+
+          </span>
+
+
+          ${renderExpenseTagChips(
+            expense
           )}
 
-        </strong>
+        </div>
 
 
-        <span>
+        <div class="transaction-value">
 
-          ${escapeHTML(
-            expense.category
-          )}
+          <strong>
 
-          •
+            ${formatCurrency(
+              expense.amount,
+              expense.currency
+            )}
 
-          ${escapeHTML(
-            expense.paymentMethod
-          )}
-
-        </span>
+          </strong>
 
 
-        ${renderExpenseTagChips(
-          expense
-        )}
+          ${
+            converted
 
-      </div>
+              ? `
 
+                <span>
 
-      <div class="transaction-value">
+                  ${converted}
 
-        <strong>
+                </span>
 
-          ${formatCurrency(
-            expense.amount,
-            expense.currency
-          )}
+              `
 
-        </strong>
+              : ""
+          }
 
+        </div>
 
-        ${
-          converted
+      </article>
 
-            ? `
-
-              <span>
-
-                ${converted}
-
-              </span>
-
-            `
-
-            : ""
-        }
-
-      </div>
-
-    </article>
+    </div>
 
   `;
 
@@ -17790,7 +17829,585 @@ function closeExpenseDetail() {
 }
 
 
+function closeOpenExpenseSwipes(
+  exceptShell =
+    null
+) {
+
+  document
+    .querySelectorAll(
+      ".transaction-swipe-shell.is-open-left, .transaction-swipe-shell.is-open-right"
+    )
+    .forEach(
+      (
+        shell
+      ) => {
+
+        if (
+          shell ===
+          exceptShell
+        ) {
+
+          return;
+
+        }
+
+
+        const content =
+          shell.querySelector(
+            ".transaction-swipe-content"
+          );
+
+
+        shell.classList.remove(
+          "is-open-left",
+          "is-open-right"
+        );
+
+
+        if (
+          content
+        ) {
+
+          content.style.transform =
+            "translateX(0px)";
+
+        }
+
+      }
+    );
+
+}
+
+
+function attachExpenseSwipeActions() {
+
+  const REVEAL_DISTANCE =
+    82;
+
+
+  const OPEN_THRESHOLD =
+    42;
+
+
+  document
+    .querySelectorAll(
+      ".transaction-swipe-shell"
+    )
+    .forEach(
+      (
+        shell
+      ) => {
+
+        if (
+          shell.dataset
+            .swipeBound ===
+          "yes"
+        ) {
+
+          return;
+
+        }
+
+
+        shell.dataset
+          .swipeBound =
+          "yes";
+
+
+        const content =
+          shell.querySelector(
+            ".transaction-swipe-content"
+          );
+
+
+        if (
+          !content
+        ) {
+
+          return;
+
+        }
+
+
+        let pointerId =
+          null;
+
+
+        let startX =
+          0;
+
+
+        let startY =
+          0;
+
+
+        let startOffset =
+          0;
+
+
+        let currentOffset =
+          0;
+
+
+        let horizontalGesture =
+          false;
+
+
+        const getOpenOffset =
+          () => {
+
+            if (
+              shell.classList.contains(
+                "is-open-right"
+              )
+            ) {
+
+              return -
+                REVEAL_DISTANCE;
+
+            }
+
+
+            if (
+              shell.classList.contains(
+                "is-open-left"
+              )
+            ) {
+
+              return REVEAL_DISTANCE;
+
+            }
+
+
+            return 0;
+
+          };
+
+
+        const settle =
+          (
+            offset
+          ) => {
+
+            const limited =
+              Math.max(
+                -REVEAL_DISTANCE,
+                Math.min(
+                  REVEAL_DISTANCE,
+                  offset
+                )
+              );
+
+
+            shell.classList.remove(
+              "is-open-left",
+              "is-open-right"
+            );
+
+
+            if (
+              limited >=
+              OPEN_THRESHOLD
+            ) {
+
+              currentOffset =
+                REVEAL_DISTANCE;
+
+
+              shell.classList.add(
+                "is-open-left"
+              );
+
+            } else if (
+              limited <=
+              -OPEN_THRESHOLD
+            ) {
+
+              currentOffset =
+                -REVEAL_DISTANCE;
+
+
+              shell.classList.add(
+                "is-open-right"
+              );
+
+            } else {
+
+              currentOffset =
+                0;
+
+            }
+
+
+            content.style.transform =
+              `translateX(${currentOffset}px)`;
+
+          };
+
+
+        content.addEventListener(
+          "pointerdown",
+          (
+            event
+          ) => {
+
+            if (
+              event.pointerType ===
+                "mouse" &&
+              event.button !==
+                0
+            ) {
+
+              return;
+
+            }
+
+
+            closeOpenExpenseSwipes(
+              shell
+            );
+
+
+            pointerId =
+              event.pointerId;
+
+
+            startX =
+              event.clientX;
+
+
+            startY =
+              event.clientY;
+
+
+            startOffset =
+              getOpenOffset();
+
+
+            currentOffset =
+              startOffset;
+
+
+            horizontalGesture =
+              false;
+
+
+            content.classList.add(
+              "is-swiping"
+            );
+
+
+            try {
+
+              content.setPointerCapture(
+                pointerId
+              );
+
+            } catch (
+              error
+            ) {
+
+              // Pointer capture is optional on older Safari builds.
+
+            }
+
+          }
+        );
+
+
+        content.addEventListener(
+          "pointermove",
+          (
+            event
+          ) => {
+
+            if (
+              pointerId ===
+                null ||
+              event.pointerId !==
+                pointerId
+            ) {
+
+              return;
+
+            }
+
+
+            const dx =
+              event.clientX -
+              startX;
+
+
+            const dy =
+              event.clientY -
+              startY;
+
+
+            if (
+              !horizontalGesture
+            ) {
+
+              if (
+                Math.abs(
+                  dx
+                ) <
+                  7 &&
+                Math.abs(
+                  dy
+                ) <
+                  7
+              ) {
+
+                return;
+
+              }
+
+
+              if (
+                Math.abs(
+                  dy
+                ) >
+                Math.abs(
+                  dx
+                )
+              ) {
+
+                pointerId =
+                  null;
+
+
+                content.classList.remove(
+                  "is-swiping"
+                );
+
+
+                return;
+
+              }
+
+
+              horizontalGesture =
+                true;
+
+            }
+
+
+            currentOffset =
+              Math.max(
+                -REVEAL_DISTANCE,
+                Math.min(
+                  REVEAL_DISTANCE,
+                  startOffset +
+                    dx
+                )
+              );
+
+
+            content.style.transform =
+              `translateX(${currentOffset}px)`;
+
+          }
+        );
+
+
+        const finishSwipe =
+          (
+            event
+          ) => {
+
+            if (
+              pointerId ===
+              null ||
+              (
+                event.pointerId !==
+                undefined &&
+                event.pointerId !==
+                  pointerId
+              )
+            ) {
+
+              return;
+
+            }
+
+
+            const didSwipe =
+              horizontalGesture;
+
+
+            pointerId =
+              null;
+
+
+            content.classList.remove(
+              "is-swiping"
+            );
+
+
+            settle(
+              currentOffset
+            );
+
+
+            if (
+              didSwipe
+            ) {
+
+              shell.dataset
+                .swipeIgnoreClickUntil =
+                String(
+                  Date.now() +
+                    350
+                );
+
+            }
+
+          };
+
+
+        content.addEventListener(
+          "pointerup",
+          finishSwipe
+        );
+
+
+        content.addEventListener(
+          "pointercancel",
+          finishSwipe
+        );
+
+      }
+    );
+
+
+  document
+    .querySelectorAll(
+      "[data-swipe-edit-expense]"
+    )
+    .forEach(
+      (
+        button
+      ) => {
+
+        if (
+          button.dataset
+            .swipeActionBound ===
+          "yes"
+        ) {
+
+          return;
+
+        }
+
+
+        button.dataset
+          .swipeActionBound =
+          "yes";
+
+
+        button.addEventListener(
+          "click",
+          (
+            event
+          ) => {
+
+            event.stopPropagation();
+
+
+            const expense =
+              expenses.find(
+                (
+                  item
+                ) =>
+                  item.id ===
+                  button.dataset
+                    .swipeEditExpense
+              );
+
+
+            if (
+              expense
+            ) {
+
+              closeOpenExpenseSwipes();
+
+
+              openExpenseEditor(
+                expense
+              );
+
+            }
+
+          }
+        );
+
+      }
+    );
+
+
+  document
+    .querySelectorAll(
+      "[data-swipe-delete-expense]"
+    )
+    .forEach(
+      (
+        button
+      ) => {
+
+        if (
+          button.dataset
+            .swipeActionBound ===
+          "yes"
+        ) {
+
+          return;
+
+        }
+
+
+        button.dataset
+          .swipeActionBound =
+          "yes";
+
+
+        button.addEventListener(
+          "click",
+          (
+            event
+          ) => {
+
+            event.stopPropagation();
+
+
+            expensePendingDelete =
+              button.dataset
+                .swipeDeleteExpense;
+
+
+            closeOpenExpenseSwipes();
+
+
+            document
+              .getElementById(
+                "deleteExpenseModal"
+              )
+              .hidden =
+              false;
+
+          }
+        );
+
+      }
+    );
+
+}
+
+
 function attachExpenseDetailActions() {
+
+  attachExpenseSwipeActions();
+
 
   document
     .querySelectorAll(
@@ -17823,6 +18440,43 @@ function attachExpenseDetailActions() {
                 "button"
               )
             ) {
+
+              return;
+
+            }
+
+
+            const swipeShell =
+              row.closest(
+                ".transaction-swipe-shell"
+              );
+
+
+            if (
+              Number(
+                swipeShell?.dataset
+                  .swipeIgnoreClickUntil ||
+                  0
+              ) >
+              Date.now()
+            ) {
+
+              return;
+
+            }
+
+
+            if (
+              swipeShell?.classList.contains(
+                "is-open-left"
+              ) ||
+              swipeShell?.classList.contains(
+                "is-open-right"
+              )
+            ) {
+
+              closeOpenExpenseSwipes();
+
 
               return;
 
@@ -17996,6 +18650,30 @@ document
 
     }
   );
+
+
+
+document.addEventListener(
+  "pointerdown",
+  (
+    event
+  ) => {
+
+    if (
+      event.target.closest(
+        ".transaction-swipe-shell"
+      )
+    ) {
+
+      return;
+
+    }
+
+
+    closeOpenExpenseSwipes();
+
+  }
+);
 
 
 // ========================================
