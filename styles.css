@@ -15987,3 +15987,184 @@ textarea {
     grid-template-columns: 1fr;
   }
 }
+
+/* ========================================
+   PHONE PUSH REMINDERS — v1.3.6
+   ======================================== */
+.phone-push-card,
+.phone-reminder-box {
+  border: 1px solid var(--border);
+  border-radius: 20px;
+  background: rgba(255, 255, 255, 0.78);
+  box-shadow: var(--shadow);
+}
+
+.phone-push-card {
+  margin: 0 0 18px;
+  padding: 15px;
+  display: grid;
+  gap: 13px;
+}
+
+.phone-push-copy {
+  display: flex;
+  gap: 11px;
+  align-items: flex-start;
+}
+
+.phone-push-icon {
+  width: 42px;
+  height: 42px;
+  border-radius: 14px;
+  display: grid;
+  place-items: center;
+  flex: 0 0 auto;
+  background: var(--blush);
+  font-size: 20px;
+}
+
+.phone-push-copy strong,
+.phone-reminder-toggle strong {
+  display: block;
+  font-size: 13px;
+}
+
+.phone-push-copy p,
+.phone-reminder-toggle small,
+.phone-reminder-note {
+  color: var(--text-soft);
+  font-size: 10px;
+  line-height: 1.45;
+}
+
+.phone-push-copy p {
+  margin: 4px 0 0;
+}
+
+.phone-reminder-box {
+  margin: 4px 0 16px;
+  padding: 13px;
+}
+
+.phone-reminder-toggle {
+  display: grid;
+  grid-template-columns: 22px 1fr;
+  gap: 9px;
+  align-items: flex-start;
+  cursor: pointer;
+}
+
+.phone-reminder-toggle input {
+  position: absolute;
+  opacity: 0;
+  pointer-events: none;
+}
+
+.phone-reminder-check {
+  width: 22px;
+  height: 22px;
+  border: 1px solid var(--border);
+  border-radius: 8px;
+  display: grid;
+  place-items: center;
+  background: #fff;
+  color: transparent;
+  font-size: 12px;
+  font-weight: 800;
+}
+
+.phone-reminder-toggle input:checked + .phone-reminder-check {
+  background: var(--pink);
+  border-color: var(--pink);
+  color: #fff;
+}
+
+.phone-reminder-options {
+  margin-top: 12px;
+  display: grid;
+  grid-template-columns: 1fr 108px;
+  gap: 10px;
+}
+
+.phone-reminder-options[hidden] {
+  display: none;
+}
+
+.phone-reminder-note {
+  margin: 9px 0 0;
+}
+
+.phone-reminder-chip {
+  width: fit-content;
+  margin: 10px 0 0;
+  padding: 6px 9px;
+  border-radius: 999px;
+  background: var(--blush);
+  color: var(--rose);
+  font-size: 9px;
+  font-weight: 700;
+}
+
+@media (max-width: 390px) {
+  .phone-reminder-options {
+    grid-template-columns: 1fr;
+  }
+}
+
+
+/* ========================================
+   MOMO 1.3.6 — CUSTOM GENTLE REMINDERS
+   ======================================== */
+.custom-reminder-create-card {
+  margin: 14px 0 16px;
+  padding: 15px;
+  border: 1px solid var(--border);
+  border-radius: 20px;
+  background: rgba(255,255,255,.78);
+  box-shadow: var(--shadow);
+  display: grid;
+  gap: 13px;
+}
+.custom-reminder-create-card > div { display:flex; gap:11px; align-items:flex-start; }
+.custom-reminder-create-icon { width:42px; height:42px; flex:0 0 42px; display:grid; place-items:center; border-radius:14px; background:var(--blush); font-size:20px; }
+.custom-reminder-create-card strong { display:block; font-size:13px; }
+.custom-reminder-create-card p { margin:4px 0 0; color:var(--text-soft); font-size:10px; line-height:1.5; }
+.custom-reminder-create-card .primary-btn { width:100%; }
+.custom-reminder-modal-card { max-height:min(86vh,720px); overflow-y:auto; }
+.custom-reminder-form { display:grid; gap:14px; }
+.custom-reminder-date-grid { display:grid; grid-template-columns:1fr 1fr; gap:10px; }
+.custom-reminder-actions { display:flex; gap:5px; align-items:center; margin-left:auto; }
+.smart-reminder-card:has(.custom-reminder-actions) { cursor:default; }
+.custom-phone-reminder-box { margin-top:2px; }
+.custom-reminder-modal-actions { margin-top:2px; }
+@media (max-width: 380px) {
+  .custom-reminder-date-grid { grid-template-columns:1fr; }
+  .custom-reminder-actions { flex-direction:column; }
+}
+
+/* v1.3.6 — per-reminder Gentle Push toggle */
+.gentle-push-toggle {
+  margin-top: 9px;
+  width: fit-content;
+  min-height: 32px;
+  padding: 6px 10px;
+  border: 1px solid var(--border);
+  border-radius: 999px;
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  background: rgba(255, 255, 255, 0.76);
+  color: var(--text-soft);
+  font-size: 10px;
+  font-weight: 700;
+}
+
+.gentle-push-toggle.is-on {
+  background: var(--blush);
+  border-color: var(--pink);
+  color: var(--rose);
+}
+
+.gentle-push-toggle:disabled {
+  opacity: 0.55;
+}

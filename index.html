@@ -17,7 +17,7 @@
   <meta name="apple-mobile-web-app-title" content="Momo">
 
   <title>Momo — Spending Diary</title>
-  <meta name="momo-app-version" content="1.3.5">
+  <meta name="momo-app-version" content="1.3.6">
 
   <link rel="manifest" href="manifest.json">
   <link rel="apple-touch-icon" href="icons/icon-192.png">
@@ -499,9 +499,9 @@
         <div class="page-heading">
           <div>
             <p class="eyebrow">Momo’s little nudge</p>
-            <h1>Smart Reminders</h1>
+            <h1>Gentle Reminders</h1>
             <p class="page-description">
-              Nothing extra to maintain. Momo quietly gathers important dates and money moments from the things you already track.
+              Let Momo gather useful nudges automatically, or add your own reminder for anything you do not want to forget.
             </p>
           </div>
         </div>
@@ -514,6 +514,29 @@
             <small id="reminderSummaryCopy">All quiet for now 🌸</small>
           </div>
           <span class="reminder-summary-sparkle" aria-hidden="true">✦</span>
+        </section>
+
+        <section class="phone-push-card" aria-labelledby="phonePushTitle">
+          <div class="phone-push-copy">
+            <span class="phone-push-icon" aria-hidden="true">📱</span>
+            <div>
+              <strong id="phonePushTitle">Phone notifications</strong>
+              <p id="phonePushStatus">Optional. Enable phone alerts for planned, recurring, and custom reminders.</p>
+            </div>
+          </div>
+          <button id="enablePhonePush" class="secondary-btn" type="button">Enable on this phone</button>
+        </section>
+
+
+        <section class="custom-reminder-create-card">
+          <div>
+            <span class="custom-reminder-create-icon">🌸</span>
+            <div>
+              <strong>Add your own reminder</strong>
+              <p>Anything you want Momo to nudge you about — bills, transfers, travel prep, errands, or something completely personal.</p>
+            </div>
+          </div>
+          <button id="addCustomReminderButton" class="primary-btn" type="button">＋ Add Reminder</button>
         </section>
 
         <div class="reminder-filter-row" role="group" aria-label="Reminder filters">
@@ -534,11 +557,81 @@
         <section class="reminder-how-card">
           <span>🍑</span>
           <div>
-            <strong>No reminder setup needed</strong>
-            <p>These nudges come from recurring expenses, planned purchases, trips, savings goals, and budgets. Change the original item and the reminder updates with it.</p>
+            <strong>Automatic + your own reminders</strong>
+            <p>Momo still gathers useful dates automatically. You can also add a custom reminder, repeat it, and optionally send it to your phone.</p>
           </div>
         </section>
       </section>
+
+
+      <!-- CUSTOM REMINDER MODAL -->
+      <div id="customReminderModal" class="modal-backdrop" hidden>
+        <section class="modal-card custom-reminder-modal-card" role="dialog" aria-modal="true" aria-labelledby="customReminderModalTitle">
+          <div class="modal-header">
+            <div>
+              <p class="eyebrow">Gentle Reminders</p>
+              <h2 id="customReminderModalTitle">Add Reminder</h2>
+            </div>
+            <button id="closeCustomReminderModal" class="icon-btn soft" type="button" aria-label="Close reminder">×</button>
+          </div>
+
+          <form id="customReminderForm" class="custom-reminder-form">
+            <label class="field-label">Reminder title
+              <input id="customReminderTitle" type="text" maxlength="80" placeholder="Pay BPI credit card" required>
+            </label>
+
+            <label class="field-label">Note <span class="muted small">optional</span>
+              <textarea id="customReminderNote" rows="3" maxlength="240" placeholder="Add a little detail for future you"></textarea>
+            </label>
+
+            <div class="custom-reminder-date-grid">
+              <label class="field-label">Date
+                <input id="customReminderDate" type="date" required>
+              </label>
+              <label class="field-label">Time
+                <input id="customReminderTime" type="time" value="09:00" required>
+              </label>
+            </div>
+
+            <label class="field-label">Repeat
+              <select id="customReminderRepeat">
+                <option value="none">Does not repeat</option>
+                <option value="daily">Daily</option>
+                <option value="weekly">Weekly</option>
+                <option value="monthly">Monthly</option>
+                <option value="yearly">Yearly</option>
+              </select>
+            </label>
+
+            <section class="phone-reminder-box custom-phone-reminder-box">
+              <label class="phone-reminder-toggle">
+                <input id="customReminderPhone" type="checkbox">
+                <span class="phone-reminder-check" aria-hidden="true">✓</span>
+                <span><strong>Phone reminder</strong><small>Send this nudge to this phone too.</small></span>
+              </label>
+              <div id="customReminderPhoneOptions" class="phone-reminder-options" hidden>
+                <label>Notify
+                  <select id="customReminderDaysBefore">
+                    <option value="0">On the date</option>
+                    <option value="1">1 day before</option>
+                    <option value="3">3 days before</option>
+                    <option value="7">7 days before</option>
+                  </select>
+                </label>
+                <label>At
+                  <input id="customReminderPhoneTime" type="time" value="09:00">
+                </label>
+              </div>
+              <p class="phone-reminder-note">Phone delivery needs your optional Momo account. The reminder itself stays in Momo on this device.</p>
+            </section>
+
+            <div class="modal-field-row custom-reminder-modal-actions">
+              <button id="cancelCustomReminder" class="secondary-btn" type="button">Cancel</button>
+              <button class="primary-btn" type="submit">Save Reminder</button>
+            </div>
+          </form>
+        </section>
+      </div>
 
 
       <!-- BUDGETS -->
@@ -4642,6 +4735,34 @@
             >
           </label>
 
+          <section class="phone-reminder-box">
+            <label class="phone-reminder-toggle">
+              <input id="plannedPhoneReminder" type="checkbox">
+              <span class="phone-reminder-check" aria-hidden="true">✓</span>
+              <span>
+                <strong>Phone reminder</strong>
+                <small>Send a notification even when Momo is closed.</small>
+              </span>
+            </label>
+
+            <div id="plannedPhoneReminderOptions" class="phone-reminder-options" hidden>
+              <label class="modal-field">
+                <span>Remind me</span>
+                <select id="plannedReminderDays">
+                  <option value="0">On the target date</option>
+                  <option value="1" selected>1 day before</option>
+                  <option value="3">3 days before</option>
+                  <option value="7">7 days before</option>
+                </select>
+              </label>
+              <label class="modal-field">
+                <span>At</span>
+                <input id="plannedReminderTime" type="time" value="09:00">
+              </label>
+            </div>
+            <p class="phone-reminder-note">Requires a Momo account only for notification delivery. Your expense stays local.</p>
+          </section>
+
           <label class="modal-field">
             <span>
               Notes
@@ -4956,6 +5077,34 @@
               >
             </label>
           </div>
+
+          <section class="phone-reminder-box">
+            <label class="phone-reminder-toggle">
+              <input id="recurringPhoneReminder" type="checkbox">
+              <span class="phone-reminder-check" aria-hidden="true">✓</span>
+              <span>
+                <strong>Phone reminder</strong>
+                <small>Send a notification before each next due date.</small>
+              </span>
+            </label>
+
+            <div id="recurringPhoneReminderOptions" class="phone-reminder-options" hidden>
+              <label class="modal-field">
+                <span>Remind me</span>
+                <select id="recurringReminderDays">
+                  <option value="0">On the due date</option>
+                  <option value="1" selected>1 day before</option>
+                  <option value="3">3 days before</option>
+                  <option value="7">7 days before</option>
+                </select>
+              </label>
+              <label class="modal-field">
+                <span>At</span>
+                <input id="recurringReminderTime" type="time" value="09:00">
+              </label>
+            </div>
+            <p class="phone-reminder-note">Requires a Momo account only for notification delivery. Your recurring record stays local.</p>
+          </section>
 
           <label class="modal-field">
             <span>

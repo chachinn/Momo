@@ -1,10 +1,10 @@
 // ========================================
 // MOMO SERVICE WORKER
-// Momo 1.3.5 — stable network-first PWA shell
+// Momo 1.3.6 — push reminders + stable network-first PWA shell
 // ========================================
 
 const CACHE_NAME =
-  "momo-runtime-shell-v1.3.5";
+  "momo-runtime-shell-v1.3.6";
 
 
 const APP_SHELL = [
@@ -182,6 +182,94 @@ async function cacheSuccessfulResponse(
 
 }
 
+
+self.addEventListener("push", (event) => {
+  let data = {};
+  try { data = event.data?.json?.() || {}; } catch { data = { body: event.data?.text?.() || "Momo has a reminder for you." }; }
+
+  const title = data.title || "Momo reminder 🍑";
+  const options = {
+    body: data.body || "You have something coming up.",
+    icon: "./icons/icon-192.png",
+    badge: "./icons/icon-192.png",
+    tag: data.tag || `momo-${Date.now()}`,
+    renotify: false,
+    data: { url: data.url || "./index.html" }
+  };
+
+  event.waitUntil(self.registration.showNotification(title, options));
+});
+
+self.addEventListener("notificationclick", (event) => {
+  event.notification.close();
+
+  const scopeUrl =
+    self.registration.scope ||
+    new URL("./", self.location.href).href;
+
+  let targetUrl;
+
+  try {
+    const candidate = new URL(
+      event.notification.data?.url ||
+        "index.html",
+      scopeUrl
+    );
+
+    targetUrl =
+      candidate.origin ===
+      self.location.origin
+        ? candidate.href
+        : new URL(
+            "index.html",
+            scopeUrl
+          ).href;
+  } catch {
+    targetUrl = new URL(
+      "index.html",
+      scopeUrl
+    ).href;
+  }
+
+  event.waitUntil(
+    (async () => {
+      const windows =
+        await self.clients.matchAll({
+          type: "window",
+          includeUncontrolled: true
+        });
+
+      for (const client of windows) {
+        if (
+          client.url.startsWith(
+            scopeUrl
+          ) &&
+          "focus" in client
+        ) {
+          try {
+            if (
+              client.url !==
+              targetUrl &&
+              "navigate" in client
+            ) {
+              await client.navigate(
+                targetUrl
+              );
+            }
+          } catch {}
+
+          return client.focus();
+        }
+      }
+
+      return self.clients.openWindow
+        ? self.clients.openWindow(
+            targetUrl
+          )
+        : undefined;
+    })()
+  );
+});
 
 self.addEventListener(
   "fetch",

@@ -1,6 +1,6 @@
 // ========================================
 // MOMO
-// Momo 1.3.5 — Tutorial + Guide Refresh
+// Momo 1.3.6 — Phone Push Reminders
 // CLEAN FOUNDATION + FUNCTIONAL TRIPS
 // ========================================
 
@@ -275,6 +275,110 @@ const LOCAL_KEYS = {
 
 };
 
+
+
+// ========================================
+// PHONE PUSH REMINDERS
+// ========================================
+
+function getMomoPush() {
+  return window.MomoPush || null;
+}
+
+async function syncPhoneReminder(type, item) {
+  const push = getMomoPush();
+  if (!push || !item) return false;
+
+  try {
+    const hasReminderDate = Boolean(
+      item.nextDueDate ||
+      item.targetDate ||
+      item.date
+    );
+
+    if (item.phoneReminder && hasReminderDate) {
+      return Boolean(
+        await push.syncReminder(
+          type,
+          item
+        )
+      );
+    }
+
+    await push.deleteReminder(
+      type,
+      item.id
+    );
+
+    return false;
+  } catch (error) {
+    console.warn(
+      "Momo phone reminder sync skipped:",
+      error
+    );
+    return false;
+  }
+}
+
+async function resolvePhoneReminderPreference(
+  requested
+) {
+  if (!requested) {
+    return false;
+  }
+
+  const push = getMomoPush();
+
+  if (!push) {
+    showToast(
+      "Reminder saved, but Phone stayed Off. Phone notification setup is still loading."
+    );
+    return false;
+  }
+
+  try {
+    const status =
+      await push.getStatus();
+
+    if (!status.enabled) {
+      showToast(
+        "Reminder saved, but Phone stayed Off. Enable phone notifications first."
+      );
+      return false;
+    }
+
+    return true;
+  } catch (error) {
+    console.warn(
+      "Could not confirm phone notification status:",
+      error
+    );
+    showToast(
+      "Reminder saved, but Phone stayed Off."
+    );
+    return false;
+  }
+}
+
+async function removePhoneReminder(type, id) {
+  const push = getMomoPush();
+  if (!push || !id) return;
+  try {
+    await push.deleteReminder(type, id);
+  } catch (error) {
+    console.warn("Momo phone reminder delete skipped:", error);
+  }
+}
+
+const CUSTOM_REMINDERS_SETTING_KEY =
+  "custom_reminders";
+
+const GENTLE_PUSH_SETTING_KEY =
+  "gentle_push_preferences";
+
+let customReminders = [];
+let gentlePushPreferences = {};
+let editingCustomReminderId = "";
 
 
 const APPEARANCE_SETTING_KEY =
@@ -923,6 +1027,29 @@ async function loadAppData() {
     )
       ? favoriteSetting.value
       : [];
+
+
+  const customReminderSetting =
+    settingsRecords.find(
+      (item) =>
+        item?.key ===
+        CUSTOM_REMINDERS_SETTING_KEY
+    );
+
+  customReminders =
+    Array.isArray(customReminderSetting?.value)
+      ? customReminderSetting.value
+      : [];
+
+  const gentlePushSetting =
+    settingsRecords.find(
+      (item) => item?.key === GENTLE_PUSH_SETTING_KEY
+    );
+
+  gentlePushPreferences =
+    gentlePushSetting?.value && typeof gentlePushSetting.value === "object"
+      ? gentlePushSetting.value
+      : {};
 
 
   const appearanceSetting =
@@ -15724,6 +15851,12 @@ expenseForm?.addEventListener(
       }
 
 
+      await removePhoneReminder(
+        "planned",
+        pendingPlannedConversionId
+      );
+
+
       pendingPlannedConversionId =
         "";
 
@@ -15753,25 +15886,34 @@ expenseForm?.addEventListener(
           );
 
 
+        const updatedRecurringSource = {
+          ...recurringSource,
+
+          nextDueDate:
+            nextDate,
+
+          active:
+            !(
+              recurringSource.endDate &&
+              nextDate >
+                recurringSource.endDate
+            ),
+
+          updatedAt:
+            new Date()
+              .toISOString()
+        };
+
+
         await putRecord(
           STORES.recurring,
-          {
-            ...recurringSource,
+          updatedRecurringSource
+        );
 
-            nextDueDate:
-              nextDate,
 
-            active:
-              !(
-                recurringSource.endDate &&
-                nextDate >
-                  recurringSource.endDate
-              ),
-
-            updatedAt:
-              new Date()
-                .toISOString()
-          }
+        await syncPhoneReminder(
+          "recurring",
+          updatedRecurringSource
         );
 
       }
@@ -24787,6 +24929,44 @@ const recurringEndDate =
   );
 
 
+const recurringPhoneReminder =
+  document.getElementById(
+    "recurringPhoneReminder"
+  );
+
+
+const recurringPhoneReminderOptions =
+  document.getElementById(
+    "recurringPhoneReminderOptions"
+  );
+
+
+const recurringReminderDays =
+  document.getElementById(
+    "recurringReminderDays"
+  );
+
+
+const recurringReminderTime =
+  document.getElementById(
+    "recurringReminderTime"
+  );
+
+
+function updateRecurringPhoneReminderVisibility() {
+  if (recurringPhoneReminderOptions) {
+    recurringPhoneReminderOptions.hidden =
+      !recurringPhoneReminder?.checked;
+  }
+}
+
+
+recurringPhoneReminder?.addEventListener(
+  "change",
+  updateRecurringPhoneReminderVisibility
+);
+
+
 const recurringNotes =
   document.getElementById(
     "recurringNotes"
@@ -25339,6 +25519,21 @@ function openRecurringModal(
       "";
 
 
+    if (recurringPhoneReminder) {
+      recurringPhoneReminder.checked =
+        Boolean(recurring.phoneReminder);
+    }
+    if (recurringReminderDays) {
+      recurringReminderDays.value =
+        String(recurring.remindDaysBefore ?? 1);
+    }
+    if (recurringReminderTime) {
+      recurringReminderTime.value =
+        recurring.remindTime || "09:00";
+    }
+    updateRecurringPhoneReminderVisibility();
+
+
     recurringNotes.value =
       recurring.notes ||
       "";
@@ -25409,6 +25604,18 @@ function openRecurringModal(
 
     recurringEndDate.value =
       "";
+
+
+    if (recurringPhoneReminder) {
+      recurringPhoneReminder.checked = false;
+    }
+    if (recurringReminderDays) {
+      recurringReminderDays.value = "1";
+    }
+    if (recurringReminderTime) {
+      recurringReminderTime.value = "09:00";
+    }
+    updateRecurringPhoneReminderVisibility();
 
   }
 
@@ -25665,6 +25872,19 @@ recurringForm?.addEventListener(
       endDate:
         recurringEndDate.value,
 
+      phoneReminder:
+        await resolvePhoneReminderPreference(
+          Boolean(
+            recurringPhoneReminder?.checked
+          )
+        ),
+
+      remindDaysBefore:
+        Number(recurringReminderDays?.value || 1),
+
+      remindTime:
+        recurringReminderTime?.value || "09:00",
+
       notes:
         recurringNotes.value
           .trim(),
@@ -25690,6 +25910,12 @@ recurringForm?.addEventListener(
 
     await putRecord(
       STORES.recurring,
+      recurring
+    );
+
+
+    await syncPhoneReminder(
+      "recurring",
       recurring
     );
 
@@ -25860,6 +26086,13 @@ function createRecurringCardHTML(
 
             `
 
+          : ""
+      }
+
+
+      ${
+        recurring.phoneReminder
+          ? `<p class="phone-reminder-chip">🔔 ${escapeHTML(String(recurring.remindDaysBefore ?? 1))} day${Number(recurring.remindDaysBefore ?? 1) === 1 ? "" : "s"} before · ${escapeHTML(recurring.remindTime || "09:00")}</p>`
           : ""
       }
 
@@ -26470,6 +26703,12 @@ function attachRecurringActions() {
             );
 
 
+            await syncPhoneReminder(
+              "recurring",
+              updatedRecurring
+            );
+
+
             await loadAppData();
 
 
@@ -26529,9 +26768,19 @@ document
       }
 
 
+      const deletedRecurringId =
+        recurringPendingDelete;
+
+
       await deleteRecord(
         STORES.recurring,
-        recurringPendingDelete
+        deletedRecurringId
+      );
+
+
+      await removePhoneReminder(
+        "recurring",
+        deletedRecurringId
       );
 
 
@@ -26680,6 +26929,44 @@ const plannedExpenseTargetDate =
   );
 
 
+const plannedPhoneReminder =
+  document.getElementById(
+    "plannedPhoneReminder"
+  );
+
+
+const plannedPhoneReminderOptions =
+  document.getElementById(
+    "plannedPhoneReminderOptions"
+  );
+
+
+const plannedReminderDays =
+  document.getElementById(
+    "plannedReminderDays"
+  );
+
+
+const plannedReminderTime =
+  document.getElementById(
+    "plannedReminderTime"
+  );
+
+
+function updatePlannedPhoneReminderVisibility() {
+  if (plannedPhoneReminderOptions) {
+    plannedPhoneReminderOptions.hidden =
+      !plannedPhoneReminder?.checked;
+  }
+}
+
+
+plannedPhoneReminder?.addEventListener(
+  "change",
+  updatePlannedPhoneReminderVisibility
+);
+
+
 const plannedExpenseNotes =
   document.getElementById(
     "plannedExpenseNotes"
@@ -26823,6 +27110,24 @@ function openPlannedExpenseModal(
       "";
 
 
+    if (plannedPhoneReminder) {
+      plannedPhoneReminder.checked =
+        Boolean(planned.phoneReminder);
+    }
+
+    if (plannedReminderDays) {
+      plannedReminderDays.value =
+        String(planned.remindDaysBefore ?? 1);
+    }
+
+    if (plannedReminderTime) {
+      plannedReminderTime.value =
+        planned.remindTime || "09:00";
+    }
+
+    updatePlannedPhoneReminderVisibility();
+
+
     plannedExpenseNotes.value =
       planned.notes ||
       "";
@@ -26861,6 +27166,18 @@ function openPlannedExpenseModal(
 
     plannedExpenseTrip.value =
       "";
+
+
+    if (plannedPhoneReminder) {
+      plannedPhoneReminder.checked = false;
+    }
+    if (plannedReminderDays) {
+      plannedReminderDays.value = "1";
+    }
+    if (plannedReminderTime) {
+      plannedReminderTime.value = "09:00";
+    }
+    updatePlannedPhoneReminderVisibility();
 
   }
 
@@ -26982,6 +27299,18 @@ plannedExpenseForm?.addEventListener(
     }
 
 
+    if (
+      plannedPhoneReminder?.checked &&
+      !plannedExpenseTargetDate?.value
+    ) {
+      showToast(
+        "Choose a target date for the phone reminder."
+      );
+      plannedExpenseTargetDate?.focus();
+      return;
+    }
+
+
     const existingId =
       plannedExpenseId.value;
 
@@ -27030,6 +27359,19 @@ plannedExpenseForm?.addEventListener(
       targetDate:
         plannedExpenseTargetDate.value,
 
+      phoneReminder:
+        await resolvePhoneReminderPreference(
+          Boolean(
+            plannedPhoneReminder?.checked
+          )
+        ),
+
+      remindDaysBefore:
+        Number(plannedReminderDays?.value || 1),
+
+      remindTime:
+        plannedReminderTime?.value || "09:00",
+
       notes:
         plannedExpenseNotes.value
           .trim(),
@@ -27060,6 +27402,12 @@ plannedExpenseForm?.addEventListener(
 
     await putRecord(
       STORES.planned,
+      planned
+    );
+
+
+    await syncPhoneReminder(
+      "planned",
       planned
     );
 
@@ -27276,6 +27624,13 @@ function createPlannedExpenseCardHTML(
 
             `
 
+          : ""
+      }
+
+
+      ${
+        planned.phoneReminder && !isPurchased
+          ? `<p class="phone-reminder-chip">🔔 ${escapeHTML(String(planned.remindDaysBefore ?? 1))} day${Number(planned.remindDaysBefore ?? 1) === 1 ? "" : "s"} before · ${escapeHTML(planned.remindTime || "09:00")}</p>`
           : ""
       }
 
@@ -27810,9 +28165,19 @@ document
       }
 
 
+      const deletedPlannedId =
+        plannedPendingDelete;
+
+
       await deleteRecord(
         STORES.planned,
-        plannedPendingDelete
+        deletedPlannedId
+      );
+
+
+      await removePhoneReminder(
+        "planned",
+        deletedPlannedId
       );
 
 
@@ -36507,6 +36872,314 @@ function getReminderTimingLabel(days, dateString) {
   return dateString ? formatShortDate(dateString) : `In ${days} days`;
 }
 
+async function refreshPhonePushStatus() {
+  const status = document.getElementById(
+    "phonePushStatus"
+  );
+  const button = document.getElementById(
+    "enablePhonePush"
+  );
+
+  if (!status || !button) return;
+
+  const push = getMomoPush();
+  if (!push) {
+    status.textContent =
+      "Phone notification setup is still loading.";
+    button.textContent = "Enable on this phone";
+    return;
+  }
+
+  const state = await push.getStatus();
+  status.textContent = state.message;
+  button.textContent = state.enabled
+    ? "Turn off on this phone"
+    : "Enable on this phone";
+  button.dataset.enabled = state.enabled ? "true" : "false";
+}
+
+
+document
+  .getElementById(
+    "enablePhonePush"
+  )
+  ?.addEventListener(
+    "click",
+    async () => {
+      const push = getMomoPush();
+      if (!push) {
+        showToast("Phone notification setup is still loading.");
+        return;
+      }
+
+      try {
+        const button = document.getElementById(
+          "enablePhonePush"
+        );
+        if (button?.dataset.enabled === "true") {
+          await push.disable();
+          showToast("Phone notifications turned off on this device.");
+        } else {
+          await push.enable();
+
+          await resyncAllPhoneReminders();
+
+          showToast("Phone notifications enabled 🔔");
+        }
+      } catch (error) {
+        showToast(error?.message || "Could not change phone notifications.");
+      }
+
+      await refreshPhonePushStatus();
+    }
+  );
+
+
+async function resyncAllPhoneReminders() {
+  const push = getMomoPush();
+  if (!push) return;
+
+  let status;
+  try {
+    status = await push.getStatus();
+  } catch (error) {
+    console.warn(
+      "Could not check Momo phone notification status:",
+      error
+    );
+    return;
+  }
+
+  if (!status.enabled) return;
+
+  const tasks = [
+    ...recurringExpenses
+      .filter(
+        (item) =>
+          item.phoneReminder &&
+          isRecurringActive(item) &&
+          item.nextDueDate
+      )
+      .map(
+        (item) =>
+          push.syncReminder(
+            "recurring",
+            item
+          )
+      ),
+    ...plannedExpenses
+      .filter(
+        (item) =>
+          item.phoneReminder &&
+          item.status === "planned" &&
+          item.targetDate
+      )
+      .map(
+        (item) =>
+          push.syncReminder(
+            "planned",
+            item
+          )
+      ),
+    ...customReminders
+      .filter(
+        (item) =>
+          item.phoneReminder &&
+          !item.completed &&
+          item.date
+      )
+      .map(
+        (item) =>
+          push.syncReminder(
+            "custom",
+            item
+          )
+      )
+  ];
+
+  const activeGentle = new Map(
+    buildSmartReminders()
+      .filter(
+        (reminder) =>
+          ![
+            "recurring",
+            "planned",
+            "custom"
+          ].includes(reminder.type)
+      )
+      .map(
+        (reminder) => [
+          reminder.id,
+          reminder
+        ]
+      )
+  );
+
+  Object.entries(
+    gentlePushPreferences || {}
+  ).forEach(
+    ([reminderId, preference]) => {
+      if (!preference?.enabled) return;
+
+      const reminder =
+        activeGentle.get(reminderId);
+
+      if (!reminder) {
+        tasks.push(
+          push.deleteReminder(
+            "gentle",
+            reminderId
+          )
+        );
+        return;
+      }
+
+      tasks.push(
+        push.syncReminder(
+          "gentle",
+          {
+            id: reminder.id,
+            title: reminder.title,
+            note: reminder.detail,
+            date:
+              reminder.date ||
+              getTodayString(),
+            phoneReminder: true,
+            remindDaysBefore: 0,
+            remindTime: "09:00"
+          }
+        )
+      );
+    }
+  );
+
+  await Promise.allSettled(
+    tasks
+  );
+}
+
+window.addEventListener(
+  "momo-push-ready",
+  () => {
+    refreshPhonePushStatus();
+    resyncAllPhoneReminders();
+  }
+);
+
+window.addEventListener(
+  "online",
+  resyncAllPhoneReminders
+);
+
+
+async function persistGentlePushPreferences() {
+  return putRecord(
+    STORES.settings,
+    {
+      key: GENTLE_PUSH_SETTING_KEY,
+      value: gentlePushPreferences,
+      updatedAt: new Date().toISOString()
+    }
+  );
+}
+
+function gentleReminderPushEnabled(reminder) {
+  if (!reminder) return false;
+  if (reminder.type === "recurring") {
+    return Boolean(
+      recurringExpenses.find((item) => `recurring:${item.id}` === reminder.id)?.phoneReminder
+    );
+  }
+  if (reminder.type === "planned") {
+    return Boolean(
+      plannedExpenses.find((item) => `planned:${item.id}` === reminder.id)?.phoneReminder
+    );
+  }
+  if (reminder.type === "custom") {
+    return Boolean(
+      customReminders.find((item) => `custom:${item.id}` === reminder.id)?.phoneReminder
+    );
+  }
+  return Boolean(gentlePushPreferences?.[reminder.id]?.enabled);
+}
+
+async function setGentleReminderPush(reminderId, enabled) {
+  const reminder = buildSmartReminders().find((item) => item.id === reminderId);
+  if (!reminder) return;
+
+  const push = getMomoPush();
+
+  if (enabled) {
+    if (!push) {
+      throw new Error(
+        "Phone notification setup is still loading. Try again in a moment."
+      );
+    }
+
+    const status =
+      await push.getStatus();
+
+    if (!status.enabled) {
+      throw new Error(
+        "Enable phone notifications on this device first."
+      );
+    }
+  }
+
+  if (reminder.type === "recurring") {
+    const item = recurringExpenses.find((entry) => `recurring:${entry.id}` === reminder.id);
+    if (!item) return;
+    item.phoneReminder = enabled;
+    item.remindDaysBefore = Number(item.remindDaysBefore ?? 0);
+    item.remindTime = item.remindTime || "09:00";
+    item.updatedAt = new Date().toISOString();
+    await putRecord(STORES.recurring, item);
+    enabled ? await syncPhoneReminder("recurring", item) : await removePhoneReminder("recurring", item.id);
+  } else if (reminder.type === "planned") {
+    const item = plannedExpenses.find((entry) => `planned:${entry.id}` === reminder.id);
+    if (!item) return;
+    item.phoneReminder = enabled;
+    item.remindDaysBefore = Number(item.remindDaysBefore ?? 0);
+    item.remindTime = item.remindTime || "09:00";
+    item.updatedAt = new Date().toISOString();
+    await putRecord(STORES.planned, item);
+    enabled ? await syncPhoneReminder("planned", item) : await removePhoneReminder("planned", item.id);
+  } else if (reminder.type === "custom") {
+    const item = customReminders.find((entry) => `custom:${entry.id}` === reminder.id);
+    if (!item) return;
+    item.phoneReminder = enabled;
+    item.remindDaysBefore = Number(item.remindDaysBefore ?? 0);
+    item.remindTime = item.remindTime || item.time || "09:00";
+    item.updatedAt = new Date().toISOString();
+    await persistCustomReminders();
+    enabled ? await syncPhoneReminder("custom", item) : await removePhoneReminder("custom", item.id);
+  } else {
+    gentlePushPreferences = {
+      ...gentlePushPreferences,
+      [reminder.id]: {
+        enabled,
+        updatedAt: new Date().toISOString()
+      }
+    };
+    await persistGentlePushPreferences();
+
+    const generic = {
+      id: reminder.id,
+      title: reminder.title,
+      note: reminder.detail,
+      date: reminder.date || getTodayString(),
+      phoneReminder: enabled,
+      remindDaysBefore: 0,
+      remindTime: "09:00"
+    };
+    enabled
+      ? await push?.syncReminder("gentle", generic)
+      : await push?.deleteReminder("gentle", generic.id);
+  }
+
+  renderSmartReminders();
+}
+
 function buildSmartReminders() {
   const reminders = [];
 
@@ -36552,6 +37225,30 @@ function buildSmartReminders() {
         bucket: getReminderBucket(days),
         nav: "planned",
         priority: days < 0 ? 0 : days === 0 ? 1 : 4
+      });
+    }
+  });
+
+  customReminders.forEach((item) => {
+    if (item.completed || !item.date) {
+      return;
+    }
+
+    const days = reminderDaysFromToday(item.date);
+
+    if (days !== null) {
+      reminders.push({
+        id: `custom:${item.id}`,
+        type: "custom",
+        icon: item.icon || "🔔",
+        title: item.title || "Reminder",
+        detail: `${item.time ? item.time + " · " : ""}${item.note || "Custom reminder"}${item.repeat && item.repeat !== "none" ? ` · Repeats ${item.repeat}` : ""}`,
+        date: item.date,
+        days,
+        bucket: getReminderBucket(days),
+        nav: "reminders",
+        priority: days < 0 ? 0 : days === 0 ? 1 : days <= 7 ? 3 : 7,
+        customId: item.id
       });
     }
   });
@@ -36660,18 +37357,45 @@ function reminderTypeLabel(type) {
     planned: "Planned",
     trip: "Trip",
     savings: "Savings",
-    budget: "Budget"
+    budget: "Budget",
+    custom: "Custom"
   };
 
   return labels[type] || "Reminder";
 }
 
 function createReminderCardHTML(reminder, compact = false) {
+  const customActions =
+    reminder.type === "custom" && !compact
+      ? `
+          <span class="custom-reminder-actions">
+            <button class="tiny-icon-btn edit-custom-reminder" type="button" data-custom-reminder-id="${escapeHTML(reminder.customId || "")}" aria-label="Edit custom reminder">✎</button>
+            <button class="tiny-icon-btn complete-custom-reminder" type="button" data-custom-reminder-id="${escapeHTML(reminder.customId || "")}" aria-label="Mark custom reminder done">✓</button>
+            <button class="tiny-icon-btn delete-custom-reminder" type="button" data-custom-reminder-id="${escapeHTML(reminder.customId || "")}" aria-label="Delete custom reminder">🗑</button>
+          </span>
+        `
+      : `<span class="smart-reminder-arrow">›</span>`;
+
+  const pushEnabled = gentleReminderPushEnabled(reminder);
+  const pushControl = !compact
+    ? `
+        <button
+          class="gentle-push-toggle ${pushEnabled ? "is-on" : ""}"
+          type="button"
+          data-gentle-push-id="${escapeHTML(reminder.id)}"
+          aria-pressed="${pushEnabled ? "true" : "false"}"
+          aria-label="${pushEnabled ? "Turn off" : "Turn on"} phone notification for ${escapeHTML(reminder.title)}"
+        >
+          <span aria-hidden="true">🔔</span>
+          <span>Phone ${pushEnabled ? "On" : "Off"}</span>
+        </button>
+      `
+    : "";
+
   return `
-    <button
+    <div
       class="smart-reminder-card ${reminder.bucket} ${compact ? "compact" : ""}"
-      type="button"
-      data-reminder-nav="${escapeHTML(reminder.nav)}"
+      ${reminder.type === "custom" ? "" : `data-reminder-nav="${escapeHTML(reminder.nav)}"`}
     >
       <span class="smart-reminder-icon">${reminder.icon}</span>
       <span class="smart-reminder-copy">
@@ -36687,9 +37411,10 @@ function createReminderCardHTML(reminder, compact = false) {
         </span>
         <strong>${escapeHTML(reminder.title)}</strong>
         <p>${escapeHTML(reminder.detail)}</p>
+        ${pushControl}
       </span>
-      <span class="smart-reminder-arrow">›</span>
-    </button>
+      ${customActions}
+    </div>
   `;
 }
 
@@ -36792,7 +37517,30 @@ document.querySelectorAll("[data-reminder-filter]").forEach((button) => {
   });
 });
 
+document.addEventListener("click", async (event) => {
+  const toggle = event.target.closest("[data-gentle-push-id]");
+  if (!toggle) return;
+
+  event.preventDefault();
+  event.stopPropagation();
+
+  const reminderId = toggle.dataset.gentlePushId;
+  const nextEnabled = toggle.getAttribute("aria-pressed") !== "true";
+  toggle.disabled = true;
+
+  try {
+    await setGentleReminderPush(reminderId, nextEnabled);
+    showToast(nextEnabled ? "Phone notification added 🔔" : "Phone notification removed");
+  } catch (error) {
+    showToast(error?.message || "Could not update phone notification.");
+  } finally {
+    toggle.disabled = false;
+  }
+});
+
+
 document.addEventListener("click", (event) => {
+  if (event.target.closest("[data-gentle-push-id]")) return;
   const reminder = event.target.closest("[data-reminder-nav]");
 
   if (!reminder) {
@@ -36807,6 +37555,166 @@ document.addEventListener("click", (event) => {
 });
 
 
+
+
+// ========================================
+// CUSTOM REMINDERS
+// ========================================
+
+function persistCustomReminders() {
+  return putRecord(
+    STORES.settings,
+    {
+      key: CUSTOM_REMINDERS_SETTING_KEY,
+      value: customReminders,
+      updatedAt: new Date().toISOString()
+    }
+  );
+}
+
+function toggleCustomReminderPhoneOptions() {
+  const toggle = document.getElementById("customReminderPhone");
+  const options = document.getElementById("customReminderPhoneOptions");
+  if (options) options.hidden = !toggle?.checked;
+}
+
+function openCustomReminderModal(id = "") {
+  const modal = document.getElementById("customReminderModal");
+  const form = document.getElementById("customReminderForm");
+  if (!modal || !form) return;
+
+  const existing = customReminders.find((item) => item.id === id);
+  editingCustomReminderId = existing?.id || "";
+  form.reset();
+
+  document.getElementById("customReminderModalTitle").textContent = existing ? "Edit Reminder" : "Add Reminder";
+  document.getElementById("customReminderTitle").value = existing?.title || "";
+  document.getElementById("customReminderNote").value = existing?.note || "";
+  document.getElementById("customReminderDate").value = existing?.date || getTodayString();
+  document.getElementById("customReminderTime").value = existing?.time || "09:00";
+  document.getElementById("customReminderRepeat").value = existing?.repeat || "none";
+  document.getElementById("customReminderPhone").checked = Boolean(existing?.phoneReminder);
+  document.getElementById("customReminderDaysBefore").value = String(existing?.remindDaysBefore ?? 0);
+  document.getElementById("customReminderPhoneTime").value = existing?.remindTime || existing?.time || "09:00";
+  toggleCustomReminderPhoneOptions();
+  modal.hidden = false;
+  setTimeout(() => document.getElementById("customReminderTitle")?.focus(), 50);
+}
+
+function closeCustomReminderModal() {
+  const modal = document.getElementById("customReminderModal");
+  if (modal) modal.hidden = true;
+  editingCustomReminderId = "";
+}
+
+async function saveCustomReminder(event) {
+  event.preventDefault();
+  const title = document.getElementById("customReminderTitle")?.value.trim() || "";
+  const date = document.getElementById("customReminderDate")?.value || "";
+  const time = document.getElementById("customReminderTime")?.value || "09:00";
+  if (!title || !date) {
+    showToast("Add a title and date for this reminder.");
+    return;
+  }
+
+  const previous = customReminders.find((item) => item.id === editingCustomReminderId);
+  const reminder = {
+    id: previous?.id || generateId("reminder"),
+    title,
+    note: document.getElementById("customReminderNote")?.value.trim() || "",
+    date,
+    time,
+    repeat: document.getElementById("customReminderRepeat")?.value || "none",
+    phoneReminder: await resolvePhoneReminderPreference(
+      Boolean(
+        document.getElementById(
+          "customReminderPhone"
+        )?.checked
+      )
+    ),
+    remindDaysBefore: Number(document.getElementById("customReminderDaysBefore")?.value || 0),
+    remindTime: document.getElementById("customReminderPhoneTime")?.value || time,
+    completed: false,
+    createdAt: previous?.createdAt || new Date().toISOString(),
+    updatedAt: new Date().toISOString()
+  };
+
+  customReminders = previous
+    ? customReminders.map((item) => item.id === reminder.id ? reminder : item)
+    : [...customReminders, reminder];
+
+  await persistCustomReminders();
+  await syncPhoneReminder("custom", reminder);
+  closeCustomReminderModal();
+  renderSmartReminders();
+  showToast(previous ? "Reminder updated ✨" : "Reminder added 🔔");
+}
+
+async function deleteCustomReminder(id) {
+  if (!id) return;
+  customReminders = customReminders.filter((item) => item.id !== id);
+  await persistCustomReminders();
+  await removePhoneReminder("custom", id);
+  renderSmartReminders();
+  showToast("Reminder deleted");
+}
+
+async function completeCustomReminder(id) {
+  const item = customReminders.find((entry) => entry.id === id);
+  if (!item) return;
+
+  if (item.repeat && item.repeat !== "none") {
+    const date = createLocalDate(item.date);
+    if (item.repeat === "daily") date.setDate(date.getDate() + 1);
+    if (item.repeat === "weekly") date.setDate(date.getDate() + 7);
+    if (item.repeat === "monthly") date.setMonth(date.getMonth() + 1);
+    if (item.repeat === "yearly") date.setFullYear(date.getFullYear() + 1);
+    const nextDate = `${date.getFullYear()}-${String(date.getMonth()+1).padStart(2,"0")}-${String(date.getDate()).padStart(2,"0")}`;
+    item.date = nextDate;
+    item.completed = false;
+    item.updatedAt = new Date().toISOString();
+    await persistCustomReminders();
+    await syncPhoneReminder("custom", item);
+    showToast(`Done — next reminder set for ${formatShortDate(nextDate)} 🌸`);
+  } else {
+    item.completed = true;
+    item.updatedAt = new Date().toISOString();
+    await persistCustomReminders();
+    await removePhoneReminder("custom", id);
+    showToast("Reminder marked done ✓");
+  }
+  renderSmartReminders();
+}
+
+document.getElementById("addCustomReminderButton")?.addEventListener("click", () => openCustomReminderModal());
+document.getElementById("closeCustomReminderModal")?.addEventListener("click", closeCustomReminderModal);
+document.getElementById("cancelCustomReminder")?.addEventListener("click", closeCustomReminderModal);
+document.getElementById("customReminderPhone")?.addEventListener("change", toggleCustomReminderPhoneOptions);
+document.getElementById("customReminderForm")?.addEventListener("submit", saveCustomReminder);
+document.getElementById("customReminderModal")?.addEventListener("click", (event) => {
+  if (event.target.id === "customReminderModal") closeCustomReminderModal();
+});
+
+document.addEventListener("click", async (event) => {
+  const edit = event.target.closest(".edit-custom-reminder");
+  if (edit) {
+    event.stopPropagation();
+    openCustomReminderModal(edit.dataset.customReminderId || "");
+    return;
+  }
+  const done = event.target.closest(".complete-custom-reminder");
+  if (done) {
+    event.stopPropagation();
+    await completeCustomReminder(done.dataset.customReminderId || "");
+    return;
+  }
+  const remove = event.target.closest(".delete-custom-reminder");
+  if (remove) {
+    event.stopPropagation();
+    const id = remove.dataset.customReminderId || "";
+    if (id && window.confirm("Delete this reminder?")) await deleteCustomReminder(id);
+  }
+});
 
 
 // ========================================

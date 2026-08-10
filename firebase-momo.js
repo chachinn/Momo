@@ -18,6 +18,7 @@ import {
   doc,
   getDoc,
   setDoc,
+  deleteDoc,
   collection,
   getDocs,
   writeBatch,
@@ -50,6 +51,10 @@ const MEDIA_KEYS = new Set([
   "tripShoppingPhotoData"
 ]);
 const LOCAL_STORAGE_PREFIX = "momo_";
+
+const MOMO_VAPID_PUBLIC_KEY = "BHl9Crz0RRKBkb6h-dNQ9r7mxeyXj_laLEgkO0B72uKdDHtb_uSp4Y8o9Fe_iTCxv8zlRZUqrRaZLdbBTlzg-Ck";
+const PUSH_SUBSCRIPTION_COLLECTION = "pushSubscriptions";
+const NOTIFICATION_QUEUE_COLLECTION = "notificationQueue";
 
 // Device-specific settings stay on this device even when the user signs in.
 const DEVICE_LOCAL_SETTING_KEYS = new Set([
@@ -512,6 +517,166 @@ async function resetPassword() {
   }
 }
 
+function base64UrlToUint8Array(value) {
+  const padding = "=".repeat((4 - (value.length % 4)) % 4);
+  const normalized = (value + padding).replace(/-/g, "+").replace(/_/g, "/");
+  const raw = atob(normalized);
+  return Uint8Array.from([...raw].map((char) => char.charCodeAt(0)));
+}
+
+async function sha256Text(value) {
+  const bytes = new TextEncoder().encode(value);
+  const digest = await crypto.subtle.digest("SHA-256", bytes);
+  return [...new Uint8Array(digest)].map((byte) => byte.toString(16).padStart(2, "0")).join("");
+}
+
+function isIosLike() {
+  const ua = navigator.userAgent || "";
+  return /iPhone|iPad|iPod/i.test(ua) || (navigator.platform === "MacIntel" && navigator.maxTouchPoints > 1);
+}
+
+function isStandalonePwa() {
+  return window.matchMedia?.("(display-mode: standalone)")?.matches || navigator.standalone === true;
+}
+
+async function getPushRegistration() {
+  if (!("serviceWorker" in navigator)) throw new Error("This browser does not support Momo phone notifications.");
+  return navigator.serviceWorker.ready;
+}
+
+async function currentPushSubscription() {
+  try {
+    const registration = await getPushRegistration();
+    return registration.pushManager?.getSubscription?.() || null;
+  } catch {
+    return null;
+  }
+}
+
+async function savePushSubscription(subscription) {
+  if (!currentUser) throw new Error("Sign in under Account & Cloud first to use phone notifications.");
+  const json = subscription.toJSON();
+  const id = await sha256Text(json.endpoint || subscription.endpoint);
+  await setDoc(doc(cloudDb, "users", currentUser.uid, PUSH_SUBSCRIPTION_COLLECTION, id), {
+    endpoint: json.endpoint || subscription.endpoint,
+    keys: json.keys || {},
+    userAgent: navigator.userAgent || "",
+    timezone: Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC",
+    updatedAt: serverTimestamp()
+  }, { merge: true });
+  return id;
+}
+
+async function enablePush() {
+  if (!currentUser) throw new Error("Sign in under Account & Cloud first, then come back here.");
+  if (!("Notification" in window) || !("PushManager" in window)) {
+    if (isIosLike() && !isStandalonePwa()) {
+      throw new Error("On iPhone, install Momo to your Home Screen first, then enable notifications inside the installed app.");
+    }
+    throw new Error("Phone notifications are not supported by this browser.");
+  }
+
+  const permission = await Notification.requestPermission();
+  if (permission !== "granted") throw new Error("Notifications were not allowed. You can change this in your phone settings.");
+
+  const registration = await getPushRegistration();
+  let subscription = await registration.pushManager.getSubscription();
+  if (!subscription) {
+    subscription = await registration.pushManager.subscribe({
+      userVisibleOnly: true,
+      applicationServerKey: base64UrlToUint8Array(MOMO_VAPID_PUBLIC_KEY)
+    });
+  }
+  await savePushSubscription(subscription);
+  return subscription;
+}
+
+async function disablePush() {
+  const subscription = await currentPushSubscription();
+  if (!subscription) return;
+  const json = subscription.toJSON();
+  const id = await sha256Text(json.endpoint || subscription.endpoint);
+  if (currentUser) {
+    try { await deleteDoc(doc(cloudDb, "users", currentUser.uid, PUSH_SUBSCRIPTION_COLLECTION, id)); } catch (error) { console.warn("Could not remove cloud push subscription:", error); }
+  }
+  await subscription.unsubscribe();
+}
+
+function reminderDueAt(item, type) {
+  const dateString = type === "recurring" ? item.nextDueDate : (type === "custom" || type === "gentle") ? item.date : item.targetDate;
+  if (!dateString) return "";
+  const [year, month, day] = dateString.split("-").map(Number);
+  const [hour, minute] = String(item.remindTime || "09:00").split(":").map(Number);
+  const due = new Date(year, month - 1, day, hour || 0, minute || 0, 0, 0);
+  due.setDate(due.getDate() - Number(item.remindDaysBefore || 0));
+  return due.toISOString();
+}
+
+async function syncReminder(type, item) {
+  if (!currentUser || !item?.id) return false;
+  if (!item.phoneReminder) {
+    await deleteReminder(type, item.id);
+    return false;
+  }
+
+  const subscription = await currentPushSubscription();
+  if (!subscription || Notification.permission !== "granted") return false;
+  await savePushSubscription(subscription);
+
+  const dateString = type === "recurring" ? item.nextDueDate : (type === "custom" || type === "gentle") ? item.date : item.targetDate;
+  if (!dateString) return false;
+  const queueId = `${currentUser.uid}__${type}__${item.id}`;
+  const title = type === "recurring" ? (item.name || "Recurring expense") : (type === "custom" || type === "gentle") ? (item.title || "Reminder") : (item.title || "Planned expense");
+  const amount = Number(item.amount || 0);
+  const currency = item.currency || "PHP";
+
+  await setDoc(doc(cloudDb, NOTIFICATION_QUEUE_COLLECTION, queueId), {
+    uid: currentUser.uid,
+    localId: item.id,
+    type,
+    title,
+    amount,
+    currency,
+    note: (type === "custom" || type === "gentle") ? (item.note || "") : "",
+    repeat: type === "custom" ? (item.repeat || "none") : "none",
+    dueDate: dateString,
+    remindDaysBefore: Number(item.remindDaysBefore || 0),
+    remindTime: item.remindTime || "09:00",
+    dueAt: reminderDueAt(item, type),
+    timezone: Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC",
+    enabled: true,
+    updatedAt: serverTimestamp()
+  }, { merge: true });
+  return true;
+}
+
+async function deleteReminder(type, id) {
+  if (!currentUser || !id) return false;
+  const queueId = `${currentUser.uid}__${type}__${id}`;
+  await deleteDoc(doc(cloudDb, NOTIFICATION_QUEUE_COLLECTION, queueId));
+  return true;
+}
+
+async function getPushStatus() {
+  if (!currentUser) return { enabled: false, message: "Sign in under Account & Cloud to enable phone notifications." };
+  if (isIosLike() && !isStandalonePwa()) return { enabled: false, message: "On iPhone, open the installed Home Screen version of Momo to enable notifications." };
+  if (!("Notification" in window) || !("PushManager" in window)) return { enabled: false, message: "This browser does not support phone notifications." };
+  if (Notification.permission === "denied") return { enabled: false, message: "Notifications are blocked in your phone settings." };
+  const subscription = await currentPushSubscription();
+  return subscription
+    ? { enabled: true, message: "Notifications are enabled on this phone. Only reminders you switch on will alert your phone." }
+    : { enabled: false, message: "Optional. Enable phone alerts, then choose which Gentle Reminders may notify you." };
+}
+
+window.MomoPush = {
+  enable: enablePush,
+  disable: disablePush,
+  getStatus: getPushStatus,
+  syncReminder,
+  deleteReminder
+};
+window.dispatchEvent(new Event("momo-push-ready"));
+
 function bindEvents() {
   byId("googleCloudSignIn")?.addEventListener("click", googleSignIn);
   byId("emailCloudSignIn")?.addEventListener("click", () => emailSignIn("signin"));
@@ -535,10 +700,24 @@ function bindEvents() {
     await refreshCloudMetadata();
   });
   byId("cloudSignOut")?.addEventListener("click", async () => {
-    if (window.confirm("Sign out of your Momo account? Your local Momo data will stay on this device.")) {
-      await signOut(auth);
-      toast("Signed out. Local Momo data is still here.");
+    if (!window.confirm("Sign out of your Momo account? Your local Momo data will stay on this device.")) {
+      return;
     }
+
+    // Remove this browser's push subscription from the account before
+    // Firebase clears currentUser. This prevents a later account on the
+    // same phone/browser from inheriting the previous user's endpoint.
+    try {
+      await disablePush();
+    } catch (error) {
+      console.warn(
+        "Could not fully disable phone notifications before sign-out:",
+        error
+      );
+    }
+
+    await signOut(auth);
+    toast("Signed out. Local Momo data is still here, and phone alerts are off on this device.");
   });
 }
 
@@ -555,9 +734,11 @@ async function init() {
     cloudMetadata = null;
     if (!user) {
       showSignedOut();
+      window.dispatchEvent(new Event("momo-push-ready"));
       return;
     }
     showSignedIn(user);
+    window.dispatchEvent(new Event("momo-push-ready"));
     // Authentication is optional. Do not read Firestore on routine app startup.
     // Cloud metadata is fetched only when the user explicitly asks for it.
   });
