@@ -1,6 +1,6 @@
 // ========================================
 // MOMO
-// Momo 1.3.4 — Form Comfort + Flexible Recurring Amounts
+// Momo 1.3.5 — Tutorial + Guide Refresh
 // CLEAN FOUNDATION + FUNCTIONAL TRIPS
 // ========================================
 
@@ -37456,16 +37456,34 @@ const MOMO_HELP_TOPICS = {
   recurring: {
     emoji: "↻",
     title: "Recurring Expenses",
-    short: "Recurring Expenses keep subscriptions and regular payments visible without storing banking credentials.",
-    intro: "Use this area as a local tracker for costs that repeat on a schedule.",
+    short: "Recurring Expenses keep repeat payments visible, whether the amount stays fixed or changes each time.",
+    intro: "Use this area as a local tracker for subscriptions, bills, memberships, and other costs that repeat on a schedule.",
     steps: [
-      "Open Recurring Expenses from the menu.",
-      "Tap + and enter the recurring item's details.",
-      "Choose its frequency and next due date.",
-      "Save it to include it in recurring summaries and due-date tracking.",
-      "Edit or remove the recurring item when the real-world payment changes or ends."
+      "Open Recurring Expenses from the menu and tap +.",
+      "Enter the name, currency, category, payment method, frequency, and next due date.",
+      "For a fixed payment, enter its normal amount.",
+      "If the amount changes from one payment to the next, turn on Amount varies each time. You can leave the usual amount blank or save a typical amount as a reference.",
+      "When you tap Log Expense on a variable recurring item, Momo opens Add Expense with the recurring details prefilled so you can enter that payment's actual amount.",
+      "The next due date advances after the expense is saved.",
+      "Edit or remove the recurring item when the schedule changes or ends."
     ],
-    tip: "Recurring tracking is separate from connecting a bank or card account — Momo remains local."
+    tip: "Recurring Expenses are only a local tracker — Momo never connects to or charges your bank or card."
+  },
+
+  payables: {
+    emoji: "🌸",
+    title: "Payables",
+    short: "Payables keep cards, loans, installments, and borrowed money in one gentle place.",
+    intro: "Use Payables for money you still need to pay without mixing it into ordinary expense history before the payment actually happens.",
+    steps: [
+      "Open Payables from the menu and tap +.",
+      "Choose what kind of payable it is: credit card, installment, loan, borrowed money, or Other.",
+      "Add the name, remaining balance, currency, due date, and any payment schedule you want to remember.",
+      "Credit cards can also keep details such as credit limit, statement balance, minimum due, and statement day.",
+      "Open a payable and use Record Payment when you actually pay part or all of it.",
+      "Momo updates the remaining balance and keeps the payment history for that payable."
+    ],
+    tip: "Payables are tracking records only. Recording a payable or payment in Momo does not move real money."
   },
 
   planned: {
@@ -37522,7 +37540,23 @@ const MOMO_HELP_TOPICS = {
       "Position and zoom the wallpaper in the crop screen, then apply it.",
       "Adjust the overlay strength if you want more or less separation between the photo and Momo's cards."
     ],
-    tip: "Appearance preferences are local and are included in Momo's full backup."
+    tip: "Appearance preferences are device-local. Your manual full local backup can protect them, while cloud backup intentionally leaves device appearance local."
+  },
+
+  "account-cloud": {
+    emoji: "☁️",
+    title: "Account & Cloud",
+    short: "Momo works without an account. Sign in only if you want access to optional cloud backup.",
+    intro: "Your normal Momo data stays local on this device. Logging in does not automatically sync, upload, restore, merge, or replace your local records.",
+    steps: [
+      "Use Momo normally without signing in if you only want local storage.",
+      "Open Account & Cloud from the menu when you want to sign in or create an account.",
+      "After signing in, your existing local data stays exactly where it is.",
+      "Use Upload This Device to Cloud only when you intentionally want to replace your current cloud copy with this device's local data.",
+      "Use Restore Cloud Copy to This Device only when you intentionally want to replace local records with the saved cloud copy.",
+      "Sign out whenever you want. Momo remains usable and your local data stays on the device."
+    ],
+    tip: "Login and Restore are separate actions. Signing in by itself never replaces your local Momo."
   },
 
   backup: {
