@@ -9403,8 +9403,8 @@ body:not([data-theme]) {
    These keep Momo's neutral typography while recoloring the
    actual surfaces, borders, selected states and decorative accents. */
 body[data-theme="sakura"] {
-  --momo-peach: #efb4ce;
-  --momo-peach-deep: #d889ad;
+  --momo-peach: #f3c5d9;
+  --momo-peach-deep: #cc7fa5;
   --momo-apricot: #f5d3e2;
   --momo-cream: #fff9fc;
   --momo-blush: #fcecf4;
@@ -16178,4 +16178,117 @@ textarea {
 
 .gentle-push-toggle:disabled {
   opacity: 0.55;
+}
+
+
+/* ========================================
+   SOFT PINK MOMO FRUIT ICON
+======================================== */
+
+.momo-peach-icon {
+  --icon-size: 1.05em;
+  display: inline-block;
+  width: var(--icon-size);
+  height: calc(var(--icon-size) * 0.94);
+  position: relative;
+  vertical-align: middle;
+  border-radius: 60% 60% 48% 48% / 58% 58% 44% 44%;
+  background:
+    radial-gradient(circle at 32% 28%, rgba(255, 255, 255, 0.92) 0 16%, rgba(255, 255, 255, 0.28) 17% 24%, transparent 25%),
+    linear-gradient(145deg, #ffe3ef 0%, #f9cbdf 48%, #efafca 100%);
+  box-shadow:
+    inset 0 -0.1em 0 rgba(255, 255, 255, 0.2),
+    inset 0.08em 0 0 rgba(223, 141, 181, 0.18),
+    inset -0.08em 0 0 rgba(223, 141, 181, 0.18),
+    0 0.1em 0.22em rgba(205, 124, 163, 0.16);
+}
+
+.momo-peach-icon::before {
+  content: "";
+  position: absolute;
+  top: -0.12em;
+  left: 47%;
+  width: 0.14em;
+  height: 0.24em;
+  border-radius: 999px;
+  background: #bf94a6;
+  transform: translateX(-50%) rotate(8deg);
+}
+
+.momo-peach-icon::after {
+  content: "";
+  position: absolute;
+  top: -0.18em;
+  left: 56%;
+  width: 0.4em;
+  height: 0.23em;
+  border-radius: 60% 40% 65% 35%;
+  background: linear-gradient(135deg, #dcf3df, #b8ddb8);
+  transform: rotate(-20deg);
+}
+
+.header-peach {
+  --icon-size: 1.18rem;
+}
+
+.footer-peach,
+.inline-peach {
+  --icon-size: 1em;
+}
+
+.drawer-peach {
+  background: linear-gradient(135deg, #fff1f7, #ffe2ef);
+}
+
+.drawer-peach-icon {
+  --icon-size: 1.45rem;
+}
+
+.momo-peach-kicker {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.38rem;
+}
+
+.momo-welcome-peach .welcome-peach-icon {
+  --icon-size: 4rem;
+  filter: drop-shadow(0 12px 20px rgba(216, 137, 173, 0.18));
+}
+
+.payables-peach,
+.guide-group-icon,
+.tutorial-mini-brand > .momo-peach-icon,
+.tutorial-tip-emoji > .momo-peach-icon,
+.help-topic-emoji > .momo-peach-icon,
+.help-topic-tip > .momo-peach-icon {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.payables-peach-icon {
+  --icon-size: 1.5rem;
+}
+
+.guide-hero-peach-icon {
+  --icon-size: 3rem;
+}
+
+.guide-group-peach-icon,
+.tutorial-mini-peach,
+.tip-peach-icon,
+.help-topic-peach-icon {
+  --icon-size: 1.25rem;
+}
+
+.tutorial-big-peach.momo-peach-icon {
+  --icon-size: 4.6rem;
+}
+
+.empty-icon .momo-peach-icon {
+  --icon-size: 1.85rem;
+}
+
+.help-topic-tip .momo-peach-icon {
+  flex: 0 0 auto;
 }

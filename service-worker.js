@@ -1,10 +1,10 @@
 // ========================================
 // MOMO SERVICE WORKER
-// Momo 1.3.7 — payables update + push reminders + stable network-first PWA shell
+// Momo 1.3.8 — payables update + push reminders + stable network-first PWA shell
 // ========================================
 
 const CACHE_NAME =
-  "momo-runtime-shell-v1.3.7";
+  "momo-runtime-shell-v1.3.8";
 
 
 const APP_SHELL = [
@@ -187,7 +187,7 @@ self.addEventListener("push", (event) => {
   let data = {};
   try { data = event.data?.json?.() || {}; } catch { data = { body: event.data?.text?.() || "Momo has a reminder for you." }; }
 
-  const title = data.title || "Momo reminder 🍑";
+  const title = data.title || "Momo reminder";
   const options = {
     body: data.body || "You have something coming up.",
     icon: "./icons/icon-192.png",

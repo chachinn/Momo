@@ -17,7 +17,7 @@
   <meta name="apple-mobile-web-app-title" content="Momo">
 
   <title>Momo — Spending Diary</title>
-  <meta name="momo-app-version" content="1.3.7">
+  <meta name="momo-app-version" content="1.3.8">
 
   <link rel="manifest" href="manifest.json">
   <link rel="apple-touch-icon" href="icons/icon-192.png">
@@ -46,7 +46,7 @@
       </button>
 
       <div class="brand" aria-label="Momo">
-        <span aria-hidden="true">🍑</span>
+        <span class="momo-peach-icon header-peach" aria-hidden="true"></span>
         <span class="brand-name">momo</span>
       </div>
 
@@ -78,7 +78,7 @@
     >
       <div class="drawer-header">
         <div class="drawer-brand">
-          <div class="drawer-peach">🍑</div>
+          <div class="drawer-peach"><span class="momo-peach-icon drawer-peach-icon" aria-hidden="true"></span></div>
 
           <div>
             <p class="eyebrow">Spending Diary</p>
@@ -309,7 +309,7 @@
       </div>
 
       <div class="drawer-footer">
-        <span>🍑</span>
+        <span class="momo-peach-icon footer-peach" aria-hidden="true"></span>
         <p>
           A little sweeter every day.
         </p>
@@ -329,7 +329,7 @@
       >
         <section class="momo-home-welcome">
           <div>
-            <p class="momo-peach-kicker">🍑 HELLO, PEACH</p>
+            <p class="momo-peach-kicker"><span class="momo-peach-icon inline-peach" aria-hidden="true"></span> HELLO, PEACH</p>
             <h1>Your money,<br>your way.</h1>
             <p>
               A soft little place for spending, saving, and adventures.
@@ -337,7 +337,7 @@
           </div>
 
           <div class="momo-welcome-peach" aria-hidden="true">
-            <span>🍑</span>
+            <span class="momo-peach-icon welcome-peach-icon" aria-hidden="true"></span>
             <i>✦</i>
           </div>
         </section>
@@ -555,7 +555,7 @@
         </div>
 
         <section class="reminder-how-card">
-          <span>🍑</span>
+          <span class="momo-peach-icon inline-peach" aria-hidden="true"></span>
           <div>
             <strong>Automatic + your own reminders</strong>
             <p>Momo still gathers useful dates automatically. You can also add a custom reminder, repeat it, and optionally send it to your phone.</p>
@@ -2237,7 +2237,7 @@
 
         <section class="payables-hero">
           <div class="payables-hero-copy">
-            <span class="payables-peach">🍑</span>
+            <span class="payables-peach"><span class="momo-peach-icon payables-peach-icon" aria-hidden="true"></span></span>
             <p>Still to pay</p>
             <strong id="payablesTotal">₱0.00</strong>
             <small id="payablesCount">Nothing waiting on you 🌸</small>
@@ -2731,7 +2731,7 @@
             <button id="restoreCloudBackup" class="secondary-button cloud-full-btn" type="button" data-cloud-action disabled>⇩ Restore Cloud Copy to This Device</button>
 
             <div class="cloud-safety-note">
-              <span>🍑</span>
+              <span class="momo-peach-icon inline-peach" aria-hidden="true"></span>
               <p><strong>Local-first by design.</strong> Signing in does not sync or replace your local records. Cloud upload and restore happen only when you choose them.</p>
             </div>
           </section>
@@ -2766,7 +2766,7 @@
         </div>
 
         <section class="guide-hero-card">
-          <div class="guide-hero-peach" aria-hidden="true">🍑</div>
+          <div class="guide-hero-peach" aria-hidden="true"><span class="momo-peach-icon guide-hero-peach-icon" aria-hidden="true"></span></div>
           <div>
             <p class="section-kicker">MEET MOMO</p>
             <h2>Need the tour again?</h2>
@@ -2782,7 +2782,7 @@
         <div class="guide-groups">
           <details class="guide-group" open>
             <summary>
-              <span class="guide-group-icon">🍑</span>
+              <span class="guide-group-icon"><span class="momo-peach-icon guide-group-peach-icon" aria-hidden="true"></span></span>
               <span><strong>Getting Started</strong><small>Your first entries in Momo</small></span>
               <i>⌄</i>
             </summary>
@@ -2882,7 +2882,7 @@
           </details>
         </div>
 
-        <p class="guide-footer-note">🍑 Momo stores your personal app data locally on this device unless you choose to export it.</p>
+        <p class="guide-footer-note"><span class="momo-peach-icon inline-peach" aria-hidden="true"></span> Momo stores your personal app data locally on this device unless you choose to export it.</p>
       </section>
 
     </main>
@@ -2950,13 +2950,13 @@
     <div id="welcomeTour" class="tutorial-overlay" hidden>
       <section class="tutorial-shell" role="dialog" aria-modal="true" aria-labelledby="welcomeTourTitle">
         <div class="tutorial-topbar">
-          <div class="tutorial-mini-brand"><span>🍑</span><strong>momo</strong></div>
+          <div class="tutorial-mini-brand"><span class="momo-peach-icon tutorial-mini-peach" aria-hidden="true"></span><strong>momo</strong></div>
           <button id="skipWelcomeTour" class="tutorial-skip-btn" type="button">Skip for now</button>
         </div>
 
         <div id="welcomeTourTrack" class="tutorial-track">
           <article class="tutorial-slide active" data-tutorial-slide="0">
-            <div class="tutorial-art tutorial-art-welcome"><span class="tutorial-big-peach">🍑</span><i>✦</i><i>✿</i></div>
+            <div class="tutorial-art tutorial-art-welcome"><span class="tutorial-big-peach momo-peach-icon" aria-hidden="true"></span><i>✦</i><i>✿</i></div>
             <p class="tutorial-kicker">WELCOME TO MOMO</p>
             <h2 id="welcomeTourTitle">Your money,<br>your way.</h2>
             <p>Track spending, budgets, plans, trips, and shared costs in one private, offline-first place.</p>
@@ -3040,7 +3040,7 @@
     <!-- FIRST-USE CONTEXT TIP -->
     <div id="contextTipModal" class="modal-backdrop tutorial-tip-backdrop" hidden>
       <section class="tutorial-tip-sheet" role="dialog" aria-modal="true" aria-labelledby="contextTipTitle">
-        <div id="contextTipEmoji" class="tutorial-tip-emoji">🍑</div>
+        <div id="contextTipEmoji" class="tutorial-tip-emoji"><span class="momo-peach-icon tip-peach-icon" aria-hidden="true"></span></div>
         <p class="eyebrow">A little Momo tip</p>
         <h2 id="contextTipTitle">Good to know</h2>
         <p id="contextTipCopy"></p>
@@ -3062,10 +3062,10 @@
           </div>
           <button id="closeHelpTopic" class="icon-btn soft" type="button" aria-label="Close guide">×</button>
         </div>
-        <div id="helpTopicEmoji" class="help-topic-emoji">🍑</div>
+        <div id="helpTopicEmoji" class="help-topic-emoji"><span class="momo-peach-icon help-topic-peach-icon" aria-hidden="true"></span></div>
         <p id="helpTopicIntro" class="help-topic-intro"></p>
         <ol id="helpTopicSteps" class="help-topic-steps"></ol>
-        <div id="helpTopicTip" class="help-topic-tip" hidden><span>🍑</span><div><strong>Momo tip</strong><p></p></div></div>
+        <div id="helpTopicTip" class="help-topic-tip" hidden><span class="momo-peach-icon inline-peach" aria-hidden="true"></span><div><strong>Momo tip</strong><p></p></div></div>
         <button id="doneHelpTopic" class="primary-button help-topic-done" type="button">Got it</button>
       </section>
     </div>

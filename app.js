@@ -1,6 +1,6 @@
 // ========================================
 // MOMO
-// Momo 1.3.7 — Payables Custom Type + Flexible Balance
+// Momo 1.3.8 — Payables Custom Type + Flexible Balance
 // CLEAN FOUNDATION + FUNCTIONAL TRIPS
 // ========================================
 
@@ -6059,6 +6059,15 @@ function getPeriodLabel(
 }
 
 
+function getMomoPeachIconHTML(
+  extraClass = ""
+) {
+
+  return `<span class="momo-peach-icon${extraClass ? ` ${extraClass}` : ""}" aria-hidden="true"></span>`;
+
+}
+
+
 function getCategoryEmoji(
   category
 ) {
@@ -6096,7 +6105,7 @@ function getCategoryEmoji(
       "📚",
 
     Other:
-      "🍑"
+      "✿"
 
   };
 
@@ -6105,7 +6114,7 @@ function getCategoryEmoji(
     map[
       category
     ] ||
-    "🍑"
+    "✿"
   );
 
 }
@@ -9542,7 +9551,7 @@ budgetForm?.addEventListener(
 
         ? "Budget updated ✨"
 
-        : "Budget added 🍑"
+        : "Budget added ✿"
     );
 
   }
@@ -17842,7 +17851,7 @@ function renderTransactions() {
         <div class="empty-panel compact-empty">
 
           <span class="empty-icon">
-            🍑
+            ${getMomoPeachIconHTML()}
           </span>
 
           <h3>
@@ -21980,7 +21989,7 @@ monthlyIncomeForm
         raw ===
           ""
           ? "Monthly income cleared"
-          : "Monthly income saved 🍑"
+          : "Monthly income saved ✿"
       );
 
     }
@@ -36707,7 +36716,7 @@ async function savePayable(event) {
   else cards.push(record);
   closePayableEditor();
   renderPayables();
-  showToast(existing ? "Payable updated 🌸" : "Payable added 🍑");
+  showToast(existing ? "Payable updated 🌸" : "Payable added ✿");
 }
 
 function renderPayableDetail(id) {
@@ -38861,7 +38870,7 @@ function renderWelcomeTour() {
     welcomeTourNext.textContent =
       welcomeTourIndex ===
         maxIndex
-        ? "Start using Momo 🍑"
+        ? "Start using Momo ✿"
         : "Next";
 
   }
@@ -39212,9 +39221,17 @@ function openHelpTopic(
     helpTopicEmoji
   ) {
 
-    helpTopicEmoji.textContent =
-      topic.emoji ||
-      "🍑";
+    if (topic.emoji) {
+
+      helpTopicEmoji.textContent =
+        topic.emoji;
+
+    } else {
+
+      helpTopicEmoji.innerHTML =
+        getMomoPeachIconHTML();
+
+    }
 
   }
 
@@ -39492,9 +39509,17 @@ function maybeShowFirstUseTip(
     contextTipEmoji
   ) {
 
-    contextTipEmoji.textContent =
-      topic.emoji ||
-      "🍑";
+    if (topic.emoji) {
+
+      contextTipEmoji.textContent =
+        topic.emoji;
+
+    } else {
+
+      contextTipEmoji.innerHTML =
+        getMomoPeachIconHTML();
+
+    }
 
   }
 
@@ -39893,7 +39918,7 @@ async function initializeApp() {
 
 
   console.log(
-    "🍑 Momo ready."
+    "Momo ready."
   );
 
 }
