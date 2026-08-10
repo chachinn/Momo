@@ -15882,7 +15882,8 @@ expenseForm?.addEventListener(
         const nextDate =
           getNextRecurringDate(
             recurringSource.nextDueDate,
-            recurringSource.frequency
+            recurringSource.frequency,
+            recurringSource.scheduleDay
           );
 
 
@@ -24236,22 +24237,6 @@ function getCalendarMonthKey(
 }
 
 
-function getExpenseDateKey(
-  expense
-) {
-
-  return (
-    expense.date ||
-    (
-      expense.createdAt
-        ? expense.createdAt.slice(0, 10)
-        : ""
-    )
-  );
-
-}
-
-
 function getExpensesForDate(
   dateKey
 ) {
@@ -25036,7 +25021,8 @@ function getDaysInMonth(
 
 function addMonthsClamped(
   dateString,
-  months
+  months,
+  anchorDay = null
 ) {
 
   const date =
@@ -25054,8 +25040,16 @@ function addMonthsClamped(
   }
 
 
+  const parsedAnchorDay =
+    Number(anchorDay);
+
+
   const originalDay =
-    date.getDate();
+    Number.isInteger(parsedAnchorDay) &&
+    parsedAnchorDay >= 1 &&
+    parsedAnchorDay <= 31
+      ? parsedAnchorDay
+      : date.getDate();
 
 
   const targetMonthStart =
@@ -25166,7 +25160,8 @@ function addDaysToDateString(
 
 function getNextRecurringDate(
   dateString,
-  frequency
+  frequency,
+  anchorDay = null
 ) {
 
   switch (
@@ -25183,14 +25178,16 @@ function getNextRecurringDate(
     case "quarterly":
       return addMonthsClamped(
         dateString,
-        3
+        3,
+        anchorDay
       );
 
 
     case "yearly":
       return addMonthsClamped(
         dateString,
-        12
+        12,
+        anchorDay
       );
 
 
@@ -25198,7 +25195,8 @@ function getNextRecurringDate(
     default:
       return addMonthsClamped(
         dateString,
-        1
+        1,
+        anchorDay
       );
 
   }
@@ -25868,6 +25866,17 @@ recurringForm?.addEventListener(
 
       nextDueDate:
         recurringNextDueDate.value,
+
+      scheduleDay:
+        previous?.nextDueDate ===
+          recurringNextDueDate.value &&
+        Number(previous?.scheduleDay)
+          ? Number(previous.scheduleDay)
+          : Number(
+              recurringNextDueDate.value
+                .split("-")[2] ||
+              1
+            ),
 
       endDate:
         recurringEndDate.value,
@@ -26674,7 +26683,8 @@ function attachRecurringActions() {
             const nextDate =
               getNextRecurringDate(
                 recurring.nextDueDate,
-                recurring.frequency
+                recurring.frequency,
+                recurring.scheduleDay
               );
 
 
@@ -37015,6 +37025,9 @@ async function resyncAllPhoneReminders() {
       )
   );
 
+  let gentlePreferencesChanged =
+    false;
+
   Object.entries(
     gentlePushPreferences || {}
   ).forEach(
@@ -37031,6 +37044,19 @@ async function resyncAllPhoneReminders() {
             reminderId
           )
         );
+
+        gentlePushPreferences = {
+          ...gentlePushPreferences,
+          [reminderId]: {
+            ...preference,
+            enabled: false,
+            resolvedAt:
+              new Date().toISOString()
+          }
+        };
+
+        gentlePreferencesChanged =
+          true;
         return;
       }
 
@@ -37043,6 +37069,7 @@ async function resyncAllPhoneReminders() {
             note: reminder.detail,
             date:
               reminder.date ||
+              preference.scheduledDate ||
               getTodayString(),
             phoneReminder: true,
             remindDaysBefore: 0,
@@ -37056,6 +37083,10 @@ async function resyncAllPhoneReminders() {
   await Promise.allSettled(
     tasks
   );
+
+  if (gentlePreferencesChanged) {
+    await persistGentlePushPreferences();
+  }
 }
 
 window.addEventListener(
@@ -37154,10 +37185,23 @@ async function setGentleReminderPush(reminderId, enabled) {
     await persistCustomReminders();
     enabled ? await syncPhoneReminder("custom", item) : await removePhoneReminder("custom", item.id);
   } else {
+    const scheduledDate =
+      enabled
+        ? (
+            reminder.date ||
+            getTodayString()
+          )
+        : (
+            gentlePushPreferences?.[reminder.id]
+              ?.scheduledDate ||
+            ""
+          );
+
     gentlePushPreferences = {
       ...gentlePushPreferences,
       [reminder.id]: {
         enabled,
+        scheduledDate,
         updatedAt: new Date().toISOString()
       }
     };
@@ -37167,7 +37211,7 @@ async function setGentleReminderPush(reminderId, enabled) {
       id: reminder.id,
       title: reminder.title,
       note: reminder.detail,
-      date: reminder.date || getTodayString(),
+      date: scheduledDate || reminder.date || getTodayString(),
       phoneReminder: enabled,
       remindDaysBefore: 0,
       remindTime: "09:00"
@@ -37625,6 +37669,14 @@ async function saveCustomReminder(event) {
     date,
     time,
     repeat: document.getElementById("customReminderRepeat")?.value || "none",
+    repeatAnchorDay:
+      previous?.date === date &&
+      Number(previous?.repeatAnchorDay)
+        ? Number(previous.repeatAnchorDay)
+        : Number(
+            date.split("-")[2] ||
+            1
+          ),
     phoneReminder: await resolvePhoneReminderPreference(
       Boolean(
         document.getElementById(
@@ -37664,12 +37716,52 @@ async function completeCustomReminder(id) {
   if (!item) return;
 
   if (item.repeat && item.repeat !== "none") {
-    const date = createLocalDate(item.date);
-    if (item.repeat === "daily") date.setDate(date.getDate() + 1);
-    if (item.repeat === "weekly") date.setDate(date.getDate() + 7);
-    if (item.repeat === "monthly") date.setMonth(date.getMonth() + 1);
-    if (item.repeat === "yearly") date.setFullYear(date.getFullYear() + 1);
-    const nextDate = `${date.getFullYear()}-${String(date.getMonth()+1).padStart(2,"0")}-${String(date.getDate()).padStart(2,"0")}`;
+    const anchorDay =
+      Number(item.repeatAnchorDay) ||
+      Number(String(item.date || "").split("-")[2]) ||
+      1;
+
+    let nextDate = item.date;
+
+    if (item.repeat === "daily") {
+      nextDate = addDaysToDateString(
+        item.date,
+        1
+      );
+    }
+
+    if (item.repeat === "weekly") {
+      nextDate = addDaysToDateString(
+        item.date,
+        7
+      );
+    }
+
+    if (item.repeat === "monthly") {
+      nextDate = addMonthsClamped(
+        item.date,
+        1,
+        anchorDay
+      );
+    }
+
+    if (item.repeat === "yearly") {
+      nextDate = addMonthsClamped(
+        item.date,
+        12,
+        anchorDay
+      );
+    }
+
+    if (!nextDate) {
+      showToast(
+        "Could not move this reminder to its next date."
+      );
+      return;
+    }
+
+    item.repeatAnchorDay =
+      anchorDay;
     item.date = nextDate;
     item.completed = false;
     item.updatedAt = new Date().toISOString();
@@ -39723,6 +39815,21 @@ async function initializeApp() {
   safelyInitializeInterfaceStep(
     "Main screen rendering",
     renderAll
+  );
+
+
+  // Firebase auth/push can become ready before IndexedDB finishes loading.
+  // Run a second, non-blocking reconciliation now that local reminder data
+  // is definitely available, so offline edits are not missed on startup.
+  Promise.resolve(
+    resyncAllPhoneReminders()
+  ).catch(
+    (error) => {
+      console.warn(
+        "Momo phone reminder startup sync skipped:",
+        error
+      );
+    }
   );
 
 

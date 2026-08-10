@@ -55,6 +55,8 @@ const LOCAL_STORAGE_PREFIX = "momo_";
 const MOMO_VAPID_PUBLIC_KEY = "BHl9Crz0RRKBkb6h-dNQ9r7mxeyXj_laLEgkO0B72uKdDHtb_uSp4Y8o9Fe_iTCxv8zlRZUqrRaZLdbBTlzg-Ck";
 const PUSH_SUBSCRIPTION_COLLECTION = "pushSubscriptions";
 const NOTIFICATION_QUEUE_COLLECTION = "notificationQueue";
+const PENDING_PUSH_DELETIONS_KEY = "momo_pending_push_deletions_v1";
+const LAST_PUSH_UID_KEY = "momo_last_push_uid";
 
 // Device-specific settings stay on this device even when the user signs in.
 const DEVICE_LOCAL_SETTING_KEYS = new Set([
@@ -588,6 +590,7 @@ async function enablePush() {
     });
   }
   await savePushSubscription(subscription);
+  await flushPendingPushDeletions();
   return subscription;
 }
 
@@ -600,6 +603,59 @@ async function disablePush() {
     try { await deleteDoc(doc(cloudDb, "users", currentUser.uid, PUSH_SUBSCRIPTION_COLLECTION, id)); } catch (error) { console.warn("Could not remove cloud push subscription:", error); }
   }
   await subscription.unsubscribe();
+}
+
+function readPendingPushDeletions() {
+  try {
+    const parsed = JSON.parse(localStorage.getItem(PENDING_PUSH_DELETIONS_KEY) || "[]");
+    return Array.isArray(parsed) ? parsed : [];
+  } catch {
+    return [];
+  }
+}
+
+function writePendingPushDeletions(items) {
+  localStorage.setItem(PENDING_PUSH_DELETIONS_KEY, JSON.stringify(items));
+}
+
+function rememberPendingPushDeletion(uid, type, id) {
+  if (!uid || !type || !id) return;
+  const items = readPendingPushDeletions();
+  if (!items.some((item) => item.uid === uid && item.type === type && item.id === id)) {
+    items.push({ uid, type, id });
+    writePendingPushDeletions(items);
+  }
+}
+
+function forgetPendingPushDeletion(uid, type, id) {
+  const items = readPendingPushDeletions().filter(
+    (item) => !(item.uid === uid && item.type === type && item.id === id)
+  );
+  writePendingPushDeletions(items);
+}
+
+async function flushPendingPushDeletions() {
+  if (!currentUser) return;
+  const uid = currentUser.uid;
+  const items = readPendingPushDeletions();
+  const remaining = [];
+
+  for (const item of items) {
+    if (item.uid !== uid) {
+      remaining.push(item);
+      continue;
+    }
+
+    const queueId = `${uid}__${item.type}__${item.id}`;
+    try {
+      await deleteDoc(doc(cloudDb, NOTIFICATION_QUEUE_COLLECTION, queueId));
+    } catch (error) {
+      remaining.push(item);
+      console.warn("Could not finish a pending Momo reminder deletion:", error);
+    }
+  }
+
+  writePendingPushDeletions(remaining);
 }
 
 function reminderDueAt(item, type) {
@@ -626,6 +682,7 @@ async function syncReminder(type, item) {
   const dateString = type === "recurring" ? item.nextDueDate : (type === "custom" || type === "gentle") ? item.date : item.targetDate;
   if (!dateString) return false;
   const queueId = `${currentUser.uid}__${type}__${item.id}`;
+  forgetPendingPushDeletion(currentUser.uid, type, item.id);
   const title = type === "recurring" ? (item.name || "Recurring expense") : (type === "custom" || type === "gentle") ? (item.title || "Reminder") : (item.title || "Planned expense");
   const amount = Number(item.amount || 0);
   const currency = item.currency || "PHP";
@@ -651,10 +708,30 @@ async function syncReminder(type, item) {
 }
 
 async function deleteReminder(type, id) {
-  if (!currentUser || !id) return false;
-  const queueId = `${currentUser.uid}__${type}__${id}`;
-  await deleteDoc(doc(cloudDb, NOTIFICATION_QUEUE_COLLECTION, queueId));
-  return true;
+  if (!id) return false;
+
+  const uid =
+    currentUser?.uid ||
+    localStorage.getItem(LAST_PUSH_UID_KEY) ||
+    "";
+
+  if (!uid) return false;
+
+  if (!currentUser || currentUser.uid !== uid) {
+    rememberPendingPushDeletion(uid, type, id);
+    return false;
+  }
+
+  const queueId = `${uid}__${type}__${id}`;
+
+  try {
+    await deleteDoc(doc(cloudDb, NOTIFICATION_QUEUE_COLLECTION, queueId));
+    forgetPendingPushDeletion(uid, type, id);
+    return true;
+  } catch (error) {
+    rememberPendingPushDeletion(uid, type, id);
+    throw error;
+  }
 }
 
 async function getPushStatus() {
@@ -738,10 +815,22 @@ async function init() {
       return;
     }
     showSignedIn(user);
+    localStorage.setItem(LAST_PUSH_UID_KEY, user.uid);
+    try {
+      await flushPendingPushDeletions();
+    } catch (error) {
+      console.warn("Could not flush pending phone reminder deletions:", error);
+    }
     window.dispatchEvent(new Event("momo-push-ready"));
     // Authentication is optional. Do not read Firestore on routine app startup.
     // Cloud metadata is fetched only when the user explicitly asks for it.
   });
 }
+
+window.addEventListener("online", () => {
+  flushPendingPushDeletions().catch((error) => {
+    console.warn("Could not flush Momo reminder deletions after reconnecting:", error);
+  });
+});
 
 init();
