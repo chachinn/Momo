@@ -1,6 +1,6 @@
 // ========================================
 // MOMO
-// Momo 1.3.3 — Local-First Architecture Patch
+// Momo 1.3.4 — Form Comfort + Flexible Recurring Amounts
 // CLEAN FOUNDATION + FUNCTIONAL TRIPS
 // ========================================
 
@@ -135,6 +135,10 @@ let plannedPendingDelete =
 
 
 let pendingPlannedConversionId =
+  "";
+
+
+let pendingRecurringLogId =
   "";
 
 
@@ -14338,6 +14342,10 @@ function resetExpenseForm() {
   }
 
 
+  pendingRecurringLogId =
+    "";
+
+
   expenseForm?.reset();
 
 
@@ -15642,6 +15650,11 @@ expenseForm?.addEventListener(
         selectedTrip?.id ||
         "",
 
+      sourceRecurringId:
+        previous?.sourceRecurringId ||
+        pendingRecurringLogId ||
+        "",
+
       ...settlementData,
 
       createdAt:
@@ -15712,6 +15725,59 @@ expenseForm?.addEventListener(
 
 
       pendingPlannedConversionId =
+        "";
+
+    }
+
+
+    if (
+      pendingRecurringLogId
+    ) {
+
+      const recurringSource =
+        recurringExpenses.find(
+          (item) =>
+            item.id ===
+            pendingRecurringLogId
+        );
+
+
+      if (
+        recurringSource
+      ) {
+
+        const nextDate =
+          getNextRecurringDate(
+            recurringSource.nextDueDate,
+            recurringSource.frequency
+          );
+
+
+        await putRecord(
+          STORES.recurring,
+          {
+            ...recurringSource,
+
+            nextDueDate:
+              nextDate,
+
+            active:
+              !(
+                recurringSource.endDate &&
+                nextDate >
+                  recurringSource.endDate
+              ),
+
+            updatedAt:
+              new Date()
+                .toISOString()
+          }
+        );
+
+      }
+
+
+      pendingRecurringLogId =
         "";
 
     }
@@ -24615,6 +24681,18 @@ const recurringAmount =
   );
 
 
+const recurringVariableAmount =
+  document.getElementById(
+    "recurringVariableAmount"
+  );
+
+
+const recurringAmountHint =
+  document.getElementById(
+    "recurringAmountHint"
+  );
+
+
 const recurringCurrency =
   document.getElementById(
     "recurringCurrency"
@@ -24713,6 +24791,53 @@ const recurringNotes =
   document.getElementById(
     "recurringNotes"
   );
+
+
+function updateRecurringAmountMode() {
+
+  if (
+    !recurringAmount
+  ) {
+
+    return;
+
+  }
+
+
+  const varies =
+    Boolean(
+      recurringVariableAmount?.checked
+    );
+
+
+  recurringAmount.required =
+    !varies;
+
+
+  recurringAmount.placeholder =
+    varies
+      ? "Optional usual amount"
+      : "0";
+
+
+  if (
+    recurringAmountHint
+  ) {
+
+    recurringAmountHint.textContent =
+      varies
+        ? "You’ll enter the actual amount each time you log this payment."
+        : "Momo will use this amount when you log the recurring payment.";
+
+  }
+
+}
+
+
+recurringVariableAmount?.addEventListener(
+  "change",
+  updateRecurringAmountMode
+);
 
 
 function getDaysInMonth(
@@ -25153,6 +25278,21 @@ function openRecurringModal(
       "";
 
 
+    if (
+      recurringVariableAmount
+    ) {
+
+      recurringVariableAmount.checked =
+        Boolean(
+          recurring.variableAmount
+        );
+
+    }
+
+
+    updateRecurringAmountMode();
+
+
     recurringCurrency.value =
       recurring.currency ||
       "PHP";
@@ -25218,6 +25358,19 @@ function openRecurringModal(
 
     recurringId.value =
       "";
+
+
+    if (
+      recurringVariableAmount
+    ) {
+
+      recurringVariableAmount.checked =
+        false;
+
+    }
+
+
+    updateRecurringAmountMode();
 
 
     recurringCurrency.value =
@@ -25356,16 +25509,48 @@ recurringForm?.addEventListener(
     }
 
 
+    const recurringAmountVaries =
+      Boolean(
+        recurringVariableAmount?.checked
+      );
+
+
+    const recurringAmountWasEntered =
+      String(
+        recurringAmount?.value ||
+        ""
+      ).trim() !==
+      "";
+
+
     if (
-      !Number.isFinite(
-        recurringAmountValue
+      (
+        !recurringAmountVaries &&
+        (
+          !Number.isFinite(
+            recurringAmountValue
+          ) ||
+          recurringAmountValue <=
+            0
+        )
       ) ||
-      recurringAmountValue <=
-        0
+      (
+        recurringAmountVaries &&
+        recurringAmountWasEntered &&
+        (
+          !Number.isFinite(
+            recurringAmountValue
+          ) ||
+          recurringAmountValue <=
+            0
+        )
+      )
     ) {
 
       showToast(
-        "Enter a recurring amount greater than 0."
+        recurringAmountVaries
+          ? "Enter a usual amount greater than 0, or leave it blank."
+          : "Enter a recurring amount greater than 0."
       );
 
 
@@ -25434,7 +25619,13 @@ recurringForm?.addEventListener(
         recurringNameValue,
 
       amount:
-        recurringAmountValue,
+        recurringAmountVaries &&
+        !recurringAmountWasEntered
+          ? 0
+          : recurringAmountValue,
+
+      variableAmount:
+        recurringAmountVaries,
 
       currency:
         recurringCurrency.value,
@@ -25598,10 +25789,25 @@ function createRecurringCardHTML(
           </span>
 
           <strong>
-            ${formatCurrency(
-              recurring.amount,
-              recurring.currency
-            )}
+            ${
+              recurring.variableAmount
+                ? (
+                    Number(
+                      recurring.amount ||
+                      0
+                    ) >
+                    0
+                      ? `${formatCurrency(
+                          recurring.amount,
+                          recurring.currency
+                        )} usual`
+                      : "Varies"
+                  )
+                : formatCurrency(
+                    recurring.amount,
+                    recurring.currency
+                  )
+            }
           </strong>
 
         </div>
@@ -25702,6 +25908,178 @@ function createRecurringCardHTML(
     </article>
 
   `;
+
+}
+
+
+function openVariableRecurringExpenseDraft(
+  recurring
+) {
+
+  if (
+    !recurring
+  ) {
+
+    return;
+
+  }
+
+
+  showScreen(
+    "add"
+  );
+
+
+  pendingRecurringLogId =
+    recurring.id;
+
+
+  const titleInput =
+    document.getElementById(
+      "expenseTitle"
+    );
+
+
+  if (
+    titleInput
+  ) {
+
+    titleInput.value =
+      recurring.name ||
+      "";
+
+  }
+
+
+  if (
+    amountInput
+  ) {
+
+    amountInput.value =
+      "";
+
+    amountInput.placeholder =
+      Number(
+        recurring.amount ||
+        0
+      ) >
+      0
+        ? `Usual: ${formatCurrency(
+            recurring.amount,
+            recurring.currency
+          )}`
+        : "Enter this payment";
+
+  }
+
+
+  if (
+    currencySelect
+  ) {
+
+    currencySelect.value =
+      recurring.currency ||
+      "PHP";
+
+  }
+
+
+  if (
+    expenseCategory
+  ) {
+
+    expenseCategory.value =
+      recurring.category ||
+      "Other";
+
+  }
+
+
+  if (
+    expenseOtherCategory
+  ) {
+
+    expenseOtherCategory.value =
+      recurring.otherCategory ||
+      "";
+
+  }
+
+
+  updateExpenseOtherCategoryVisibility();
+
+
+  const paymentMethod =
+    document.getElementById(
+      "paymentMethod"
+    );
+
+
+  if (
+    paymentMethod
+  ) {
+
+    paymentMethod.value =
+      recurring.paymentMethod ||
+      "Cash";
+
+  }
+
+
+  if (
+    expenseOtherPaymentMethod
+  ) {
+
+    expenseOtherPaymentMethod.value =
+      recurring.otherPaymentMethod ||
+      "";
+
+  }
+
+
+  updateExpenseOtherPaymentVisibility();
+
+
+  if (
+    expenseDate
+  ) {
+
+    expenseDate.value =
+      getTodayString();
+
+  }
+
+
+  const notesInput =
+    document.getElementById(
+      "expenseNotes"
+    );
+
+
+  if (
+    notesInput
+  ) {
+
+    notesInput.value =
+      recurring.notes ||
+      "";
+
+  }
+
+
+  updateExpenseConversion();
+
+
+  showToast(
+    "Enter this payment’s actual amount, then save ✨"
+  );
+
+
+  window.setTimeout(
+    () =>
+      amountInput?.focus(),
+    120
+  );
 
 }
 
@@ -25965,6 +26343,20 @@ function attachRecurringActions() {
                 recurring
               )
             ) {
+
+              return;
+
+            }
+
+
+            if (
+              recurring.variableAmount
+            ) {
+
+              openVariableRecurringExpenseDraft(
+                recurring
+              );
+
 
               return;
 
