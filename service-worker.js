@@ -1,10 +1,10 @@
 // ========================================
 // MOMO SERVICE WORKER
-// Momo 1.3.6 — push reminders + stable network-first PWA shell
+// Momo 1.3.7 — payables update + push reminders + stable network-first PWA shell
 // ========================================
 
 const CACHE_NAME =
-  "momo-runtime-shell-v1.3.6";
+  "momo-runtime-shell-v1.3.7";
 
 
 const APP_SHELL = [

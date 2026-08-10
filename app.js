@@ -1,6 +1,6 @@
 // ========================================
 // MOMO
-// Momo 1.3.6 — Phone Push Reminders
+// Momo 1.3.7 — Payables Custom Type + Flexible Balance
 // CLEAN FOUNDATION + FUNCTIONAL TRIPS
 // ========================================
 
@@ -36416,17 +36416,25 @@ document
 // ========================================
 
 const PAYABLE_TYPE_META = {
-  "credit-card": { label: "Credit Card", icon: "💳" },
-  installment: { label: "Shop Installment", icon: "🛍️" },
-  loan: { label: "Loan", icon: "🏦" },
-  borrowed: { label: "Borrowed Money", icon: "🤝" },
-  other: { label: "Other", icon: "🌷" }
+  "credit-card": { label: "Credit Card" },
+  installment: { label: "Shop Installment" },
+  loan: { label: "Loan" },
+  borrowed: { label: "Borrowed Money" },
+  custom: { label: "Custom" },
+  // Kept only so older saved "Other" records still display safely.
+  other: { label: "Other" }
 };
 
 let selectedPayableId = "";
 
 function getPayableMeta(payable) {
-  return PAYABLE_TYPE_META[payable?.type] || PAYABLE_TYPE_META.other;
+  const fallback = PAYABLE_TYPE_META[payable?.type] || PAYABLE_TYPE_META.other;
+
+  if (payable?.type === "custom" && payable.customType) {
+    return { label: payable.customType };
+  }
+
+  return fallback;
 }
 
 function getPayablePayments(payable) {
@@ -36447,7 +36455,7 @@ function nextPayableDueDate(currentDate, frequency) {
   if (frequency === "weekly") next.setDate(next.getDate() + 7);
   else if (frequency === "biweekly") next.setDate(next.getDate() + 14);
   else if (frequency === "quarterly") next.setMonth(next.getMonth() + 3);
-  else if (frequency === "one-time") return "";
+  else if (frequency === "one-time" || frequency === "custom") return "";
   else next.setMonth(next.getMonth() + 1);
   return `${next.getFullYear()}-${String(next.getMonth() + 1).padStart(2, "0")}-${String(next.getDate()).padStart(2, "0")}`;
 }
@@ -36519,7 +36527,6 @@ function renderPayables() {
     const dueCopy = done ? "All paid! 🌸" : item.dueDate ? `Next payment · ${formatShortDate(item.dueDate)}` : "No due date set";
     return `
       <button class="payable-item ${done ? "is-paid" : ""}" type="button" data-payable-open="${escapeHTML(item.id)}">
-        <span class="payable-item-icon">${meta.icon}</span>
         <span class="payable-item-main">
           <span class="payable-item-topline">
             <span>
@@ -36542,8 +36549,10 @@ function updatePayableSpecialFields() {
   const type = document.getElementById("payableType")?.value;
   const credit = document.getElementById("payableCreditFields");
   const installment = document.getElementById("payableInstallmentFields");
+  const custom = document.getElementById("payableCustomTypeField");
   if (credit) credit.hidden = type !== "credit-card";
   if (installment) installment.hidden = type !== "installment";
+  if (custom) custom.hidden = type !== "custom";
 }
 
 function openPayableEditor(id = "") {
@@ -36554,7 +36563,9 @@ function openPayableEditor(id = "") {
   const item = cards.find((entry) => String(entry.id) === String(id));
   document.getElementById("payableId").value = item?.id || "";
   document.getElementById("payableModalTitle").textContent = item ? "Edit Payable" : "Add something to pay";
-  document.getElementById("payableType").value = item?.type || "credit-card";
+  const editorType = item?.type === "other" ? "custom" : (item?.type || "credit-card");
+  document.getElementById("payableType").value = editorType;
+  document.getElementById("payableCustomType").value = item?.customType || (item?.type === "other" ? "Other" : "");
   document.getElementById("payableName").value = item?.name || "";
   document.getElementById("payableProvider").value = item?.provider || "";
   document.getElementById("payableOriginalAmount").value = item?.originalAmount ?? "";
@@ -36584,20 +36595,67 @@ async function savePayable(event) {
   const id = document.getElementById("payableId").value || generateId("payable");
   const existing = cards.find((item) => String(item.id) === String(id));
   const type = document.getElementById("payableType").value;
+  const customType = type === "custom"
+    ? document.getElementById("payableCustomType").value.trim()
+    : "";
+
+  const originalRaw = document.getElementById("payableOriginalAmount").value.trim();
+  const balanceRaw = document.getElementById("payableBalance").value.trim();
+  const statementRaw = type === "credit-card"
+    ? document.getElementById("payableStatementBalance").value.trim()
+    : "";
+
+  const originalAmount = originalRaw === "" ? 0 : Number(originalRaw);
+  const enteredBalance = balanceRaw === "" ? null : Number(balanceRaw);
+  const statementBalance = statementRaw === "" ? 0 : Number(statementRaw);
+
+  if (!Number.isFinite(originalAmount) || originalAmount < 0) {
+    showToast("Enter a valid original amount.");
+    document.getElementById("payableOriginalAmount")?.focus();
+    return;
+  }
+
+  if (enteredBalance !== null && (!Number.isFinite(enteredBalance) || enteredBalance < 0)) {
+    showToast("Enter a valid remaining balance.");
+    document.getElementById("payableBalance")?.focus();
+    return;
+  }
+
+  if (!Number.isFinite(statementBalance) || statementBalance < 0) {
+    showToast("Enter a valid statement balance.");
+    document.getElementById("payableStatementBalance")?.focus();
+    return;
+  }
+
+  let resolvedBalance = enteredBalance;
+  if (resolvedBalance === null && type === "credit-card" && statementRaw !== "") {
+    resolvedBalance = statementBalance;
+  }
+  if (resolvedBalance === null && originalRaw !== "") {
+    resolvedBalance = originalAmount;
+  }
+
+  if (resolvedBalance === null) {
+    showToast("Add Original Amount, Still to Pay, or Statement Balance so Momo knows what remains.");
+    document.getElementById(type === "credit-card" ? "payableStatementBalance" : "payableOriginalAmount")?.focus();
+    return;
+  }
+
   const record = {
     ...(existing || {}),
     id,
     type,
+    customType,
     name: document.getElementById("payableName").value.trim(),
     provider: document.getElementById("payableProvider").value.trim(),
-    originalAmount: Number(document.getElementById("payableOriginalAmount").value || 0),
-    balance: Number(document.getElementById("payableBalance").value || 0),
+    originalAmount,
+    balance: resolvedBalance,
     currency: document.getElementById("payableCurrency").value || "PHP",
     dueDate: document.getElementById("payableDueDate").value || "",
     regularPayment: Number(document.getElementById("payableRegularPayment").value || 0),
     frequency: document.getElementById("payableFrequency").value || "monthly",
     creditLimit: type === "credit-card" ? Number(document.getElementById("payableCreditLimit").value || 0) : 0,
-    statementBalance: type === "credit-card" ? Number(document.getElementById("payableStatementBalance").value || 0) : 0,
+    statementBalance,
     minimumDue: type === "credit-card" ? Number(document.getElementById("payableMinimumDue").value || 0) : 0,
     statementDay: type === "credit-card" ? Number(document.getElementById("payableStatementDay").value || 0) : 0,
     installmentCount: type === "installment" ? Number(document.getElementById("payableInstallmentCount").value || 0) : 0,
@@ -36613,17 +36671,12 @@ async function savePayable(event) {
     return;
   }
 
-  if (!Number.isFinite(record.balance) || record.balance < 0) {
-    showToast("Enter a valid remaining balance.");
-    document.getElementById("payableBalance")?.focus();
+  if (record.type === "custom" && !record.customType) {
+    showToast("Give your custom payable type a name.");
+    document.getElementById("payableCustomType")?.focus();
     return;
   }
 
-  if (!Number.isFinite(record.originalAmount) || record.originalAmount < 0) {
-    showToast("Enter a valid original amount.");
-    document.getElementById("payableOriginalAmount")?.focus();
-    return;
-  }
 
   if (!Number.isFinite(record.regularPayment) || record.regularPayment < 0) {
     showToast("Enter a valid regular payment amount.");
@@ -36668,7 +36721,7 @@ function renderPayableDetail(id) {
   const balance = getPayableBalance(item);
   const payments = [...getPayablePayments(item)].sort((a, b) => String(b.date).localeCompare(String(a.date)));
   const available = item.type === "credit-card" && Number(item.creditLimit || 0) > 0 ? Math.max(0, Number(item.creditLimit) - balance) : null;
-  document.getElementById("payableDetailKicker").textContent = `${meta.icon} ${meta.label}`;
+  document.getElementById("payableDetailKicker").textContent = meta.label;
   document.getElementById("payableDetailTitle").textContent = item.name || meta.label;
   body.innerHTML = `
     <section class="payable-detail-hero ${balance <= 0 ? "is-paid" : ""}">

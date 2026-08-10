@@ -14374,7 +14374,7 @@ body.tutorial-open {
 .payables-section-heading h3 { font-size: 18px; }
 
 .payables-list { display: grid; gap: 10px; }
-.payable-item { width: 100%; padding: 15px; border: 1px solid var(--border); border-radius: 22px; display: grid; grid-template-columns: 44px 1fr; gap: 12px; background: rgba(255,255,255,.94); color: var(--text); text-align: left; box-shadow: var(--shadow); }
+.payable-item { width: 100%; padding: 15px; border: 1px solid var(--border); border-radius: 22px; display: grid; grid-template-columns: 1fr; gap: 12px; background: rgba(255,255,255,.94); color: var(--text); text-align: left; box-shadow: var(--shadow); }
 .payable-item-icon { width: 44px; height: 44px; display: grid; place-items: center; border-radius: 15px; background: var(--blush); font-size: 20px; }
 .payable-item-main, .payable-item-topline > span { min-width: 0; }
 .payable-item-topline { display: flex; justify-content: space-between; gap: 12px; }
@@ -15868,6 +15868,10 @@ textarea {
   gap: 7px;
 }
 
+#payableForm > label[hidden] {
+  display: none;
+}
+
 #payableForm input,
 #payableForm select,
 #payableForm textarea {
@@ -15893,6 +15897,13 @@ textarea {
 #payableForm .payable-special-fields .modal-field-row {
   grid-template-columns: 1fr;
   gap: 14px;
+}
+
+.payable-amount-helper {
+  margin: -2px 1px 4px;
+  color: var(--text-soft);
+  font-size: 9px;
+  line-height: 1.45;
 }
 
 #payableForm .payable-save-btn {
