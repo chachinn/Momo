@@ -1,6 +1,6 @@
 // ========================================
 // MOMO
-// Momo 1.3.8 — Payables Custom Type + Flexible Balance
+// Momo 1.3.9 — Payables Custom Type + Flexible Balance
 // CLEAN FOUNDATION + FUNCTIONAL TRIPS
 // ========================================
 

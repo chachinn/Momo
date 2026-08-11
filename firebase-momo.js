@@ -11,7 +11,8 @@ import {
   sendPasswordResetEmail,
   sendEmailVerification,
   reload,
-  signOut
+  signOut,
+  signInAnonymously
 } from "https://www.gstatic.com/firebasejs/12.16.0/firebase-auth.js";
 import {
   getFirestore,
@@ -22,7 +23,9 @@ import {
   collection,
   getDocs,
   writeBatch,
-  serverTimestamp
+  serverTimestamp,
+  query,
+  where
 } from "https://www.gstatic.com/firebasejs/12.16.0/firebase-firestore.js";
 
 const firebaseConfig = {
@@ -68,6 +71,24 @@ let cloudMetadata = null;
 let busy = false;
 
 const byId = (id) => document.getElementById(id);
+
+
+function isRealAccountUser(user = currentUser) {
+  return Boolean(user && !user.isAnonymous);
+}
+
+async function ensureNotificationIdentity() {
+  if (currentUser) return currentUser;
+
+  const credential = await signInAnonymously(auth);
+  currentUser = credential.user;
+
+  if (currentUser?.uid) {
+    localStorage.setItem(LAST_PUSH_UID_KEY, currentUser.uid);
+  }
+
+  return currentUser;
+}
 
 function toast(message) {
   const el = byId("toast");
@@ -184,7 +205,7 @@ async function commitOperations(operations) {
 }
 
 async function uploadCloudBackup() {
-  if (!currentUser || busy) return;
+  if (!isRealAccountUser() || busy) return;
   const ok = window.confirm(
     "Replace your existing cloud copy with the Momo data currently on this device?\n\nThis overwrites the previous cloud backup. Receipt photos and custom wallpaper images stay on this device and are not uploaded."
   );
@@ -257,7 +278,7 @@ async function existingLocalPhotos(db) {
 }
 
 async function restoreCloudBackup() {
-  if (!currentUser || busy) return;
+  if (!isRealAccountUser() || busy) return;
 
   // Login and restore are deliberately separate actions. Nothing is restored automatically.
   if (!cloudMetadata?.exists) {
@@ -332,7 +353,7 @@ function formatCloudDate(data) {
 }
 
 async function refreshCloudMetadata() {
-  if (!currentUser) return;
+  if (!isRealAccountUser()) return;
 
   const copyStatus = byId("cloudCopyStatus");
   const last = byId("cloudLastBackup");
@@ -392,7 +413,7 @@ function updateEmailVerificationUI(user) {
 }
 
 async function resendVerificationEmail() {
-  if (!currentUser || busy) return;
+  if (!isRealAccountUser() || busy) return;
 
   if (currentUser.emailVerified) {
     toast("Your email is already verified.");
@@ -456,6 +477,7 @@ async function googleSignIn() {
   setBusy(true);
 
   try {
+    await prepareForRealAccountSignIn();
     await signInWithPopup(auth, googleProvider);
     toast("Welcome to Momo 🍑");
   } catch (error) {
@@ -484,6 +506,8 @@ async function emailSignIn(mode) {
 
   setBusy(true);
   try {
+    await prepareForRealAccountSignIn();
+
     if (mode === "create") {
       const credential = await createUserWithEmailAndPassword(auth, email, password);
       try { await sendEmailVerification(credential.user); } catch (error) { console.warn("Verification email could not be sent:", error); }
@@ -556,21 +580,25 @@ async function currentPushSubscription() {
 }
 
 async function savePushSubscription(subscription) {
-  if (!currentUser) throw new Error("Sign in under Account & Cloud first to use phone notifications.");
+  const owner = currentUser || await ensureNotificationIdentity();
+  if (!owner) throw new Error("Momo could not create a notification identity on this phone.");
+
   const json = subscription.toJSON();
   const id = await sha256Text(json.endpoint || subscription.endpoint);
-  await setDoc(doc(cloudDb, "users", currentUser.uid, PUSH_SUBSCRIPTION_COLLECTION, id), {
+  await setDoc(doc(cloudDb, "users", owner.uid, PUSH_SUBSCRIPTION_COLLECTION, id), {
     endpoint: json.endpoint || subscription.endpoint,
     keys: json.keys || {},
     userAgent: navigator.userAgent || "",
     timezone: Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC",
+    notificationOnly: Boolean(owner.isAnonymous),
     updatedAt: serverTimestamp()
   }, { merge: true });
+
+  localStorage.setItem(LAST_PUSH_UID_KEY, owner.uid);
   return id;
 }
 
 async function enablePush() {
-  if (!currentUser) throw new Error("Sign in under Account & Cloud first, then come back here.");
   if (!("Notification" in window) || !("PushManager" in window)) {
     if (isIosLike() && !isStandalonePwa()) {
       throw new Error("On iPhone, install Momo to your Home Screen first, then enable notifications inside the installed app.");
@@ -579,19 +607,61 @@ async function enablePush() {
   }
 
   const permission = await Notification.requestPermission();
-  if (permission !== "granted") throw new Error("Notifications were not allowed. You can change this in your phone settings.");
+  if (permission !== "granted") {
+    throw new Error("Notifications were not allowed. You can change this in your phone settings.");
+  }
 
   const registration = await getPushRegistration();
   let subscription = await registration.pushManager.getSubscription();
+
   if (!subscription) {
     subscription = await registration.pushManager.subscribe({
       userVisibleOnly: true,
       applicationServerKey: base64UrlToUint8Array(MOMO_VAPID_PUBLIC_KEY)
     });
   }
+
+  // No visible Momo account is required. Signed-out users get an internal,
+  // notification-only anonymous Firebase identity so Firestore rules can
+  // remain owner-scoped instead of being opened to the public internet.
+  await ensureNotificationIdentity();
   await savePushSubscription(subscription);
   await flushPendingPushDeletions();
   return subscription;
+}
+
+async function detachNotificationIdentityFromCloud(uid) {
+  if (!uid) return;
+
+  const subscription = await currentPushSubscription();
+  if (subscription) {
+    try {
+      const json = subscription.toJSON();
+      const id = await sha256Text(json.endpoint || subscription.endpoint);
+      await deleteDoc(doc(cloudDb, "users", uid, PUSH_SUBSCRIPTION_COLLECTION, id));
+    } catch (error) {
+      console.warn("Could not detach Momo push subscription from the old identity:", error);
+    }
+  }
+
+  try {
+    const queueQuery = query(
+      collection(cloudDb, NOTIFICATION_QUEUE_COLLECTION),
+      where("uid", "==", uid)
+    );
+    const snapshot = await getDocs(queueQuery);
+    await Promise.allSettled(snapshot.docs.map((item) => deleteDoc(item.ref)));
+  } catch (error) {
+    console.warn("Could not clear the old Momo notification queue:", error);
+  }
+}
+
+async function prepareForRealAccountSignIn() {
+  if (!currentUser?.isAnonymous) return;
+
+  const anonymousUid = currentUser.uid;
+  await detachNotificationIdentityFromCloud(anonymousUid);
+  await signOut(auth);
 }
 
 async function disablePush() {
@@ -669,7 +739,13 @@ function reminderDueAt(item, type) {
 }
 
 async function syncReminder(type, item) {
-  if (!currentUser || !item?.id) return false;
+  if (!item?.id) return false;
+
+  if (!currentUser) {
+    const subscription = await currentPushSubscription();
+    if (!subscription || Notification.permission !== "granted") return false;
+    await ensureNotificationIdentity();
+  }
   if (!item.phoneReminder) {
     await deleteReminder(type, item.id);
     return false;
@@ -735,14 +811,20 @@ async function deleteReminder(type, id) {
 }
 
 async function getPushStatus() {
-  if (!currentUser) return { enabled: false, message: "Sign in under Account & Cloud to enable phone notifications." };
-  if (isIosLike() && !isStandalonePwa()) return { enabled: false, message: "On iPhone, open the installed Home Screen version of Momo to enable notifications." };
-  if (!("Notification" in window) || !("PushManager" in window)) return { enabled: false, message: "This browser does not support phone notifications." };
-  if (Notification.permission === "denied") return { enabled: false, message: "Notifications are blocked in your phone settings." };
+  if (isIosLike() && !isStandalonePwa()) {
+    return { enabled: false, message: "On iPhone, open the installed Home Screen version of Momo to enable notifications." };
+  }
+  if (!("Notification" in window) || !("PushManager" in window)) {
+    return { enabled: false, message: "This browser does not support phone notifications." };
+  }
+  if (Notification.permission === "denied") {
+    return { enabled: false, message: "Notifications are blocked in your phone settings." };
+  }
+
   const subscription = await currentPushSubscription();
   return subscription
-    ? { enabled: true, message: "Notifications are enabled on this phone. Only reminders you switch on will alert your phone." }
-    : { enabled: false, message: "Optional. Enable phone alerts, then choose which Gentle Reminders may notify you." };
+    ? { enabled: true, message: "Notifications are enabled on this phone. No Momo account is required; only reminders you switch on will alert you." }
+    : { enabled: false, message: "Optional. No account needed. Enable alerts on this phone, then choose which Gentle Reminders may notify you." };
 }
 
 window.MomoPush = {
@@ -763,7 +845,7 @@ function bindEvents() {
   byId("uploadCloudBackup")?.addEventListener("click", uploadCloudBackup);
   byId("restoreCloudBackup")?.addEventListener("click", restoreCloudBackup);
   byId("refreshCloudStatus")?.addEventListener("click", async () => {
-    if (currentUser) {
+    if (isRealAccountUser()) {
       try {
         await reload(currentUser);
         currentUser = auth.currentUser;
@@ -781,20 +863,29 @@ function bindEvents() {
       return;
     }
 
-    // Remove this browser's push subscription from the account before
-    // Firebase clears currentUser. This prevents a later account on the
-    // same phone/browser from inheriting the previous user's endpoint.
-    try {
-      await disablePush();
-    } catch (error) {
-      console.warn(
-        "Could not fully disable phone notifications before sign-out:",
-        error
-      );
+    const subscription = await currentPushSubscription();
+    const keepPhoneAlerts = Boolean(subscription && Notification.permission === "granted");
+    const oldUid = currentUser?.uid || "";
+
+    if (oldUid) {
+      await detachNotificationIdentityFromCloud(oldUid);
     }
 
     await signOut(auth);
-    toast("Signed out. Local Momo data is still here, and phone alerts are off on this device.");
+
+    if (keepPhoneAlerts && subscription) {
+      try {
+        await ensureNotificationIdentity();
+        await savePushSubscription(subscription);
+        window.dispatchEvent(new Event("momo-push-ready"));
+        toast("Signed out. Local Momo data stays here, and your selected phone reminders stay on.");
+        return;
+      } catch (error) {
+        console.warn("Could not keep phone reminders active after sign-out:", error);
+      }
+    }
+
+    toast("Signed out. Local Momo data is still here.");
   });
 }
 
@@ -809,21 +900,45 @@ async function init() {
   onAuthStateChanged(auth, async (user) => {
     currentUser = user;
     cloudMetadata = null;
+
     if (!user) {
       showSignedOut();
+
+      // If this browser already has an active Web Push subscription, restore
+      // its notification-only anonymous identity automatically. The user stays
+      // in visible Local Mode and is not asked to create/sign into an account.
+      try {
+        const subscription = await currentPushSubscription();
+        if (subscription && Notification.permission === "granted") {
+          await ensureNotificationIdentity();
+          return; // Auth observer will run again with the anonymous user.
+        }
+      } catch (error) {
+        console.warn("Could not restore Momo notification identity:", error);
+      }
+
       window.dispatchEvent(new Event("momo-push-ready"));
       return;
     }
-    showSignedIn(user);
+
     localStorage.setItem(LAST_PUSH_UID_KEY, user.uid);
+
+    if (user.isAnonymous) {
+      // Anonymous auth exists only to securely own this phone's push data.
+      // Never present it as a Momo account or enable cloud-backup UI for it.
+      showSignedOut();
+    } else {
+      showSignedIn(user);
+    }
+
     try {
       await flushPendingPushDeletions();
     } catch (error) {
       console.warn("Could not flush pending phone reminder deletions:", error);
     }
+
     window.dispatchEvent(new Event("momo-push-ready"));
-    // Authentication is optional. Do not read Firestore on routine app startup.
-    // Cloud metadata is fetched only when the user explicitly asks for it.
+    // Cloud metadata is still fetched only when a real signed-in user asks.
   });
 }
 
