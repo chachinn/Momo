@@ -1,4 +1,5 @@
-import admin from "firebase-admin";
+import { cert, getApps, initializeApp } from "firebase-admin/app";
+import { FieldValue, getFirestore } from "firebase-admin/firestore";
 import webpush from "web-push";
 
 const REQUIRED_SECRETS = [
@@ -21,13 +22,13 @@ const STALE_AFTER_MS = 24 * 60 * 60 * 1000;
 
 const serviceAccount = JSON.parse(process.env.FIREBASE_SERVICE_ACCOUNT);
 
-if (!admin.apps.length) {
-  admin.initializeApp({
-    credential: admin.credential.cert(serviceAccount)
+if (!getApps().length) {
+  initializeApp({
+    credential: cert(serviceAccount)
   });
 }
 
-const db = admin.firestore();
+const db = getFirestore();
 
 webpush.setVapidDetails(
   process.env.MOMO_VAPID_SUBJECT,
@@ -79,7 +80,7 @@ async function markQueueItemHandled(queueDoc, fields) {
   await queueDoc.ref.set(
     {
       ...fields,
-      updatedBySenderAt: admin.firestore.FieldValue.serverTimestamp()
+      updatedBySenderAt: FieldValue.serverTimestamp()
     },
     { merge: true }
   );
@@ -123,7 +124,7 @@ for (const queueDoc of dueSnapshot.docs) {
     await markQueueItemHandled(queueDoc, {
       sentForDueDate: item.dueDate,
       skippedAsStale: true,
-      lastSkippedAt: admin.firestore.FieldValue.serverTimestamp()
+      lastSkippedAt: FieldValue.serverTimestamp()
     });
     staleCount += 1;
     continue;
@@ -178,7 +179,7 @@ for (const queueDoc of dueSnapshot.docs) {
     await markQueueItemHandled(queueDoc, {
       sentForDueDate: item.dueDate,
       skippedAsStale: false,
-      lastSentAt: admin.firestore.FieldValue.serverTimestamp()
+      lastSentAt: FieldValue.serverTimestamp()
     });
     deliveredCount += 1;
   }
