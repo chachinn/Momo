@@ -1,0 +1,35 @@
+name: Momo phone reminders
+
+on:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: momo-phone-reminders
+  cancel-in-progress: false
+
+jobs:
+  send-reminders:
+    runs-on: ubuntu-latest
+    timeout-minutes: 5
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+
+      - name: Install reminder sender dependencies
+        run: npm install --no-save firebase-admin@14.2.0 web-push@3.6.7
+
+      - name: Send due Momo reminders
+        run: node scripts/send-reminders.mjs
+        env:
+          FIREBASE_SERVICE_ACCOUNT: ${{ secrets.FIREBASE_SERVICE_ACCOUNT }}
+          MOMO_VAPID_PRIVATE_KEY: ${{ secrets.MOMO_VAPID_PRIVATE_KEY }}
+          MOMO_VAPID_SUBJECT: ${{ secrets.MOMO_VAPID_SUBJECT }}
