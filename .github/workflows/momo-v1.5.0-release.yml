@@ -7,9 +7,13 @@ on:
 permissions:
   contents: write
 
+concurrency:
+  group: momo-v1-5-0-verified-release
+  cancel-in-progress: false
+
 jobs:
   release-momo:
-    if: github.event.head_commit.message == 'Prepare Momo v1.5.0 release'
+    if: github.event.head_commit.message == 'Prepare Momo v1.5.0 release retry'
     runs-on: ubuntu-latest
     timeout-minutes: 10
 
@@ -20,10 +24,12 @@ jobs:
           ref: main
           fetch-depth: 1
 
-      - name: Decode and verify release patch
+      - name: Reassemble and verify release patch
         shell: bash
         run: |
-          base64 -d scripts/momo-v1.5.0.patch.gz.b64 | gzip -d > /tmp/momo-v1.5.0.patch
+          cat scripts/momo-v1.5.0.patch.part01 scripts/momo-v1.5.0.patch.part02 scripts/momo-v1.5.0.patch.part03 scripts/momo-v1.5.0.patch.part04 scripts/momo-v1.5.0.patch.part05 scripts/momo-v1.5.0.patch.part06 scripts/momo-v1.5.0.patch.part07 > /tmp/momo-v1.5.0.patch.gz.b64
+          test "$(wc -c < /tmp/momo-v1.5.0.patch.gz.b64)" -eq 12792
+          base64 -d /tmp/momo-v1.5.0.patch.gz.b64 | gzip -d > /tmp/momo-v1.5.0.patch
           git apply --check /tmp/momo-v1.5.0.patch
           git apply /tmp/momo-v1.5.0.patch
 
@@ -70,26 +76,17 @@ jobs:
           from pathlib import Path
           from html.parser import HTMLParser
           from collections import Counter
-
           class IDs(HTMLParser):
               def __init__(self):
-                  super().__init__()
-                  self.ids = []
+                  super().__init__(); self.ids=[]
               def handle_starttag(self, tag, attrs):
-                  attrs = dict(attrs)
-                  if attrs.get('id'):
-                      self.ids.append(attrs['id'])
-
-          parser = IDs()
-          parser.feed(Path('index.html').read_text())
-          dupes = [name for name, count in Counter(parser.ids).items() if count > 1]
+                  attrs=dict(attrs)
+                  if attrs.get('id'): self.ids.append(attrs['id'])
+          parser=IDs(); parser.feed(Path('index.html').read_text())
+          dupes=[name for name,count in Counter(parser.ids).items() if count>1]
           assert not dupes, f'Duplicate HTML ids: {dupes}'
-          required = {
-              'appUpdateBanner', 'applyAppUpdate', 'appUpdateCopy',
-              'momoWhatsNewModal', 'momoWhatsNewTitle',
-              'momoWhatsNewItems', 'openMomoWhatsNew'
-          }
-          missing = required - set(parser.ids)
+          required={'appUpdateBanner','applyAppUpdate','appUpdateCopy','momoWhatsNewModal','momoWhatsNewTitle','momoWhatsNewItems','openMomoWhatsNew'}
+          missing=required-set(parser.ids)
           assert not missing, f'Missing update UI ids: {sorted(missing)}'
           print(f'HTML QA passed with {len(parser.ids)} unique ids')
           PY
@@ -98,29 +95,14 @@ jobs:
         shell: bash
         run: |
           node <<'JS'
-          function compareExpensesNewest(a,b) {
-            const dc = String(b.date || '').localeCompare(String(a.date || ''));
-            if (dc !== 0) return dc;
-            return String(b.createdAt || b.updatedAt || '').localeCompare(String(a.createdAt || a.updatedAt || ''));
-          }
-          const expenses = [];
-          for (let i = 0; i < 100000; i += 1) {
-            const y = 2020 + (i % 7), m = 1 + (i % 12), d = 1 + (i % 28);
-            expenses.push({
-              id: i,
-              date: `${y}-${String(m).padStart(2,'0')}-${String(d).padStart(2,'0')}`,
-              createdAt: new Date(1700000000000 + i * 1000).toISOString()
-            });
-          }
-          const recent = [];
-          for (const expense of expenses) {
-            const at = recent.findIndex(item => compareExpensesNewest(expense, item) < 0);
-            if (at === -1) recent.push(expense); else recent.splice(at, 0, expense);
-            if (recent.length > 4) recent.pop();
-          }
-          const expected = [...expenses].sort(compareExpensesNewest).slice(0,4).map(x => x.id).join(',');
-          const actual = recent.map(x => x.id).join(',');
-          if (actual !== expected) throw new Error(`Recent-expense regression: ${actual} != ${expected}`);
+          function compareExpensesNewest(a,b){const dc=String(b.date||'').localeCompare(String(a.date||''));if(dc!==0)return dc;return String(b.createdAt||b.updatedAt||'').localeCompare(String(a.createdAt||a.updatedAt||''));}
+          const expenses=[];
+          for(let i=0;i<100000;i+=1){const y=2020+(i%7),m=1+(i%12),d=1+(i%28);expenses.push({id:i,date:`${y}-${String(m).padStart(2,'0')}-${String(d).padStart(2,'0')}`,createdAt:new Date(1700000000000+i*1000).toISOString()});}
+          const recent=[];
+          for(const expense of expenses){const at=recent.findIndex(item=>compareExpensesNewest(expense,item)<0);if(at===-1)recent.push(expense);else recent.splice(at,0,expense);if(recent.length>4)recent.pop();}
+          const expected=[...expenses].sort(compareExpensesNewest).slice(0,4).map(x=>x.id).join(',');
+          const actual=recent.map(x=>x.id).join(',');
+          if(actual!==expected)throw new Error(`Recent-expense regression: ${actual} != ${expected}`);
           console.log('100k-entry recent-expense smoke test passed');
           JS
 
@@ -129,7 +111,12 @@ jobs:
         run: |
           git config user.name "Momo Release Bot"
           git config user.email "momo-release-bot@users.noreply.github.com"
-          git rm .github/workflows/momo-v1.5.0-release.yml scripts/momo-v1.5.0.patch.gz.b64
+          git rm .github/workflows/momo-v1.5.0-release.yml
+          for f in .github/workflows/momo-1.5.0-release.yml scripts/momo-release-qa.py .momo-release-1.5.0-trigger; do
+            if [ -e "$f" ]; then git rm "$f"; fi
+          done
+          git rm scripts/momo-v1.5.0.patch.gz.b64 scripts/momo-v1.5.0.patch.part01 scripts/momo-v1.5.0.patch.part02 scripts/momo-v1.5.0.patch.part03 scripts/momo-v1.5.0.patch.part04 scripts/momo-v1.5.0.patch.part05 scripts/momo-v1.5.0.patch.part06 scripts/momo-v1.5.0.patch.part07
+          if [ -e scripts/momo-1.5.0.patch.gz.b64 ]; then git rm scripts/momo-1.5.0.patch.gz.b64; fi
           git add app.js index.html styles.css service-worker.js
           git diff --cached --check
           git commit -m "Release Momo 1.5.0 update notes and stability improvements"
