@@ -1,0 +1,136 @@
+name: Momo v1.5.0 release
+
+on:
+  push:
+    branches: [main]
+
+permissions:
+  contents: write
+
+jobs:
+  release-momo:
+    if: github.event.head_commit.message == 'Prepare Momo v1.5.0 release'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - name: Check out current main
+        uses: actions/checkout@v4
+        with:
+          ref: main
+          fetch-depth: 1
+
+      - name: Decode and verify release patch
+        shell: bash
+        run: |
+          base64 -d scripts/momo-v1.5.0.patch.gz.b64 | gzip -d > /tmp/momo-v1.5.0.patch
+          git apply --check /tmp/momo-v1.5.0.patch
+          git apply /tmp/momo-v1.5.0.patch
+
+      - name: JavaScript syntax checks
+        shell: bash
+        run: |
+          node --check app.js
+          node --check service-worker.js
+          cp firebase-momo.js /tmp/firebase-momo.mjs
+          node --check /tmp/firebase-momo.mjs
+          python3 - <<'PY'
+          from pathlib import Path
+          import re
+          html = Path('index.html').read_text()
+          scripts = re.findall(r'<script(?![^>]*\bsrc=)[^>]*>(.*?)</script>', html, re.S | re.I)
+          assert scripts, 'No inline update script found'
+          Path('/tmp/momo-inline-update.js').write_text(scripts[-1])
+          PY
+          node --check /tmp/momo-inline-update.js
+
+      - name: Release consistency and data-safety QA
+        shell: bash
+        run: |
+          grep -q 'Momo 1.5.0' app.js
+          grep -q 'momo-app-version" content="1.5.0"' index.html
+          grep -q 'momo-runtime-shell-v1.5.0' service-worker.js
+          grep -q 'const DB_VERSION = 4;' app.js
+          grep -q 'momoWhatsNewModal' index.html
+          grep -q 'Refreshing…' index.html
+          grep -q 'momo_update_check' service-worker.js
+          grep -q 'data-load-more-recurring' app.js
+          grep -q 'data-load-more-planned' app.js
+          grep -q 'data-load-more-payables' app.js
+          grep -q 'FILTER_INPUT_DEBOUNCE_MS = 140' app.js
+          grep -q 'self.addEventListener("push"' service-worker.js
+          grep -q 'notificationApp = initializeApp' firebase-momo.js
+          test "$(git hash-object firebase-momo.js)" = "663519f3dcae4390f43b323a0409b33280e0ac59"
+          git diff --check
+
+      - name: HTML structure QA
+        shell: bash
+        run: |
+          python3 - <<'PY'
+          from pathlib import Path
+          from html.parser import HTMLParser
+          from collections import Counter
+
+          class IDs(HTMLParser):
+              def __init__(self):
+                  super().__init__()
+                  self.ids = []
+              def handle_starttag(self, tag, attrs):
+                  attrs = dict(attrs)
+                  if attrs.get('id'):
+                      self.ids.append(attrs['id'])
+
+          parser = IDs()
+          parser.feed(Path('index.html').read_text())
+          dupes = [name for name, count in Counter(parser.ids).items() if count > 1]
+          assert not dupes, f'Duplicate HTML ids: {dupes}'
+          required = {
+              'appUpdateBanner', 'applyAppUpdate', 'appUpdateCopy',
+              'momoWhatsNewModal', 'momoWhatsNewTitle',
+              'momoWhatsNewItems', 'openMomoWhatsNew'
+          }
+          missing = required - set(parser.ids)
+          assert not missing, f'Missing update UI ids: {sorted(missing)}'
+          print(f'HTML QA passed with {len(parser.ids)} unique ids')
+          PY
+
+      - name: Large-history algorithm smoke test
+        shell: bash
+        run: |
+          node <<'JS'
+          function compareExpensesNewest(a,b) {
+            const dc = String(b.date || '').localeCompare(String(a.date || ''));
+            if (dc !== 0) return dc;
+            return String(b.createdAt || b.updatedAt || '').localeCompare(String(a.createdAt || a.updatedAt || ''));
+          }
+          const expenses = [];
+          for (let i = 0; i < 100000; i += 1) {
+            const y = 2020 + (i % 7), m = 1 + (i % 12), d = 1 + (i % 28);
+            expenses.push({
+              id: i,
+              date: `${y}-${String(m).padStart(2,'0')}-${String(d).padStart(2,'0')}`,
+              createdAt: new Date(1700000000000 + i * 1000).toISOString()
+            });
+          }
+          const recent = [];
+          for (const expense of expenses) {
+            const at = recent.findIndex(item => compareExpensesNewest(expense, item) < 0);
+            if (at === -1) recent.push(expense); else recent.splice(at, 0, expense);
+            if (recent.length > 4) recent.pop();
+          }
+          const expected = [...expenses].sort(compareExpensesNewest).slice(0,4).map(x => x.id).join(',');
+          const actual = recent.map(x => x.id).join(',');
+          if (actual !== expected) throw new Error(`Recent-expense regression: ${actual} != ${expected}`);
+          console.log('100k-entry recent-expense smoke test passed');
+          JS
+
+      - name: Commit verified Momo release
+        shell: bash
+        run: |
+          git config user.name "Momo Release Bot"
+          git config user.email "momo-release-bot@users.noreply.github.com"
+          git rm .github/workflows/momo-v1.5.0-release.yml scripts/momo-v1.5.0.patch.gz.b64
+          git add app.js index.html styles.css service-worker.js
+          git diff --cached --check
+          git commit -m "Release Momo 1.5.0 update notes and stability improvements"
+          git push origin HEAD:main
