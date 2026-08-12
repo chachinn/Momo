@@ -1,6 +1,6 @@
 // ========================================
 // MOMO
-// Momo 1.4.1 — Google Sign-In Fix + About Momo + Update Banner
+// Momo 1.4.2 — Separate Account Auth + Notification Auth
 // CLEAN FOUNDATION + FUNCTIONAL TRIPS
 // ========================================
 

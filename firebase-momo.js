@@ -6,8 +6,6 @@ import {
   onAuthStateChanged,
   GoogleAuthProvider,
   signInWithPopup,
-  signInWithCredential,
-  linkWithPopup,
   createUserWithEmailAndPassword,
   signInWithEmailAndPassword,
   sendPasswordResetEmail,
@@ -42,6 +40,14 @@ const firebaseConfig = {
 const app = initializeApp(firebaseConfig);
 const auth = getAuth(app);
 const cloudDb = getFirestore(app);
+
+// Phone reminders intentionally use a SECOND Firebase app/auth session.
+// This keeps Momo's invisible anonymous notification identity completely
+// separate from the user's optional Google/email cloud-backup account.
+const notificationApp = initializeApp(firebaseConfig, "momo-notifications");
+const notificationAuth = getAuth(notificationApp);
+const notificationDb = getFirestore(notificationApp);
+
 const googleProvider = new GoogleAuthProvider();
 
 googleProvider.setCustomParameters({ prompt: "select_account" });
@@ -62,6 +68,7 @@ const PUSH_SUBSCRIPTION_COLLECTION = "pushSubscriptions";
 const NOTIFICATION_QUEUE_COLLECTION = "notificationQueue";
 const PENDING_PUSH_DELETIONS_KEY = "momo_pending_push_deletions_v1";
 const LAST_PUSH_UID_KEY = "momo_last_push_uid";
+const NOTIFICATION_AUTH_SEPARATED_KEY = "momo_notification_auth_separated_v1";
 
 // Device-specific settings stay on this device even when the user signs in.
 const DEVICE_LOCAL_SETTING_KEYS = new Set([
@@ -69,8 +76,10 @@ const DEVICE_LOCAL_SETTING_KEYS = new Set([
 ]);
 
 let currentUser = null;
+let notificationUser = null;
 let cloudMetadata = null;
 let busy = false;
+let legacyNotificationMigrationRunning = false;
 
 const byId = (id) => document.getElementById(id);
 
@@ -80,16 +89,20 @@ function isRealAccountUser(user = currentUser) {
 }
 
 async function ensureNotificationIdentity() {
-  if (currentUser) return currentUser;
+  if (notificationUser) return notificationUser;
 
-  const credential = await signInAnonymously(auth);
-  currentUser = credential.user;
-
-  if (currentUser?.uid) {
-    localStorage.setItem(LAST_PUSH_UID_KEY, currentUser.uid);
+  if (notificationAuth.currentUser) {
+    notificationUser = notificationAuth.currentUser;
+  } else {
+    const credential = await signInAnonymously(notificationAuth);
+    notificationUser = credential.user;
   }
 
-  return currentUser;
+  if (notificationUser?.uid) {
+    localStorage.setItem(LAST_PUSH_UID_KEY, notificationUser.uid);
+  }
+
+  return notificationUser;
 }
 
 function toast(message) {
@@ -479,57 +492,11 @@ async function googleSignIn() {
   setBusy(true);
 
   try {
-    // IMPORTANT: On mobile Safari / installed PWAs, the OAuth popup must be
-    // opened immediately from the user's tap. Do not await anonymous-user
-    // cleanup before opening it or the browser may silently block the popup.
-    if (currentUser?.isAnonymous) {
-      const anonymousUser = currentUser;
-
-      try {
-        // Upgrade the notification-only anonymous identity in place whenever
-        // this Google account is not already attached to another Firebase user.
-        // This preserves the UID, push subscription ownership, and queued alerts.
-        const linked = await linkWithPopup(anonymousUser, googleProvider);
-        currentUser = linked.user;
-      } catch (linkError) {
-        // If this Google account already belongs to an existing Momo Firebase
-        // account, Firebase returns the Google credential with the error. Use
-        // that completed OAuth credential to switch accounts without opening a
-        // second popup (so mobile user activation is not needed again).
-        if (linkError?.code === "auth/credential-already-in-use") {
-          const credential = GoogleAuthProvider.credentialFromError(linkError);
-
-          if (!credential) {
-            throw linkError;
-          }
-
-          const anonymousUid = anonymousUser.uid;
-          await detachNotificationIdentityFromCloud(anonymousUid);
-          await signOut(auth);
-
-          const signedIn = await signInWithCredential(auth, credential);
-          currentUser = signedIn.user;
-
-          // The browser PushSubscription itself survives the account switch.
-          // Re-own it under the real account; app.js will then resync every
-          // locally enabled reminder when momo-push-ready fires.
-          const subscription = await currentPushSubscription();
-          if (subscription && Notification.permission === "granted") {
-            await savePushSubscription(subscription);
-          }
-        } else if (linkError?.code === "auth/account-exists-with-different-credential") {
-          toast("This email already has a Momo account using another sign-in method. Sign in with that method first.");
-          return;
-        } else {
-          throw linkError;
-        }
-      }
-    } else {
-      // No anonymous notification identity: open Google immediately from the tap.
-      const signedIn = await signInWithPopup(auth, googleProvider);
-      currentUser = signedIn.user;
-    }
-
+    // The real account auth session is now completely separate from Momo's
+    // anonymous phone-reminder identity, so Google can open immediately from
+    // the user's tap with no anonymous-account linking/cleanup in the way.
+    const signedIn = await signInWithPopup(auth, googleProvider);
+    currentUser = signedIn.user;
     toast("Welcome to Momo 🍑");
   } catch (error) {
     console.error("Google sign-in failed:", error);
@@ -540,8 +507,13 @@ async function googleSignIn() {
       toast("Your browser blocked the Google sign-in window. Please allow pop-ups and try again.");
     } else if (error.code === "auth/unauthorized-domain") {
       toast("This Momo website is not yet authorized for Google sign-in in Firebase.");
+    } else if (error.code === "auth/network-request-failed") {
+      toast("Google sign-in could not reach Firebase. Check your connection and try again.");
+    } else if (error.code === "auth/operation-not-allowed") {
+      toast("Google sign-in is not enabled for this Firebase project.");
     } else {
-      toast("Google sign-in did not complete.");
+      const code = String(error?.code || "unknown error").replace(/^auth\//, "");
+      toast(`Google sign-in failed (${code}).`);
     }
   } finally {
     setBusy(false);
@@ -559,8 +531,6 @@ async function emailSignIn(mode) {
 
   setBusy(true);
   try {
-    await prepareForRealAccountSignIn();
-
     if (mode === "create") {
       const credential = await createUserWithEmailAndPassword(auth, email, password);
       try { await sendEmailVerification(credential.user); } catch (error) { console.warn("Verification email could not be sent:", error); }
@@ -633,17 +603,17 @@ async function currentPushSubscription() {
 }
 
 async function savePushSubscription(subscription) {
-  const owner = currentUser || await ensureNotificationIdentity();
+  const owner = await ensureNotificationIdentity();
   if (!owner) throw new Error("Momo could not create a notification identity on this phone.");
 
   const json = subscription.toJSON();
   const id = await sha256Text(json.endpoint || subscription.endpoint);
-  await setDoc(doc(cloudDb, "users", owner.uid, PUSH_SUBSCRIPTION_COLLECTION, id), {
+  await setDoc(doc(notificationDb, "users", owner.uid, PUSH_SUBSCRIPTION_COLLECTION, id), {
     endpoint: json.endpoint || subscription.endpoint,
     keys: json.keys || {},
     userAgent: navigator.userAgent || "",
     timezone: Intl.DateTimeFormat().resolvedOptions().timeZone || "UTC",
-    notificationOnly: Boolean(owner.isAnonymous),
+    notificationOnly: true,
     updatedAt: serverTimestamp()
   }, { merge: true });
 
@@ -674,26 +644,28 @@ async function enablePush() {
     });
   }
 
-  // No visible Momo account is required. Signed-out users get an internal,
-  // notification-only anonymous Firebase identity so Firestore rules can
-  // remain owner-scoped instead of being opened to the public internet.
+  // Notification auth is deliberately separate from Account & Cloud auth.
   await ensureNotificationIdentity();
   await savePushSubscription(subscription);
   await flushPendingPushDeletions();
   return subscription;
 }
 
-async function detachNotificationIdentityFromCloud(uid) {
-  if (!uid) return;
+async function clearLegacyPrimaryNotificationOwnership(uid) {
+  if (!uid) return true;
 
+  let queueCleared = true;
+  let subscriptionDetached = true;
   const subscription = await currentPushSubscription();
+
   if (subscription) {
     try {
       const json = subscription.toJSON();
       const id = await sha256Text(json.endpoint || subscription.endpoint);
       await deleteDoc(doc(cloudDb, "users", uid, PUSH_SUBSCRIPTION_COLLECTION, id));
     } catch (error) {
-      console.warn("Could not detach Momo push subscription from the old identity:", error);
+      subscriptionDetached = false;
+      console.warn("Could not detach the legacy notification subscription:", error);
     }
   }
 
@@ -703,18 +675,48 @@ async function detachNotificationIdentityFromCloud(uid) {
       where("uid", "==", uid)
     );
     const snapshot = await getDocs(queueQuery);
-    await Promise.allSettled(snapshot.docs.map((item) => deleteDoc(item.ref)));
+    const results = await Promise.allSettled(snapshot.docs.map((item) => deleteDoc(item.ref)));
+    queueCleared = results.every((result) => result.status === "fulfilled");
   } catch (error) {
-    console.warn("Could not clear the old Momo notification queue:", error);
+    queueCleared = false;
+    console.warn("Could not clear the legacy notification queue:", error);
   }
+
+  return queueCleared && subscriptionDetached;
 }
 
-async function prepareForRealAccountSignIn() {
-  if (!currentUser?.isAnonymous) return;
+async function migrateLegacyPrimaryNotificationOwnership(user) {
+  if (!user || legacyNotificationMigrationRunning) return false;
+  legacyNotificationMigrationRunning = true;
 
-  const anonymousUid = currentUser.uid;
-  await detachNotificationIdentityFromCloud(anonymousUid);
-  await signOut(auth);
+  try {
+    const subscription = await currentPushSubscription();
+    const cleaned = await clearLegacyPrimaryNotificationOwnership(user.uid);
+
+    // Do not abandon the old UID while it still owns queue entries, otherwise
+    // those entries could continue sending duplicate reminders. Retry online.
+    if (!cleaned) {
+      console.warn("Momo will retry the one-time notification identity migration later.");
+      return false;
+    }
+
+    // Anonymous users existed only for the old notification implementation.
+    // Real Google/email users stay signed in; only their old push ownership moves.
+    if (user.isAnonymous) {
+      await signOut(auth);
+    }
+
+    if (subscription && Notification.permission === "granted") {
+      await ensureNotificationIdentity();
+      await savePushSubscription(subscription);
+    }
+
+    localStorage.setItem(NOTIFICATION_AUTH_SEPARATED_KEY, "yes");
+    window.dispatchEvent(new Event("momo-push-ready"));
+    return true;
+  } finally {
+    legacyNotificationMigrationRunning = false;
+  }
 }
 
 async function disablePush() {
@@ -722,8 +724,13 @@ async function disablePush() {
   if (!subscription) return;
   const json = subscription.toJSON();
   const id = await sha256Text(json.endpoint || subscription.endpoint);
-  if (currentUser) {
-    try { await deleteDoc(doc(cloudDb, "users", currentUser.uid, PUSH_SUBSCRIPTION_COLLECTION, id)); } catch (error) { console.warn("Could not remove cloud push subscription:", error); }
+  const owner = notificationUser || notificationAuth.currentUser;
+  if (owner) {
+    try {
+      await deleteDoc(doc(notificationDb, "users", owner.uid, PUSH_SUBSCRIPTION_COLLECTION, id));
+    } catch (error) {
+      console.warn("Could not remove cloud push subscription:", error);
+    }
   }
   await subscription.unsubscribe();
 }
@@ -758,8 +765,9 @@ function forgetPendingPushDeletion(uid, type, id) {
 }
 
 async function flushPendingPushDeletions() {
-  if (!currentUser) return;
-  const uid = currentUser.uid;
+  const owner = notificationUser || notificationAuth.currentUser;
+  if (!owner) return;
+  const uid = owner.uid;
   const items = readPendingPushDeletions();
   const remaining = [];
 
@@ -771,7 +779,7 @@ async function flushPendingPushDeletions() {
 
     const queueId = `${uid}__${item.type}__${item.id}`;
     try {
-      await deleteDoc(doc(cloudDb, NOTIFICATION_QUEUE_COLLECTION, queueId));
+      await deleteDoc(doc(notificationDb, NOTIFICATION_QUEUE_COLLECTION, queueId));
     } catch (error) {
       remaining.push(item);
       console.warn("Could not finish a pending Momo reminder deletion:", error);
@@ -794,30 +802,30 @@ function reminderDueAt(item, type) {
 async function syncReminder(type, item) {
   if (!item?.id) return false;
 
-  if (!currentUser) {
-    const subscription = await currentPushSubscription();
-    if (!subscription || Notification.permission !== "granted") return false;
-    await ensureNotificationIdentity();
-  }
   if (!item.phoneReminder) {
     await deleteReminder(type, item.id);
     return false;
   }
 
-  const subscription = await currentPushSubscription();
-  if (!subscription || Notification.permission !== "granted") return false;
+  const existingSubscription = await currentPushSubscription();
+  if (!existingSubscription || Notification.permission !== "granted") return false;
+
+  const owner = await ensureNotificationIdentity();
+  if (!owner) return false;
+
+  const subscription = existingSubscription;
   await savePushSubscription(subscription);
 
   const dateString = type === "recurring" ? item.nextDueDate : (type === "custom" || type === "gentle") ? item.date : item.targetDate;
   if (!dateString) return false;
-  const queueId = `${currentUser.uid}__${type}__${item.id}`;
-  forgetPendingPushDeletion(currentUser.uid, type, item.id);
+  const queueId = `${owner.uid}__${type}__${item.id}`;
+  forgetPendingPushDeletion(owner.uid, type, item.id);
   const title = type === "recurring" ? (item.name || "Recurring expense") : (type === "custom" || type === "gentle") ? (item.title || "Reminder") : (item.title || "Planned expense");
   const amount = Number(item.amount || 0);
   const currency = item.currency || "PHP";
 
-  await setDoc(doc(cloudDb, NOTIFICATION_QUEUE_COLLECTION, queueId), {
-    uid: currentUser.uid,
+  await setDoc(doc(notificationDb, NOTIFICATION_QUEUE_COLLECTION, queueId), {
+    uid: owner.uid,
     localId: item.id,
     type,
     title,
@@ -839,14 +847,15 @@ async function syncReminder(type, item) {
 async function deleteReminder(type, id) {
   if (!id) return false;
 
+  const owner = notificationUser || notificationAuth.currentUser;
   const uid =
-    currentUser?.uid ||
+    owner?.uid ||
     localStorage.getItem(LAST_PUSH_UID_KEY) ||
     "";
 
   if (!uid) return false;
 
-  if (!currentUser || currentUser.uid !== uid) {
+  if (!owner || owner.uid !== uid) {
     rememberPendingPushDeletion(uid, type, id);
     return false;
   }
@@ -854,7 +863,7 @@ async function deleteReminder(type, id) {
   const queueId = `${uid}__${type}__${id}`;
 
   try {
-    await deleteDoc(doc(cloudDb, NOTIFICATION_QUEUE_COLLECTION, queueId));
+    await deleteDoc(doc(notificationDb, NOTIFICATION_QUEUE_COLLECTION, queueId));
     forgetPendingPushDeletion(uid, type, id);
     return true;
   } catch (error) {
@@ -916,86 +925,90 @@ function bindEvents() {
       return;
     }
 
-    const subscription = await currentPushSubscription();
-    const keepPhoneAlerts = Boolean(subscription && Notification.permission === "granted");
-    const oldUid = currentUser?.uid || "";
-
-    if (oldUid) {
-      await detachNotificationIdentityFromCloud(oldUid);
-    }
-
     await signOut(auth);
-
-    if (keepPhoneAlerts && subscription) {
-      try {
-        await ensureNotificationIdentity();
-        await savePushSubscription(subscription);
-        window.dispatchEvent(new Event("momo-push-ready"));
-        toast("Signed out. Local Momo data stays here, and your selected phone reminders stay on.");
-        return;
-      } catch (error) {
-        console.warn("Could not keep phone reminders active after sign-out:", error);
-      }
-    }
-
-    toast("Signed out. Local Momo data is still here.");
+    toast("Signed out. Local Momo data and your selected phone reminders stay on this device.");
   });
 }
 
 async function init() {
   bindEvents();
+  setBusy(true);
+
   try {
-    await setPersistence(auth, browserLocalPersistence);
+    await Promise.all([
+      setPersistence(auth, browserLocalPersistence),
+      setPersistence(notificationAuth, browserLocalPersistence)
+    ]);
   } catch (error) {
     console.warn("Could not set Firebase auth persistence:", error);
   }
+
+  onAuthStateChanged(notificationAuth, async (user) => {
+    notificationUser = user;
+
+    if (user?.uid) {
+      localStorage.setItem(LAST_PUSH_UID_KEY, user.uid);
+      try {
+        await flushPendingPushDeletions();
+      } catch (error) {
+        console.warn("Could not flush pending phone reminder deletions:", error);
+      }
+    }
+
+    window.dispatchEvent(new Event("momo-push-ready"));
+  });
 
   onAuthStateChanged(auth, async (user) => {
     currentUser = user;
     cloudMetadata = null;
 
-    if (!user) {
-      showSignedOut();
+    // One-time migration for older notification builds. Push ownership used to
+    // share the Account & Cloud Auth instance. Move it to the dedicated hidden
+    // notification Auth instance so Google/email login can never conflict again.
+    if (user && localStorage.getItem(NOTIFICATION_AUTH_SEPARATED_KEY) !== "yes") {
+      if (user.isAnonymous) showSignedOut();
+      else showSignedIn(user);
 
-      // If this browser already has an active Web Push subscription, restore
-      // its notification-only anonymous identity automatically. The user stays
-      // in visible Local Mode and is not asked to create/sign into an account.
       try {
-        const subscription = await currentPushSubscription();
-        if (subscription && Notification.permission === "granted") {
-          await ensureNotificationIdentity();
-          return; // Auth observer will run again with the anonymous user.
-        }
+        const migrated = await migrateLegacyPrimaryNotificationOwnership(user);
+        if (!migrated) setBusy(false);
       } catch (error) {
-        console.warn("Could not restore Momo notification identity:", error);
+        console.warn("Could not migrate the old Momo notification ownership:", error);
+        setBusy(false);
       }
 
-      window.dispatchEvent(new Event("momo-push-ready"));
-      return;
+      if (user.isAnonymous) return;
     }
 
-    localStorage.setItem(LAST_PUSH_UID_KEY, user.uid);
-
-    if (user.isAnonymous) {
-      // Anonymous auth exists only to securely own this phone's push data.
-      // Never present it as a Momo account or enable cloud-backup UI for it.
+    if (!user) {
       showSignedOut();
-    } else {
+    } else if (!user.isAnonymous) {
       showSignedIn(user);
     }
 
-    try {
-      await flushPendingPushDeletions();
-    } catch (error) {
-      console.warn("Could not flush pending phone reminder deletions:", error);
-    }
-
-    window.dispatchEvent(new Event("momo-push-ready"));
-    // Cloud metadata is still fetched only when a real signed-in user asks.
+    setBusy(false);
   });
+
+  // If this device already has a Web Push subscription but the new dedicated
+  // notification Auth session has not been created yet, create it quietly.
+  try {
+    const subscription = await currentPushSubscription();
+    if (subscription && Notification.permission === "granted") {
+      await ensureNotificationIdentity();
+      await savePushSubscription(subscription);
+    }
+  } catch (error) {
+    console.warn("Could not initialize Momo phone reminder identity:", error);
+  }
 }
 
 window.addEventListener("online", () => {
+  if (currentUser && localStorage.getItem(NOTIFICATION_AUTH_SEPARATED_KEY) !== "yes") {
+    migrateLegacyPrimaryNotificationOwnership(currentUser).catch((error) => {
+      console.warn("Could not retry legacy notification ownership migration:", error);
+    });
+  }
+
   flushPendingPushDeletions().catch((error) => {
     console.warn("Could not flush Momo reminder deletions after reconnecting:", error);
   });
