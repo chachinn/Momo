@@ -3,8 +3,12 @@
 // Momo 1.5.0 — update notes + large-list stability + push reminders + network-first PWA shell
 // ========================================
 
+const APP_VERSION =
+  "1.5.0";
+
+
 const CACHE_NAME =
-  "momo-runtime-shell-v1.5.0";
+  `momo-runtime-shell-v${APP_VERSION}`;
 
 
 const CORE_SHELL = [
@@ -85,6 +89,14 @@ self.addEventListener(
 self.addEventListener("message", (event) => {
   if (event.data?.type === "SKIP_WAITING") {
     self.skipWaiting();
+    return;
+  }
+
+  if (event.data?.type === "GET_MOMO_VERSION") {
+    const replyPort = event.ports?.[0];
+    replyPort?.postMessage({
+      version: APP_VERSION
+    });
   }
 });
 
@@ -359,62 +371,89 @@ self.addEventListener(
       )
     ) {
 
+      // Keep the currently active Momo shell stable until the user accepts
+      // the waiting service worker from the in-app Refresh banner. Version
+      // probes above still bypass the cache, so Momo can discover releases
+      // without silently swapping app files underneath an open session.
       event.respondWith(
-        fetch(
-          new Request(
-            request,
-            {
-              cache:
-                "no-store"
-            }
-          )
-        )
-          .then(
-            (
-              response
-            ) =>
-              cacheSuccessfulResponse(
-                request,
-                response
-              )
-          )
-          .catch(
-            async () => {
+        (async () => {
 
-              const cached =
-                await caches.match(
-                  request
-                );
+          const cache =
+            await caches.open(
+              CACHE_NAME
+            );
 
 
-              if (
-                cached
-              ) {
-
-                return cached;
-
-              }
+          const cached =
+            await cache.match(
+              request
+            );
 
 
-              if (
-                request.mode ===
-                  "navigate"
-              ) {
+          if (
+            cached
+          ) {
 
-                return (
-                  await caches.match(
-                    "./index.html"
-                  )
-                );
-              }
+            return cached;
+
+          }
 
 
-              throw new Error(
-                "Momo is offline and this file is not cached yet."
+          // Navigations can arrive with a slightly different URL shape
+          // (for example the repository root instead of /index.html).
+          if (
+            request.mode ===
+              "navigate"
+          ) {
+
+            const fallback =
+              await cache.match(
+                "./index.html"
+              ) ||
+              await cache.match(
+                "./"
               );
 
+
+            if (
+              fallback
+            ) {
+
+              return fallback;
+
             }
-          )
+
+          }
+
+
+          try {
+
+            const response =
+              await fetch(
+                new Request(
+                  request,
+                  {
+                    cache:
+                      "no-store"
+                  }
+                )
+              );
+
+
+            return cacheSuccessfulResponse(
+              request,
+              response
+            );
+
+          } catch {
+
+            throw new Error(
+              "Momo is offline and this file is not cached yet."
+            );
+
+          }
+
+        })()
       );
 
 

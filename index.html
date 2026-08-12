@@ -5734,38 +5734,169 @@
         }
       );
 
-      const lastSeenVersion =
-        localStorage.getItem(
-          LAST_SEEN_UPDATE_KEY
+      const versionParts = (value) =>
+        String(value || "")
+          .trim()
+          .replace(/^v/i, "")
+          .split(".")
+          .map((part) => Number.parseInt(part, 10) || 0);
+
+      const isNewerVersion = (
+        candidate,
+        current = MOMO_VERSION
+      ) => {
+        const left = versionParts(candidate);
+        const right = versionParts(current);
+        const length = Math.max(
+          left.length,
+          right.length
         );
 
-      const refreshedForUpdate =
-        sessionStorage.getItem(
-          UPDATE_REFRESH_SESSION_KEY
-        ) === "yes";
+        for (let index = 0; index < length; index += 1) {
+          const a = left[index] || 0;
+          const b = right[index] || 0;
 
-      if (
-        lastSeenVersion !== MOMO_VERSION &&
-        (
-          lastSeenVersion ||
-          hadExistingInstallBeforeBoot ||
-          refreshedForUpdate
-        )
-      ) {
-        window.setTimeout(
-          showWhatsNew,
-          250
-        );
-      } else if (
-        !lastSeenVersion
-      ) {
-        localStorage.setItem(
-          LAST_SEEN_UPDATE_KEY,
-          MOMO_VERSION
-        );
-      }
+          if (a !== b) {
+            return a > b;
+          }
+        }
+
+        return false;
+      };
+
+      const getControllerVersion = async (
+        timeoutMs = 1200
+      ) => {
+        const controller =
+          navigator.serviceWorker?.controller;
+
+        if (!controller || typeof MessageChannel === "undefined") {
+          return "";
+        }
+
+        return new Promise((resolve) => {
+          const channel = new MessageChannel();
+          let settled = false;
+
+          const finish = (value = "") => {
+            if (settled) {
+              return;
+            }
+
+            settled = true;
+            window.clearTimeout(timer);
+            channel.port1.close?.();
+            resolve(String(value || ""));
+          };
+
+          const timer =
+            window.setTimeout(
+              () => finish(""),
+              timeoutMs
+            );
+
+          channel.port1.onmessage =
+            (event) =>
+              finish(
+                event.data?.version || ""
+              );
+
+          try {
+            controller.postMessage(
+              {
+                type: "GET_MOMO_VERSION"
+              },
+              [channel.port2]
+            );
+          } catch {
+            finish("");
+          }
+        });
+      };
+
+      const maybeShowWhatsNew =
+        async ({ force = false } = {}) => {
+          const lastSeenVersion =
+            localStorage.getItem(
+              LAST_SEEN_UPDATE_KEY
+            );
+
+          if (
+            lastSeenVersion === MOMO_VERSION &&
+            !force
+          ) {
+            return;
+          }
+
+          const refreshedForUpdate =
+            sessionStorage.getItem(
+              UPDATE_REFRESH_SESSION_KEY
+            ) === "yes";
+
+          if (force) {
+            showWhatsNew();
+            return;
+          }
+
+          const controllerVersion =
+            await getControllerVersion();
+
+          // During the 1.4.x -> 1.5.0 transition, the old network-first
+          // controller can briefly deliver the new HTML before the new
+          // service worker is actually active. Do not show release notes
+          // until the controller itself confirms this build is active.
+          if (
+            !refreshedForUpdate &&
+            controllerVersion !== MOMO_VERSION
+          ) {
+            // A brand-new install can run before the first service worker has
+            // claimed the page. Mark this build as already seen so the user
+            // is not shown release notes on their second launch.
+            if (
+              !hadExistingInstallBeforeBoot &&
+              !lastSeenVersion
+            ) {
+              localStorage.setItem(
+                LAST_SEEN_UPDATE_KEY,
+                MOMO_VERSION
+              );
+            }
+
+            return;
+          }
+
+          if (
+            refreshedForUpdate ||
+            hadExistingInstallBeforeBoot
+          ) {
+            window.setTimeout(
+              showWhatsNew,
+              260
+            );
+            return;
+          }
+
+          // Fresh installs start already on the newest build, so they should
+          // not be interrupted by a historical release note.
+          if (!lastSeenVersion) {
+            localStorage.setItem(
+              LAST_SEEN_UPDATE_KEY,
+              MOMO_VERSION
+            );
+          }
+        };
 
       if (!("serviceWorker" in navigator)) {
+        if (
+          sessionStorage.getItem(
+            UPDATE_REFRESH_SESSION_KEY
+          ) === "yes"
+        ) {
+          window.setTimeout(
+            showWhatsNew,
+            260
+          );
+        }
         return;
       }
 
@@ -5780,6 +5911,11 @@
       let applyingUpdate = false;
       let reloadFallbackTimer = null;
       let latestVersion = "";
+      let updateCheckInFlight = false;
+      let lastUpdateCheckAt = 0;
+
+      const UPDATE_CHECK_INTERVAL =
+        5 * 60 * 1000;
 
       const showUpdateBanner = (version = latestVersion) => {
         if (!updateBanner || applyingUpdate) {
@@ -5888,12 +6024,29 @@
       };
 
       const readRemoteVersion = async () => {
+        const controller =
+          typeof AbortController !== "undefined"
+            ? new AbortController()
+            : null;
+
+        const timeout =
+          controller
+            ? window.setTimeout(
+                () => controller.abort(),
+                8000
+              )
+            : null;
+
         try {
           const response =
             await fetch(
               `./index.html?momo_update_check=${Date.now()}`,
               {
-                cache: "no-store"
+                cache: "no-store",
+                headers: {
+                  "Cache-Control": "no-cache"
+                },
+                signal: controller?.signal
               }
             );
 
@@ -5907,43 +6060,101 @@
           const match =
             html.match(
               /<meta\s+name=["']momo-app-version["']\s+content=["']([^"']+)["']/i
+            ) ||
+            html.match(
+              /<meta\s+content=["']([^"']+)["']\s+name=["']momo-app-version["']/i
             );
 
-          return match?.[1] || "";
-        } catch {
+          return String(match?.[1] || "").trim();
+        } catch (error) {
+          if (error?.name !== "AbortError") {
+            console.debug(
+              "Momo version check skipped:",
+              error
+            );
+          }
+
           return "";
-        }
-      };
-
-      const checkForUpdate = async () => {
-        if (!registration || applyingUpdate) {
-          return;
-        }
-
-        const remoteVersion =
-          await readRemoteVersion();
-
-        if (
-          remoteVersion &&
-          remoteVersion !== MOMO_VERSION
-        ) {
-          latestVersion =
-            remoteVersion;
-
-          await registration
-            .update()
-            .catch(() => {});
-
-          if (
-            registration.waiting &&
-            navigator.serviceWorker.controller
-          ) {
-            showUpdateBanner(
-              remoteVersion
-            );
+        } finally {
+          if (timeout) {
+            window.clearTimeout(timeout);
           }
         }
       };
+
+      const checkForUpdate =
+        async ({ force = false } = {}) => {
+          if (
+            !registration ||
+            applyingUpdate ||
+            updateCheckInFlight ||
+            !navigator.onLine
+          ) {
+            return;
+          }
+
+          const now = Date.now();
+
+          if (
+            !force &&
+            now - lastUpdateCheckAt < 60 * 1000
+          ) {
+            return;
+          }
+
+          lastUpdateCheckAt = now;
+          updateCheckInFlight = true;
+
+          try {
+            if (
+              registration.waiting &&
+              navigator.serviceWorker.controller
+            ) {
+              showUpdateBanner();
+              return;
+            }
+
+            try {
+              await registration.update();
+            } catch {}
+
+            if (
+              registration.waiting &&
+              navigator.serviceWorker.controller
+            ) {
+              showUpdateBanner();
+              return;
+            }
+
+            const remoteVersion =
+              await readRemoteVersion();
+
+            if (
+              remoteVersion &&
+              isNewerVersion(
+                remoteVersion
+              )
+            ) {
+              latestVersion =
+                remoteVersion;
+
+              try {
+                await registration.update();
+              } catch {}
+
+              if (
+                registration.waiting &&
+                navigator.serviceWorker.controller
+              ) {
+                showUpdateBanner(
+                  remoteVersion
+                );
+              }
+            }
+          } finally {
+            updateCheckInFlight = false;
+          }
+        };
 
       navigator.serviceWorker.addEventListener(
         "controllerchange",
@@ -6056,15 +6267,29 @@
               }
             );
 
-            await registration.update();
-            await checkForUpdate();
+            await maybeShowWhatsNew();
+
+            // Keep startup smooth: version/network checks wait until after
+            // the first paint instead of competing with Momo's data load.
+            window.setTimeout(
+              () => {
+                checkForUpdate({
+                  force: true
+                }).catch(() => {});
+              },
+              1800
+            );
 
             window.setInterval(
               () => {
-                checkForUpdate()
-                  .catch(() => {});
+                if (
+                  document.visibilityState === "visible"
+                ) {
+                  checkForUpdate()
+                    .catch(() => {});
+                }
               },
-              30 * 60 * 1000
+              UPDATE_CHECK_INTERVAL
             );
           } catch (error) {
             hideUpdateBanner();
@@ -6074,6 +6299,30 @@
               error
             );
           }
+        }
+      );
+
+      document.addEventListener(
+        "visibilitychange",
+        () => {
+          if (
+            document.visibilityState !== "visible"
+          ) {
+            return;
+          }
+
+          checkForUpdate({
+            force: true
+          }).catch(() => {});
+        }
+      );
+
+      window.addEventListener(
+        "online",
+        () => {
+          checkForUpdate({
+            force: true
+          }).catch(() => {});
         }
       );
     })();
