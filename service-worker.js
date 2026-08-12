@@ -1,10 +1,10 @@
 // ========================================
 // MOMO SERVICE WORKER
-// Momo 1.3.9 — payables update + push reminders + stable network-first PWA shell
+// Momo 1.4.0 — About Momo + update banner + push reminders + stable network-first PWA shell
 // ========================================
 
 const CACHE_NAME =
-  "momo-runtime-shell-v1.3.9";
+  "momo-runtime-shell-v1.4.0";
 
 
 const APP_SHELL = [
@@ -22,9 +22,6 @@ const APP_SHELL = [
 self.addEventListener(
   "install",
   (event) => {
-
-    self.skipWaiting();
-
 
     event.waitUntil(
       caches
@@ -59,6 +56,13 @@ self.addEventListener(
 
   }
 );
+
+
+self.addEventListener("message", (event) => {
+  if (event.data?.type === "SKIP_WAITING") {
+    self.skipWaiting();
+  }
+});
 
 
 self.addEventListener(

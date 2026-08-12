@@ -16292,3 +16292,158 @@ textarea {
 .help-topic-tip .momo-peach-icon {
   flex: 0 0 auto;
 }
+
+/* ========================================
+   ABOUT MOMO — HOME + GUIDE
+======================================== */
+
+.momo-origin-card {
+  margin: 2px 0 18px;
+  padding: 15px 16px;
+  border: 1px solid color-mix(in srgb, var(--border) 78%, var(--pink));
+  border-radius: 23px;
+  display: grid;
+  grid-template-columns: 46px 1fr;
+  gap: 12px;
+  align-items: center;
+  background:
+    radial-gradient(circle at 100% 0, color-mix(in srgb, var(--pink) 18%, transparent), transparent 44%),
+    color-mix(in srgb, var(--surface) 92%, var(--blush));
+  box-shadow: 0 6px 18px color-mix(in srgb, var(--rose) 5%, transparent);
+}
+
+.momo-origin-icon,
+.guide-origin-icon {
+  display: grid;
+  place-items: center;
+  background: color-mix(in srgb, var(--blush) 76%, white);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--border) 72%, transparent);
+}
+
+.momo-origin-icon {
+  width: 46px;
+  height: 46px;
+  border-radius: 16px;
+}
+
+.momo-origin-peach-icon {
+  --icon-size: 1.95rem;
+}
+
+.momo-origin-copy {
+  min-width: 0;
+}
+
+.momo-origin-card .momo-section-kicker {
+  margin-bottom: 3px;
+}
+
+.momo-origin-card h2 {
+  margin: 0 0 4px;
+  font-family: Georgia, serif;
+  font-size: 15px;
+  line-height: 1.3;
+}
+
+.momo-origin-card p:last-child {
+  margin: 0;
+  color: var(--text-soft);
+  font-size: 10px;
+  line-height: 1.5;
+}
+
+.guide-origin-card {
+  margin-bottom: 12px;
+  padding: 17px;
+  border: 1px solid color-mix(in srgb, var(--border) 78%, var(--pink));
+  border-radius: 24px;
+  display: grid;
+  grid-template-columns: 50px 1fr;
+  gap: 13px;
+  align-items: start;
+  background:
+    radial-gradient(circle at 100% 0, color-mix(in srgb, var(--pink) 20%, transparent), transparent 42%),
+    color-mix(in srgb, var(--surface) 91%, var(--blush));
+  box-shadow: 0 6px 18px color-mix(in srgb, var(--rose) 5%, transparent);
+}
+
+.guide-origin-icon {
+  width: 50px;
+  height: 50px;
+  border-radius: 17px;
+}
+
+.guide-origin-peach-icon {
+  --icon-size: 2.15rem;
+}
+
+.guide-origin-card h2 {
+  margin: 3px 0 6px;
+  font-family: Georgia, serif;
+  font-size: 18px;
+  line-height: 1.25;
+}
+
+.guide-origin-card p:not(.section-kicker) {
+  margin: 0;
+  color: var(--text-soft);
+  font-size: 11px;
+  line-height: 1.55;
+}
+
+/* ========================================
+   APP UPDATE BANNER
+======================================== */
+
+.app-update-banner {
+  position: fixed;
+  z-index: 175;
+  left: 50%;
+  bottom: calc(var(--nav-height) + env(safe-area-inset-bottom) + 14px);
+  width: min(calc(100% - 28px), 430px);
+  min-height: 66px;
+  padding: 10px 10px 10px 16px;
+  border: 1px solid color-mix(in srgb, var(--border) 70%, var(--pink));
+  border-radius: 20px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  background: color-mix(in srgb, var(--surface) 96%, var(--blush));
+  box-shadow: 0 16px 44px rgba(73, 58, 58, 0.18);
+  transform: translate(-50%, 18px);
+  opacity: 0;
+  transition: opacity 0.2s ease, transform 0.2s ease;
+}
+
+.app-update-banner[hidden] {
+  display: none;
+}
+
+.app-update-banner.show {
+  opacity: 1;
+  transform: translate(-50%, 0);
+}
+
+.app-update-banner p {
+  margin: 0;
+  color: var(--text);
+  font-size: 11px;
+  line-height: 1.4;
+}
+
+.app-update-button {
+  min-width: 96px;
+  min-height: 45px;
+  padding: 0 18px;
+  border: 1px solid color-mix(in srgb, var(--pink) 66%, var(--border));
+  border-radius: 14px;
+  background: var(--blush);
+  color: var(--rose);
+  font-weight: 800;
+}
+
+.app-update-button:disabled {
+  opacity: 0.65;
+  cursor: default;
+}
