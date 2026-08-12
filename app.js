@@ -1,6 +1,6 @@
 // ========================================
 // MOMO
-// Momo 1.4.0 — About Momo + Update Banner
+// Momo 1.4.1 — Google Sign-In Fix + About Momo + Update Banner
 // CLEAN FOUNDATION + FUNCTIONAL TRIPS
 // ========================================
 

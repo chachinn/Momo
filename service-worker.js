@@ -1,10 +1,10 @@
 // ========================================
 // MOMO SERVICE WORKER
-// Momo 1.4.0 — About Momo + update banner + push reminders + stable network-first PWA shell
+// Momo 1.4.1 — Google sign-in fix + update banner + push reminders + stable network-first PWA shell
 // ========================================
 
 const CACHE_NAME =
-  "momo-runtime-shell-v1.4.0";
+  "momo-runtime-shell-v1.4.1";
 
 
 const APP_SHELL = [

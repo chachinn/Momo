@@ -6,6 +6,8 @@ import {
   onAuthStateChanged,
   GoogleAuthProvider,
   signInWithPopup,
+  signInWithCredential,
+  linkWithPopup,
   createUserWithEmailAndPassword,
   signInWithEmailAndPassword,
   sendPasswordResetEmail,
@@ -477,16 +479,67 @@ async function googleSignIn() {
   setBusy(true);
 
   try {
-    await prepareForRealAccountSignIn();
-    await signInWithPopup(auth, googleProvider);
+    // IMPORTANT: On mobile Safari / installed PWAs, the OAuth popup must be
+    // opened immediately from the user's tap. Do not await anonymous-user
+    // cleanup before opening it or the browser may silently block the popup.
+    if (currentUser?.isAnonymous) {
+      const anonymousUser = currentUser;
+
+      try {
+        // Upgrade the notification-only anonymous identity in place whenever
+        // this Google account is not already attached to another Firebase user.
+        // This preserves the UID, push subscription ownership, and queued alerts.
+        const linked = await linkWithPopup(anonymousUser, googleProvider);
+        currentUser = linked.user;
+      } catch (linkError) {
+        // If this Google account already belongs to an existing Momo Firebase
+        // account, Firebase returns the Google credential with the error. Use
+        // that completed OAuth credential to switch accounts without opening a
+        // second popup (so mobile user activation is not needed again).
+        if (linkError?.code === "auth/credential-already-in-use") {
+          const credential = GoogleAuthProvider.credentialFromError(linkError);
+
+          if (!credential) {
+            throw linkError;
+          }
+
+          const anonymousUid = anonymousUser.uid;
+          await detachNotificationIdentityFromCloud(anonymousUid);
+          await signOut(auth);
+
+          const signedIn = await signInWithCredential(auth, credential);
+          currentUser = signedIn.user;
+
+          // The browser PushSubscription itself survives the account switch.
+          // Re-own it under the real account; app.js will then resync every
+          // locally enabled reminder when momo-push-ready fires.
+          const subscription = await currentPushSubscription();
+          if (subscription && Notification.permission === "granted") {
+            await savePushSubscription(subscription);
+          }
+        } else if (linkError?.code === "auth/account-exists-with-different-credential") {
+          toast("This email already has a Momo account using another sign-in method. Sign in with that method first.");
+          return;
+        } else {
+          throw linkError;
+        }
+      }
+    } else {
+      // No anonymous notification identity: open Google immediately from the tap.
+      const signedIn = await signInWithPopup(auth, googleProvider);
+      currentUser = signedIn.user;
+    }
+
     toast("Welcome to Momo 🍑");
   } catch (error) {
     console.error("Google sign-in failed:", error);
 
-    if (error.code === "auth/popup-closed-by-user") {
+    if (error.code === "auth/popup-closed-by-user" || error.code === "auth/cancelled-popup-request") {
       toast("Google sign-in was cancelled.");
     } else if (error.code === "auth/popup-blocked") {
       toast("Your browser blocked the Google sign-in window. Please allow pop-ups and try again.");
+    } else if (error.code === "auth/unauthorized-domain") {
+      toast("This Momo website is not yet authorized for Google sign-in in Firebase.");
     } else {
       toast("Google sign-in did not complete.");
     }
