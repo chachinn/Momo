@@ -1,0 +1,110 @@
+name: Momo 1.5.0 release
+
+on:
+  push:
+    branches: [main]
+
+permissions:
+  contents: write
+
+concurrency:
+  group: momo-1-5-0-release
+  cancel-in-progress: false
+
+jobs:
+  release-momo:
+    if: github.event.head_commit.message == 'Run Momo 1.5.0 release'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - name: Check out main
+        uses: actions/checkout@v4
+        with:
+          ref: main
+
+      - name: Verify exact 1.4.2 baseline
+        shell: bash
+        run: |
+          test "$(git hash-object app.js)" = "b7903c4c1f889eeb5245bf595a3e56a621b97176"
+          test "$(git hash-object firebase-momo.js)" = "663519f3dcae4390f43b323a0409b33280e0ac59"
+          test "$(git hash-object index.html)" = "6267d30beea2d19045d395dfd4845dcb2278f4db"
+          test "$(git hash-object service-worker.js)" = "5ddd213609efa313e75f6dda05b65ad86c68126e"
+          test "$(git hash-object styles.css)" = "55b120fa5a521ef987f637fc6e21e5c32a3ca68c"
+
+      - name: Rebuild release patch
+        shell: bash
+        run: |
+          base64 -d scripts/momo-1.5.0.patch.gz.b64 | gzip -d > /tmp/momo-1.5.0.patch
+          git apply --check /tmp/momo-1.5.0.patch
+          git apply /tmp/momo-1.5.0.patch
+
+      - name: JavaScript syntax checks
+        shell: bash
+        run: |
+          node --check app.js
+          node --check firebase-momo.js
+          node --check service-worker.js
+
+      - name: Release regression QA
+        run: python scripts/momo-release-qa.py
+
+      - name: Large-history stress QA
+        shell: bash
+        run: |
+          node <<'NODE'
+          function compareExpensesNewest(a,b){
+            const dateCompare=String(b.date||"").localeCompare(String(a.date||""));
+            if(dateCompare!==0)return dateCompare;
+            return String(b.createdAt||b.updatedAt||"").localeCompare(String(a.createdAt||a.updatedAt||""));
+          }
+          function getRecentExpenses(expenses,limit=4){
+            if(limit<=0)return [];
+            const recent=[];
+            for(const expense of expenses){
+              const insertAt=recent.findIndex(item=>compareExpensesNewest(expense,item)<0);
+              if(insertAt===-1)recent.push(expense);else recent.splice(insertAt,0,expense);
+              if(recent.length>limit)recent.pop();
+            }
+            return recent;
+          }
+          const N=100000;
+          const expenses=Array.from({length:N},(_,i)=>({id:i,date:`2026-${String((i%12)+1).padStart(2,'0')}-${String((i%28)+1).padStart(2,'0')}`,createdAt:String(i).padStart(8,'0')}));
+          const start=performance.now();
+          const actual=getRecentExpenses(expenses,4).map(x=>x.id);
+          const elapsed=performance.now()-start;
+          const expected=[...expenses].sort(compareExpensesNewest).slice(0,4).map(x=>x.id);
+          if(JSON.stringify(actual)!==JSON.stringify(expected))throw new Error('Recent-expense optimization changed results');
+          if(elapsed>5000)throw new Error(`100k recent scan unexpectedly slow: ${elapsed}ms`);
+          const trips=new Map(Array.from({length:5000},(_,i)=>['t'+i,{id:'t'+i}]));
+          const budgets=new Map(Array.from({length:5000},(_,i)=>['b'+i,{id:'b'+i}]));
+          let hits=0; const lookupStart=performance.now();
+          for(let i=0;i<N;i++){if(trips.get('t'+(i%5000)))hits++;if(budgets.get('b'+(i%5000)))hits++;}
+          const lookupElapsed=performance.now()-lookupStart;
+          if(hits!==N*2)throw new Error('Lookup-map stress mismatch');
+          console.log(`MOMO_STRESS_QA_OK recent100k=${elapsed.toFixed(1)}ms lookups200k=${lookupElapsed.toFixed(1)}ms`);
+          NODE
+
+      - name: Repository consistency checks
+        shell: bash
+        run: |
+          grep -q 'momo-app-version" content="1.5.0"' index.html
+          grep -q 'const DB_VERSION = 4;' app.js
+          grep -q 'GET_MOMO_VERSION' service-worker.js
+          grep -q 'self.addEventListener("push"' service-worker.js
+          grep -q 'momo-notifications' firebase-momo.js
+          git diff --check
+
+      - name: Commit verified release
+        shell: bash
+        run: |
+          git config user.name "Momo Release Bot"
+          git config user.email "momo-release-bot@users.noreply.github.com"
+          git rm .github/workflows/momo-1.5.0-release.yml
+          git rm scripts/momo-1.5.0.patch.gz.b64
+          git rm scripts/momo-release-qa.py
+          git rm .momo-release-1.5.0-trigger
+          git add app.js index.html styles.css service-worker.js
+          git diff --cached --check
+          git commit -m "Release Momo 1.5.0: update notes and stability"
+          git push origin HEAD:main
