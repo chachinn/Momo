@@ -1,18 +1,22 @@
 // ========================================
 // MOMO SERVICE WORKER
-// Momo 1.4.2 — separated account/notification auth + update banner + push reminders + stable network-first PWA shell
+// Momo 1.5.0 — update notes + large-list stability + push reminders + network-first PWA shell
 // ========================================
 
 const CACHE_NAME =
-  "momo-runtime-shell-v1.4.2";
+  "momo-runtime-shell-v1.5.0";
 
 
-const APP_SHELL = [
+const CORE_SHELL = [
   "./",
   "./index.html",
   "./styles.css",
   "./app.js",
-  "./firebase-momo.js",
+  "./firebase-momo.js"
+];
+
+
+const OPTIONAL_SHELL = [
   "./manifest.json",
   "./icons/icon-192.png",
   "./icons/icon-512.png"
@@ -33,8 +37,28 @@ self.addEventListener(
             cache
           ) => {
 
+            // Core app files are required. A broken/incomplete release
+            // must not install and replace the currently working Momo shell.
+            await cache.addAll(
+              CORE_SHELL.map(
+                (
+                  url
+                ) =>
+                  new Request(
+                    url,
+                    {
+                      cache:
+                        "reload"
+                    }
+                  )
+              )
+            );
+
+
+            // Branding/manifest assets are useful but should not block an
+            // otherwise healthy app update if one optional file is unavailable.
             await Promise.allSettled(
-              APP_SHELL.map(
+              OPTIONAL_SHELL.map(
                 (
                   url
                 ) =>
@@ -290,6 +314,39 @@ self.addEventListener(
         request
       )
     ) {
+
+      return;
+
+    }
+
+
+    const url =
+      new URL(
+        request.url
+      );
+
+
+    // Update/version probes always go to the network and never enter Momo's
+    // offline cache. This prevents an old cached index from hiding a release.
+    if (
+      url.searchParams.has(
+        "momo_update_check"
+      )
+    ) {
+
+      event.respondWith(
+        fetch(
+          request,
+          {
+            cache:
+              "no-store"
+          }
+        ).catch(
+          () =>
+            Response.error()
+        )
+      );
+
 
       return;
 

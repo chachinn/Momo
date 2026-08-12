@@ -17,7 +17,7 @@
   <meta name="apple-mobile-web-app-title" content="Momo">
 
   <title>Momo — Spending Diary</title>
-  <meta name="momo-app-version" content="1.4.2">
+  <meta name="momo-app-version" content="1.5.0">
 
   <link rel="manifest" href="manifest.json">
   <link rel="apple-touch-icon" href="icons/icon-192.png">
@@ -2801,6 +2801,14 @@
           </button>
         </section>
 
+        <button
+          id="openMomoWhatsNew"
+          class="secondary-button guide-whats-new-btn"
+          type="button"
+        >
+          ✨ What’s New in Momo
+        </button>
+
         <div class="guide-groups">
           <details class="guide-group" open>
             <summary>
@@ -5500,6 +5508,52 @@
     </div>
 
 
+    <!-- WHAT'S NEW / RELEASE NOTE -->
+    <div
+      id="momoWhatsNewModal"
+      class="modal-backdrop momo-whats-new-backdrop"
+      hidden
+    >
+      <section
+        class="momo-whats-new-card"
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="momoWhatsNewTitle"
+      >
+        <div class="momo-whats-new-header">
+          <div>
+            <p class="eyebrow">MOMO UPDATE</p>
+            <h2 id="momoWhatsNewTitle">What’s new in Momo</h2>
+            <p id="momoWhatsNewMeta" class="momo-whats-new-meta"></p>
+          </div>
+          <button
+            id="closeMomoWhatsNew"
+            class="modal-close"
+            type="button"
+            aria-label="Close update note"
+          >
+            ×
+          </button>
+        </div>
+
+        <div class="momo-whats-new-hero" aria-hidden="true">
+          <span class="momo-peach-icon momo-whats-new-peach"></span>
+        </div>
+
+        <p id="momoWhatsNewIntro" class="momo-whats-new-intro"></p>
+        <div id="momoWhatsNewItems" class="momo-whats-new-items"></div>
+
+        <button
+          id="acknowledgeMomoWhatsNew"
+          class="primary-button momo-whats-new-done"
+          type="button"
+        >
+          Got it ✿
+        </button>
+      </section>
+    </div>
+
+
     <!-- APP UPDATE BANNER -->
     <div
       id="appUpdateBanner"
@@ -5508,8 +5562,11 @@
       aria-live="polite"
       hidden
     >
-      <p>An update is available. Refresh to update.</p>
-      <button id="applyAppUpdate" class="app-update-button" type="button">Update</button>
+      <div class="app-update-copy">
+        <strong>Update available</strong>
+        <small id="appUpdateCopy">Refresh to get the newest Momo.</small>
+      </div>
+      <button id="applyAppUpdate" class="app-update-button" type="button">Refresh</button>
     </div>
 
 
@@ -5528,23 +5585,288 @@
 
   <script>
     (() => {
+      const MOMO_VERSION =
+        document.querySelector('meta[name="momo-app-version"]')?.content ||
+        "1.5.0";
+
+      const LAST_SEEN_UPDATE_KEY =
+        "momo_last_seen_update_version";
+
+      const UPDATE_REFRESH_SESSION_KEY =
+        "momo_update_refresh_requested";
+
+      // Existing Momo installs already carry this marker. A fresh install
+      // does not, so first-time users are not interrupted by release notes.
+      const hadExistingInstallBeforeBoot =
+        localStorage.getItem("momo_clean_start_v1") === "yes";
+
+      const releaseNotes = {
+        version: MOMO_VERSION,
+        title: `What’s new in Momo v${MOMO_VERSION}`,
+        date: "August 13, 2026",
+        intro:
+          "Momo updates now arrive more gently, and long histories stay lighter to browse.",
+        items: [
+          {
+            icon: "↻",
+            title: "Refresh when you’re ready",
+            copy:
+              "When a new Momo build is ready, a small update banner appears. Momo refreshes only after you tap Refresh."
+          },
+          {
+            icon: "✨",
+            title: "See what changed",
+            copy:
+              "After the refreshed version opens, Momo shows this one-time update note so you know what changed."
+          },
+          {
+            icon: "⚡",
+            title: "Smoother long histories",
+            copy:
+              "Expense and receipt searches now reset to a small render window, and large recurring, planned, and payable lists load in batches."
+          },
+          {
+            icon: "♡",
+            title: "Stability first",
+            copy:
+              "Update checks bypass old caches while your local finance data, separated account login, and phone-reminder setup stay untouched."
+          }
+        ]
+      };
+
+      const whatsNewModal =
+        document.getElementById("momoWhatsNewModal");
+      const whatsNewTitle =
+        document.getElementById("momoWhatsNewTitle");
+      const whatsNewMeta =
+        document.getElementById("momoWhatsNewMeta");
+      const whatsNewIntro =
+        document.getElementById("momoWhatsNewIntro");
+      const whatsNewItems =
+        document.getElementById("momoWhatsNewItems");
+      const closeWhatsNew =
+        document.getElementById("closeMomoWhatsNew");
+      const acknowledgeWhatsNew =
+        document.getElementById("acknowledgeMomoWhatsNew");
+      const openWhatsNew =
+        document.getElementById("openMomoWhatsNew");
+
+      const renderWhatsNew = () => {
+        if (whatsNewTitle) {
+          whatsNewTitle.textContent = releaseNotes.title;
+        }
+
+        if (whatsNewMeta) {
+          whatsNewMeta.textContent = releaseNotes.date;
+        }
+
+        if (whatsNewIntro) {
+          whatsNewIntro.textContent = releaseNotes.intro;
+        }
+
+        if (whatsNewItems) {
+          whatsNewItems.innerHTML = releaseNotes.items
+            .map(
+              (item) => `
+                <article class="momo-whats-new-item">
+                  <span aria-hidden="true">${item.icon}</span>
+                  <div>
+                    <strong>${item.title}</strong>
+                    <p>${item.copy}</p>
+                  </div>
+                </article>
+              `
+            )
+            .join("");
+        }
+      };
+
+      const showWhatsNew = () => {
+        if (!whatsNewModal) {
+          return;
+        }
+
+        renderWhatsNew();
+        whatsNewModal.hidden = false;
+        document.body.classList.add("momo-update-modal-open");
+      };
+
+      const dismissWhatsNew = () => {
+        localStorage.setItem(
+          LAST_SEEN_UPDATE_KEY,
+          MOMO_VERSION
+        );
+
+        sessionStorage.removeItem(
+          UPDATE_REFRESH_SESSION_KEY
+        );
+
+        if (whatsNewModal) {
+          whatsNewModal.hidden = true;
+        }
+
+        document.body.classList.remove(
+          "momo-update-modal-open"
+        );
+      };
+
+      closeWhatsNew?.addEventListener(
+        "click",
+        dismissWhatsNew
+      );
+
+      acknowledgeWhatsNew?.addEventListener(
+        "click",
+        dismissWhatsNew
+      );
+
+      openWhatsNew?.addEventListener(
+        "click",
+        showWhatsNew
+      );
+
+      whatsNewModal?.addEventListener(
+        "click",
+        (event) => {
+          if (event.target === whatsNewModal) {
+            dismissWhatsNew();
+          }
+        }
+      );
+
+      const lastSeenVersion =
+        localStorage.getItem(
+          LAST_SEEN_UPDATE_KEY
+        );
+
+      const refreshedForUpdate =
+        sessionStorage.getItem(
+          UPDATE_REFRESH_SESSION_KEY
+        ) === "yes";
+
+      if (
+        lastSeenVersion !== MOMO_VERSION &&
+        (
+          lastSeenVersion ||
+          hadExistingInstallBeforeBoot ||
+          refreshedForUpdate
+        )
+      ) {
+        window.setTimeout(
+          showWhatsNew,
+          250
+        );
+      } else if (
+        !lastSeenVersion
+      ) {
+        localStorage.setItem(
+          LAST_SEEN_UPDATE_KEY,
+          MOMO_VERSION
+        );
+      }
+
       if (!("serviceWorker" in navigator)) {
         return;
       }
 
-      const updateBanner = document.getElementById("appUpdateBanner");
-      const updateButton = document.getElementById("applyAppUpdate");
+      const updateBanner =
+        document.getElementById("appUpdateBanner");
+      const updateCopy =
+        document.getElementById("appUpdateCopy");
+      const updateButton =
+        document.getElementById("applyAppUpdate");
+
       let registration = null;
       let applyingUpdate = false;
       let reloadFallbackTimer = null;
+      let latestVersion = "";
 
-      const showUpdateBanner = () => {
+      const showUpdateBanner = (version = latestVersion) => {
         if (!updateBanner || applyingUpdate) {
           return;
         }
 
+        if (updateCopy) {
+          updateCopy.textContent =
+            version && version !== MOMO_VERSION
+              ? `Momo ${version} is ready. Refresh to update.`
+              : "Refresh to get the newest Momo.";
+        }
+
         updateBanner.hidden = false;
-        requestAnimationFrame(() => updateBanner.classList.add("show"));
+        requestAnimationFrame(
+          () => updateBanner.classList.add("show")
+        );
+      };
+
+      const hideUpdateBanner = () => {
+        if (!updateBanner) {
+          return;
+        }
+
+        updateBanner.classList.remove("show");
+
+        window.setTimeout(
+          () => {
+            if (!applyingUpdate) {
+              updateBanner.hidden = true;
+            }
+          },
+          220
+        );
+      };
+
+      const waitForWaitingWorker = async (timeoutMs = 8000) => {
+        if (registration?.waiting) {
+          return registration.waiting;
+        }
+
+        const worker = registration?.installing;
+
+        if (!worker) {
+          return null;
+        }
+
+        return new Promise((resolve) => {
+          let settled = false;
+
+          const finish = (value) => {
+            if (settled) {
+              return;
+            }
+
+            settled = true;
+            resolve(value);
+          };
+
+          const timer =
+            window.setTimeout(
+              () =>
+                finish(
+                  registration?.waiting ||
+                  null
+                ),
+              timeoutMs
+            );
+
+          worker.addEventListener(
+            "statechange",
+            () => {
+              if (worker.state === "installed") {
+                window.clearTimeout(timer);
+                finish(
+                  registration?.waiting ||
+                  worker
+                );
+              }
+
+              if (worker.state === "redundant") {
+                window.clearTimeout(timer);
+                finish(null);
+              }
+            }
+          );
+        });
       };
 
       const watchInstallingWorker = (worker) => {
@@ -5552,85 +5874,208 @@
           return;
         }
 
-        worker.addEventListener("statechange", () => {
-          if (worker.state === "installed" && navigator.serviceWorker.controller) {
-            showUpdateBanner();
+        worker.addEventListener(
+          "statechange",
+          () => {
+            if (
+              worker.state === "installed" &&
+              navigator.serviceWorker.controller
+            ) {
+              showUpdateBanner();
+            }
           }
-        });
+        );
       };
 
-      navigator.serviceWorker.addEventListener("controllerchange", () => {
-        if (!applyingUpdate) {
-          return;
+      const readRemoteVersion = async () => {
+        try {
+          const response =
+            await fetch(
+              `./index.html?momo_update_check=${Date.now()}`,
+              {
+                cache: "no-store"
+              }
+            );
+
+          if (!response.ok) {
+            return "";
+          }
+
+          const html =
+            await response.text();
+
+          const match =
+            html.match(
+              /<meta\s+name=["']momo-app-version["']\s+content=["']([^"']+)["']/i
+            );
+
+          return match?.[1] || "";
+        } catch {
+          return "";
         }
+      };
 
-        window.clearTimeout(reloadFallbackTimer);
-        window.location.reload();
-      });
-
-      updateButton?.addEventListener("click", async () => {
+      const checkForUpdate = async () => {
         if (!registration || applyingUpdate) {
           return;
         }
 
-        applyingUpdate = true;
-        updateButton.disabled = true;
-        updateButton.textContent = "Updating…";
+        const remoteVersion =
+          await readRemoteVersion();
 
-        try {
-          if (!registration.waiting) {
-            await registration.update();
-          }
+        if (
+          remoteVersion &&
+          remoteVersion !== MOMO_VERSION
+        ) {
+          latestVersion =
+            remoteVersion;
 
-          if (registration.waiting) {
-            registration.waiting.postMessage({ type: "SKIP_WAITING" });
-            reloadFallbackTimer = window.setTimeout(() => window.location.reload(), 4000);
-          } else {
-            applyingUpdate = false;
-            updateButton.disabled = false;
-            updateButton.textContent = "Update";
-            showUpdateBanner();
+          await registration
+            .update()
+            .catch(() => {});
+
+          if (
+            registration.waiting &&
+            navigator.serviceWorker.controller
+          ) {
+            showUpdateBanner(
+              remoteVersion
+            );
           }
-        } catch (error) {
-          applyingUpdate = false;
-          updateButton.disabled = false;
-          updateButton.textContent = "Update";
-          console.error("Momo app update failed:", error);
         }
-      });
+      };
 
-      window.addEventListener("load", async () => {
-        try {
-          registration = await navigator.serviceWorker.register(
-            "./service-worker.js",
-            {
-              scope: "./",
-              updateViaCache: "none"
-            }
+      navigator.serviceWorker.addEventListener(
+        "controllerchange",
+        () => {
+          if (!applyingUpdate) {
+            return;
+          }
+
+          window.clearTimeout(
+            reloadFallbackTimer
           );
 
-          if (registration.waiting && navigator.serviceWorker.controller) {
-            showUpdateBanner();
-          }
-
-          if (registration.installing) {
-            watchInstallingWorker(registration.installing);
-          }
-
-          registration.addEventListener("updatefound", () => {
-            watchInstallingWorker(registration.installing);
-          });
-
-          await registration.update();
-
-          // Re-check periodically while Momo stays open.
-          window.setInterval(() => {
-            registration?.update().catch(() => {});
-          }, 60 * 60 * 1000);
-        } catch (error) {
-          console.error("Momo service worker registration failed:", error);
+          window.location.reload();
         }
-      });
+      );
+
+      updateButton?.addEventListener(
+        "click",
+        async () => {
+          if (!registration || applyingUpdate) {
+            return;
+          }
+
+          applyingUpdate = true;
+          updateButton.disabled = true;
+          updateButton.textContent =
+            "Refreshing…";
+
+          sessionStorage.setItem(
+            UPDATE_REFRESH_SESSION_KEY,
+            "yes"
+          );
+
+          try {
+            if (!registration.waiting) {
+              await registration.update();
+            }
+
+            const waitingWorker =
+              registration.waiting ||
+              await waitForWaitingWorker();
+
+            if (waitingWorker) {
+              waitingWorker.postMessage({
+                type: "SKIP_WAITING"
+              });
+
+              reloadFallbackTimer =
+                window.setTimeout(
+                  () =>
+                    window.location.reload(),
+                  5000
+                );
+            } else {
+              window.location.reload();
+            }
+          } catch (error) {
+            applyingUpdate = false;
+
+            sessionStorage.removeItem(
+              UPDATE_REFRESH_SESSION_KEY
+            );
+
+            updateButton.disabled = false;
+            updateButton.textContent =
+              "Refresh";
+
+            showUpdateBanner();
+
+            console.error(
+              "Momo app update failed:",
+              error
+            );
+          }
+        }
+      );
+
+      window.addEventListener(
+        "load",
+        async () => {
+          try {
+            registration =
+              await navigator.serviceWorker.register(
+                "./service-worker.js",
+                {
+                  scope: "./",
+                  updateViaCache: "none"
+                }
+              );
+
+            if (
+              registration.waiting &&
+              navigator.serviceWorker.controller
+            ) {
+              showUpdateBanner();
+            }
+
+            if (registration.installing) {
+              watchInstallingWorker(
+                registration.installing
+              );
+            }
+
+            registration.addEventListener(
+              "updatefound",
+              () => {
+                watchInstallingWorker(
+                  registration.installing
+                );
+              }
+            );
+
+            await registration.update();
+            await checkForUpdate();
+
+            window.setInterval(
+              () => {
+                checkForUpdate()
+                  .catch(() => {});
+              },
+              30 * 60 * 1000
+            );
+          } catch (error) {
+            hideUpdateBanner();
+
+            console.error(
+              "Momo service worker registration failed:",
+              error
+            );
+          }
+        }
+      );
     })();
   </script>
 </body>

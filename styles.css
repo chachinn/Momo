@@ -16392,6 +16392,146 @@ textarea {
 }
 
 /* ========================================
+   WHAT'S NEW / RELEASE NOTE
+======================================== */
+
+body.momo-update-modal-open {
+  overflow: hidden;
+}
+
+.momo-whats-new-backdrop {
+  z-index: 210;
+  display: grid;
+  place-items: center;
+  padding:
+    calc(22px + env(safe-area-inset-top))
+    18px
+    calc(22px + env(safe-area-inset-bottom));
+  background: rgba(73, 58, 58, 0.28);
+  backdrop-filter: blur(10px);
+  -webkit-backdrop-filter: blur(10px);
+}
+
+.momo-whats-new-backdrop[hidden] {
+  display: none;
+}
+
+.momo-whats-new-card {
+  width: min(100%, 430px);
+  max-height: min(82vh, 720px);
+  overflow-y: auto;
+  overscroll-behavior: contain;
+  -webkit-overflow-scrolling: touch;
+  padding: 20px;
+  border: 1px solid color-mix(in srgb, var(--border) 72%, var(--pink));
+  border-radius: 29px;
+  background:
+    radial-gradient(circle at 90% 0, color-mix(in srgb, var(--pink) 20%, transparent), transparent 36%),
+    color-mix(in srgb, var(--surface) 97%, var(--blush));
+  box-shadow: 0 28px 80px rgba(73, 58, 58, 0.24);
+}
+
+.momo-whats-new-header {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 14px;
+}
+
+.momo-whats-new-header h2 {
+  margin: 5px 0 4px;
+  font-family: Georgia, serif;
+  font-size: clamp(24px, 7vw, 31px);
+  line-height: 1.08;
+}
+
+.momo-whats-new-meta {
+  margin: 0;
+  color: var(--text-soft);
+  font-size: 11px;
+  font-weight: 700;
+}
+
+.momo-whats-new-hero {
+  width: 76px;
+  height: 76px;
+  margin: 10px auto 12px;
+  display: grid;
+  place-items: center;
+  border-radius: 25px;
+  background:
+    radial-gradient(circle at 38% 28%, rgba(255,255,255,.92), transparent 28%),
+    color-mix(in srgb, var(--blush) 82%, white);
+  box-shadow: inset 0 0 0 1px color-mix(in srgb, var(--border) 72%, transparent);
+}
+
+.momo-whats-new-peach {
+  --icon-size: 3.8rem;
+}
+
+.momo-whats-new-intro {
+  margin: 0 2px 14px;
+  color: var(--text-soft);
+  font-size: 12px;
+  line-height: 1.55;
+  text-align: center;
+}
+
+.momo-whats-new-items {
+  display: grid;
+  gap: 9px;
+}
+
+.momo-whats-new-item {
+  padding: 13px;
+  border: 1px solid color-mix(in srgb, var(--border) 86%, var(--pink));
+  border-radius: 18px;
+  display: grid;
+  grid-template-columns: 34px 1fr;
+  gap: 10px;
+  align-items: start;
+  background: color-mix(in srgb, var(--surface) 94%, var(--blush));
+}
+
+.momo-whats-new-item > span {
+  width: 34px;
+  height: 34px;
+  display: grid;
+  place-items: center;
+  border-radius: 12px;
+  background: var(--blush);
+  color: var(--rose);
+  font-size: 18px;
+  font-weight: 800;
+}
+
+.momo-whats-new-item strong {
+  display: block;
+  margin-bottom: 3px;
+  font-size: 12px;
+}
+
+.momo-whats-new-item p {
+  margin: 0;
+  color: var(--text-soft);
+  font-size: 10px;
+  line-height: 1.45;
+}
+
+.momo-whats-new-done {
+  width: 100%;
+  min-height: 48px;
+  margin-top: 14px;
+}
+
+.guide-whats-new-btn {
+  width: 100%;
+  min-height: 44px;
+  margin: -4px 0 14px;
+}
+
+
+/* ========================================
    APP UPDATE BANNER
 ======================================== */
 
@@ -16401,15 +16541,15 @@ textarea {
   left: 50%;
   bottom: calc(var(--nav-height) + env(safe-area-inset-bottom) + 14px);
   width: min(calc(100% - 28px), 430px);
-  min-height: 66px;
-  padding: 10px 10px 10px 16px;
+  min-height: 72px;
+  padding: 11px 11px 11px 16px;
   border: 1px solid color-mix(in srgb, var(--border) 70%, var(--pink));
-  border-radius: 20px;
+  border-radius: 21px;
   display: flex;
   align-items: center;
   justify-content: space-between;
   gap: 12px;
-  background: color-mix(in srgb, var(--surface) 96%, var(--blush));
+  background: color-mix(in srgb, var(--surface) 97%, var(--blush));
   box-shadow: 0 16px 44px rgba(73, 58, 58, 0.18);
   transform: translate(-50%, 18px);
   opacity: 0;
@@ -16425,19 +16565,34 @@ textarea {
   transform: translate(-50%, 0);
 }
 
-.app-update-banner p {
-  margin: 0;
+.app-update-copy {
+  min-width: 0;
+}
+
+.app-update-copy strong,
+.app-update-copy small {
+  display: block;
+}
+
+.app-update-copy strong {
   color: var(--text);
-  font-size: 11px;
-  line-height: 1.4;
+  font-size: 12px;
+}
+
+.app-update-copy small {
+  margin-top: 3px;
+  color: var(--text-soft);
+  font-size: 9px;
+  line-height: 1.35;
 }
 
 .app-update-button {
-  min-width: 96px;
-  min-height: 45px;
-  padding: 0 18px;
+  flex: 0 0 auto;
+  min-width: 104px;
+  min-height: 46px;
+  padding: 0 17px;
   border: 1px solid color-mix(in srgb, var(--pink) 66%, var(--border));
-  border-radius: 14px;
+  border-radius: 15px;
   background: var(--blush);
   color: var(--rose);
   font-weight: 800;
@@ -16446,4 +16601,29 @@ textarea {
 .app-update-button:disabled {
   opacity: 0.65;
   cursor: default;
+}
+
+
+/* ========================================
+   LARGE-LIST RENDERING HINTS
+======================================== */
+
+@supports (content-visibility: auto) {
+  .transaction-swipe-shell,
+  .recurring-card,
+  .planned-expense-card,
+  .payable-item,
+  .receipt-gallery-card {
+    content-visibility: auto;
+    contain-intrinsic-size: 90px;
+  }
+
+  .recurring-card,
+  .planned-expense-card {
+    contain-intrinsic-size: 180px;
+  }
+
+  .receipt-gallery-card {
+    contain-intrinsic-size: 260px;
+  }
 }

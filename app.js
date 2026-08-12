@@ -1,6 +1,6 @@
 // ========================================
 // MOMO
-// Momo 1.4.2 — Separate Account Auth + Notification Auth
+// Momo 1.5.0 — Update Notes + Large-List Stability
 // CLEAN FOUNDATION + FUNCTIONAL TRIPS
 // ========================================
 
@@ -16491,27 +16491,37 @@ function getActivitySearchTokens() {
 
 
 function buildExpenseSearchHaystack(
-  expense
+  expense,
+  tripLookup = null,
+  budgetLookup = null
 ) {
 
   const trip =
-    trips.find(
-      (
-        item
-      ) =>
-        item.id ===
-        expense.tripId
-    );
+    tripLookup
+      ? tripLookup.get(
+          expense.tripId
+        )
+      : trips.find(
+          (
+            item
+          ) =>
+            item.id ===
+            expense.tripId
+        );
 
 
   const budget =
-    budgets.find(
-      (
-        item
-      ) =>
-        item.id ===
-        expense.budgetId
-    );
+    budgetLookup
+      ? budgetLookup.get(
+          expense.budgetId
+        )
+      : budgets.find(
+          (
+            item
+          ) =>
+            item.id ===
+            expense.budgetId
+        );
 
 
   const tags =
@@ -16608,6 +16618,34 @@ function getFilteredActivityExpenses() {
 
   const searchTokens =
     getActivitySearchTokens();
+
+
+  // Build lookup maps once per search pass instead of scanning all trips
+  // and budgets for every expense. This keeps large histories responsive.
+  const tripLookup =
+    searchTokens.length
+      ? new Map(
+          trips.map(
+            (item) => [
+              item.id,
+              item
+            ]
+          )
+        )
+      : null;
+
+
+  const budgetLookup =
+    searchTokens.length
+      ? new Map(
+          budgets.map(
+            (item) => [
+              item.id,
+              item
+            ]
+          )
+        )
+      : null;
 
 
   const category =
@@ -16727,7 +16765,9 @@ function getFilteredActivityExpenses() {
 
           const searchable =
             buildExpenseSearchHaystack(
-              expense
+              expense,
+              tripLookup,
+              budgetLookup
             );
 
 
@@ -17298,7 +17338,7 @@ function clearSingleActivityFilter(
   }
 
 
-  renderActivityTransactions();
+  resetActivityRenderWindow();
 
 }
 
@@ -17442,10 +17482,58 @@ function updateActivityFilterUI() {
 
 
 const ACTIVITY_RENDER_BATCH = 50;
+const FILTER_INPUT_DEBOUNCE_MS = 140;
 let activityRenderLimit = ACTIVITY_RENDER_BATCH;
+let activityRenderTimer = null;
 
 
-function renderActivityTransactions() {
+function resetActivityRenderWindow() {
+
+  activityRenderLimit =
+    ACTIVITY_RENDER_BATCH;
+
+
+  renderActivityTransactions(
+    {
+      refreshFilters:
+        false
+    }
+  );
+
+}
+
+
+function scheduleActivityRender() {
+
+  activityRenderLimit =
+    ACTIVITY_RENDER_BATCH;
+
+
+  window.clearTimeout(
+    activityRenderTimer
+  );
+
+
+  activityRenderTimer =
+    window.setTimeout(
+      () =>
+        renderActivityTransactions(
+          {
+            refreshFilters:
+              false
+          }
+        ),
+      FILTER_INPUT_DEBOUNCE_MS
+    );
+
+}
+
+
+function renderActivityTransactions(
+  {
+    refreshFilters = true
+  } = {}
+) {
 
   const activity =
     document.getElementById(
@@ -17468,7 +17556,13 @@ function renderActivityTransactions() {
   }
 
 
-  populateActivityFilters();
+  if (
+    refreshFilters
+  ) {
+
+    populateActivityFilters();
+
+  }
 
 
   const filtered =
@@ -17569,7 +17663,12 @@ document.addEventListener("click", (event) => {
   }
 
   activityRenderLimit += ACTIVITY_RENDER_BATCH;
-  renderActivityTransactions();
+  renderActivityTransactions(
+    {
+      refreshFilters:
+        false
+    }
+  );
 });
 
 
@@ -17616,7 +17715,7 @@ clearActivitySearch
       activitySearch.focus();
 
 
-      renderActivityTransactions();
+      resetActivityRenderWindow();
 
     }
   );
@@ -17712,7 +17811,7 @@ document
           }
 
 
-          renderActivityTransactions();
+          resetActivityRenderWindow();
 
         }
       );
@@ -17756,7 +17855,10 @@ document
 
       control.addEventListener(
         eventName,
-        renderActivityTransactions
+        eventName ===
+          "input"
+          ? scheduleActivityRender
+          : resetActivityRenderWindow
       );
 
     }
@@ -17807,7 +17909,7 @@ document
       }
 
 
-      renderActivityTransactions();
+      resetActivityRenderWindow();
 
     }
   );
@@ -17816,6 +17918,119 @@ document
 // ========================================
 // RENDER TRANSACTIONS
 // ========================================
+
+function compareExpensesNewest(
+  a,
+  b
+) {
+
+  const dateCompare =
+    String(
+      b.date ||
+      ""
+    ).localeCompare(
+      String(
+        a.date ||
+        ""
+      )
+    );
+
+
+  if (
+    dateCompare !==
+    0
+  ) {
+
+    return dateCompare;
+
+  }
+
+
+  return String(
+    b.createdAt ||
+    b.updatedAt ||
+    ""
+  ).localeCompare(
+    String(
+      a.createdAt ||
+      a.updatedAt ||
+      ""
+    )
+  );
+
+}
+
+
+function getRecentExpenses(
+  limit = 4
+) {
+
+  if (
+    limit <=
+    0
+  ) {
+
+    return [];
+
+  }
+
+
+  const recent =
+    [];
+
+
+  for (
+    const expense of
+    expenses
+  ) {
+
+    const insertAt =
+      recent.findIndex(
+        (item) =>
+          compareExpensesNewest(
+            expense,
+            item
+          ) <
+          0
+      );
+
+
+    if (
+      insertAt ===
+      -1
+    ) {
+
+      recent.push(
+        expense
+      );
+
+    } else {
+
+      recent.splice(
+        insertAt,
+        0,
+        expense
+      );
+
+    }
+
+
+    if (
+      recent.length >
+      limit
+    ) {
+
+      recent.pop();
+
+    }
+
+  }
+
+
+  return recent;
+
+}
+
 
 function renderTransactions() {
 
@@ -17914,55 +18129,9 @@ function renderTransactions() {
   ) {
 
     const recentExpenses =
-      [
-        ...expenses
-      ]
-        .sort(
-          (
-            a,
-            b
-          ) => {
-
-            const dateCompare =
-              String(
-                b.date ||
-                ""
-              ).localeCompare(
-                String(
-                  a.date ||
-                  ""
-                )
-              );
-
-
-            if (
-              dateCompare !==
-              0
-            ) {
-
-              return dateCompare;
-
-            }
-
-
-            return String(
-              b.createdAt ||
-              b.updatedAt ||
-              ""
-            ).localeCompare(
-              String(
-                a.createdAt ||
-                a.updatedAt ||
-                ""
-              )
-            );
-
-          }
-        )
-        .slice(
-          0,
-          4
-        );
+      getRecentExpenses(
+        4
+      );
 
 
     home.innerHTML =
@@ -26335,6 +26504,10 @@ function openVariableRecurringExpenseDraft(
 }
 
 
+const RECURRING_RENDER_BATCH = 60;
+let recurringRenderLimit = RECURRING_RENDER_BATCH;
+
+
 function renderRecurringExpenses() {
 
   const list =
@@ -26484,19 +26657,57 @@ function renderRecurringExpenses() {
     "none";
 
 
+  const visibleRecurring =
+    sorted.slice(
+      0,
+      recurringRenderLimit
+    );
+
+
   list.innerHTML =
-    sorted
+    visibleRecurring
 
       .map(
         createRecurringCardHTML
       )
 
-      .join("");
+      .join("") +
+    (
+      visibleRecurring.length <
+      sorted.length
+        ? `<button class="secondary-button momo-load-more" type="button" data-load-more-recurring>Load more (${sorted.length - visibleRecurring.length} remaining)</button>`
+        : ""
+    );
 
 
   attachRecurringActions();
 
 }
+
+
+document.addEventListener(
+  "click",
+  (event) => {
+
+    if (
+      !event.target.closest(
+        "[data-load-more-recurring]"
+      )
+    ) {
+
+      return;
+
+    }
+
+
+    recurringRenderLimit +=
+      RECURRING_RENDER_BATCH;
+
+
+    renderRecurringExpenses();
+
+  }
+);
 
 
 function attachRecurringActions() {
@@ -27715,6 +27926,10 @@ function createPlannedExpenseCardHTML(
 }
 
 
+const PLANNED_RENDER_BATCH = 60;
+let plannedRenderLimit = PLANNED_RENDER_BATCH;
+
+
 function renderPlannedExpenses() {
 
   const list =
@@ -27892,19 +28107,57 @@ function renderPlannedExpenses() {
     "none";
 
 
+  const visiblePlanned =
+    filtered.slice(
+      0,
+      plannedRenderLimit
+    );
+
+
   list.innerHTML =
-    filtered
+    visiblePlanned
 
       .map(
         createPlannedExpenseCardHTML
       )
 
-      .join("");
+      .join("") +
+    (
+      visiblePlanned.length <
+      filtered.length
+        ? `<button class="secondary-button momo-load-more" type="button" data-load-more-planned>Load more (${filtered.length - visiblePlanned.length} remaining)</button>`
+        : ""
+    );
 
 
   attachPlannedExpenseActions();
 
 }
+
+
+document.addEventListener(
+  "click",
+  (event) => {
+
+    if (
+      !event.target.closest(
+        "[data-load-more-planned]"
+      )
+    ) {
+
+      return;
+
+    }
+
+
+    plannedRenderLimit +=
+      PLANNED_RENDER_BATCH;
+
+
+    renderPlannedExpenses();
+
+  }
+);
 
 
 document
@@ -27935,6 +28188,10 @@ document
                     button
                 )
             );
+
+
+          plannedRenderLimit =
+            PLANNED_RENDER_BATCH;
 
 
           renderPlannedExpenses();
@@ -35868,6 +36125,20 @@ function getFilteredReceiptExpenses() {
       .toLowerCase();
 
 
+  const tripNameLookup =
+    search
+      ? new Map(
+          trips.map(
+            (item) => [
+              item.id,
+              item.name ||
+                "Trip unavailable"
+            ]
+          )
+        )
+      : null;
+
+
   const category =
     receiptCategoryFilter?.value ||
     "";
@@ -35988,9 +36259,14 @@ function getFilteredReceiptExpenses() {
               expense.location,
               expense.notes,
               expense.paymentMethod,
-              getExpenseTripName(
-                expense
-              ),
+              expense.tripId
+                ? (
+                    tripNameLookup?.get(
+                      expense.tripId
+                    ) ||
+                    "Trip unavailable"
+                  )
+                : "Personal / No Trip",
               ...normalizeExpenseTags(
                 expense.tags
               )
@@ -36046,9 +36322,56 @@ function getFilteredReceiptExpenses() {
 
 const RECEIPT_RENDER_BATCH = 48;
 let receiptRenderLimit = RECEIPT_RENDER_BATCH;
+let receiptRenderTimer = null;
 
 
-function renderReceiptGallery() {
+function resetReceiptRenderWindow() {
+
+  receiptRenderLimit =
+    RECEIPT_RENDER_BATCH;
+
+
+  renderReceiptGallery(
+    {
+      refreshFilters:
+        false
+    }
+  );
+
+}
+
+
+function scheduleReceiptRender() {
+
+  receiptRenderLimit =
+    RECEIPT_RENDER_BATCH;
+
+
+  window.clearTimeout(
+    receiptRenderTimer
+  );
+
+
+  receiptRenderTimer =
+    window.setTimeout(
+      () =>
+        renderReceiptGallery(
+          {
+            refreshFilters:
+              false
+          }
+        ),
+      FILTER_INPUT_DEBOUNCE_MS
+    );
+
+}
+
+
+function renderReceiptGallery(
+  {
+    refreshFilters = true
+  } = {}
+) {
 
   const grid =
     document.getElementById(
@@ -36084,7 +36407,13 @@ function renderReceiptGallery() {
   }
 
 
-  populateReceiptFilters();
+  if (
+    refreshFilters
+  ) {
+
+    populateReceiptFilters();
+
+  }
 
 
   const allReceipts =
@@ -36311,52 +36640,72 @@ function renderReceiptGallery() {
       : "");
 
 
-  grid
-    .querySelectorAll(
-      "[data-receipt-expense-id]"
-    )
-    .forEach(
-      (card) => {
-
-        card.addEventListener(
-          "click",
-          () => {
-
-            const expense =
-              expenses.find(
-                (item) =>
-                  item.id ===
-                  card.dataset
-                    .receiptExpenseId
-              );
-
-
-            if (
-              expense
-            ) {
-
-              openExpenseDetail(
-                expense
-              );
-
-            }
-
-          }
-        );
-
-      }
-    );
-
 }
 
 
 document.getElementById("receiptGalleryGrid")?.addEventListener("click", (event) => {
-  if (!event.target.closest("[data-load-more-receipts]")) {
+
+  const loadMore =
+    event.target.closest(
+      "[data-load-more-receipts]"
+    );
+
+
+  if (
+    loadMore
+  ) {
+
+    receiptRenderLimit +=
+      RECEIPT_RENDER_BATCH;
+
+
+    renderReceiptGallery(
+      {
+        refreshFilters:
+          false
+      }
+    );
+
+
     return;
+
   }
 
-  receiptRenderLimit += RECEIPT_RENDER_BATCH;
-  renderReceiptGallery();
+
+  const card =
+    event.target.closest(
+      "[data-receipt-expense-id]"
+    );
+
+
+  if (
+    !card
+  ) {
+
+    return;
+
+  }
+
+
+  const expense =
+    expenses.find(
+      (item) =>
+        item.id ===
+        card.dataset
+          .receiptExpenseId
+    );
+
+
+  if (
+    expense
+  ) {
+
+    openExpenseDetail(
+      expense
+    );
+
+  }
+
 });
 
 
@@ -36373,12 +36722,19 @@ document.getElementById("receiptGalleryGrid")?.addEventListener("click", (event)
   .forEach(
     (control) => {
 
-      control.addEventListener(
+      const eventName =
         control ===
           receiptSearch
           ? "input"
-          : "change",
-        renderReceiptGallery
+          : "change";
+
+
+      control.addEventListener(
+        eventName,
+        eventName ===
+          "input"
+          ? scheduleReceiptRender
+          : resetReceiptRenderWindow
       );
 
     }
@@ -36413,7 +36769,7 @@ document
         );
 
 
-      renderReceiptGallery();
+      resetReceiptRenderWindow();
 
     }
   );
@@ -36435,6 +36791,10 @@ const PAYABLE_TYPE_META = {
 };
 
 let selectedPayableId = "";
+
+const PAYABLE_RENDER_BATCH = 60;
+let payableRenderLimit = PAYABLE_RENDER_BATCH;
+
 
 function getPayableMeta(payable) {
   const fallback = PAYABLE_TYPE_META[payable?.type] || PAYABLE_TYPE_META.other;
@@ -36526,7 +36886,16 @@ function renderPayables() {
   });
 
   empty.hidden = sorted.length > 0;
-  list.innerHTML = sorted.map((item) => {
+
+
+  const visiblePayables =
+    sorted.slice(
+      0,
+      payableRenderLimit
+    );
+
+
+  list.innerHTML = visiblePayables.map((item) => {
     const meta = getPayableMeta(item);
     const balance = getPayableBalance(item);
     const original = Number(item.originalAmount || 0);
@@ -36551,8 +36920,40 @@ function renderPayables() {
           </span>
         </span>
       </button>`;
-  }).join("");
+  }).join("") +
+    (
+      visiblePayables.length <
+      sorted.length
+        ? `<button class="secondary-button momo-load-more" type="button" data-load-more-payables>Load more (${sorted.length - visiblePayables.length} remaining)</button>`
+        : ""
+    );
 }
+
+
+document.addEventListener(
+  "click",
+  (event) => {
+
+    if (
+      !event.target.closest(
+        "[data-load-more-payables]"
+      )
+    ) {
+
+      return;
+
+    }
+
+
+    payableRenderLimit +=
+      PAYABLE_RENDER_BATCH;
+
+
+    renderPayables();
+
+  }
+);
+
 
 function updatePayableSpecialFields() {
   const type = document.getElementById("payableType")?.value;
