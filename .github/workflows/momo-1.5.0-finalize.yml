@@ -1,0 +1,104 @@
+name: Finalize Momo 1.5.0 update flow
+
+on:
+  push:
+    branches: [main]
+
+permissions:
+  contents: write
+
+concurrency:
+  group: momo-1-5-0-finalize
+  cancel-in-progress: false
+
+jobs:
+  finalize:
+    if: github.event.head_commit.message == 'Finalize Momo 1.5.0 update flow now'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - name: Check out main
+        uses: actions/checkout@v4
+        with:
+          ref: main
+
+      - name: Verify released 1.5.0 baseline
+        shell: bash
+        run: |
+          test "$(git hash-object app.js)" = "3a05a34b7b96287519ba6d8350d3df10d0f2540d"
+          test "$(git hash-object firebase-momo.js)" = "663519f3dcae4390f43b323a0409b33280e0ac59"
+          test "$(git hash-object index.html)" = "3561c1904e6a1f242cb1a1a6aaed9db8bfb3c650"
+          test "$(git hash-object service-worker.js)" = "658f574edfb629849a6cad66e3a7953aeb212f48"
+          test "$(git hash-object styles.css)" = "402c68de999ffcf0f7b3ebe74e8dda9290b0b352"
+
+      - name: Apply final update-flow patch
+        shell: bash
+        run: |
+          base64 -d scripts/momo-1.5.0-updateflow-fix.patch.gz.b64 | gzip -d > /tmp/momo-updateflow.patch
+          git apply --check /tmp/momo-updateflow.patch
+          git apply /tmp/momo-updateflow.patch
+
+      - name: JavaScript and update-flow QA
+        shell: bash
+        run: |
+          node --check app.js
+          node --check service-worker.js
+          cp firebase-momo.js /tmp/firebase-momo.mjs
+          node --check /tmp/firebase-momo.mjs
+          python3 - <<'PY'
+          from pathlib import Path
+          from html.parser import HTMLParser
+          import re
+          html=Path('index.html').read_text()
+          scripts=re.findall(r'<script(?![^>]*\bsrc=)[^>]*>(.*?)</script>',html,re.S|re.I)
+          assert scripts, 'Missing inline update controller'
+          Path('/tmp/momo-inline.js').write_text(scripts[-1])
+          class P(HTMLParser):
+              def __init__(self): super().__init__(); self.ids=[]
+              def handle_starttag(self,tag,attrs):
+                  value=dict(attrs).get('id')
+                  if value: self.ids.append(value)
+          p=P(); p.feed(html)
+          assert len(p.ids)==len(set(p.ids)), 'Duplicate HTML id found'
+          PY
+          node --check /tmp/momo-inline.js
+          grep -q 'GET_MOMO_VERSION' index.html
+          grep -q 'GET_MOMO_VERSION' service-worker.js
+          grep -q 'UPDATE_CHECK_INTERVAL' index.html
+          grep -q 'momo_update_check' service-worker.js
+          grep -q 'Keep the currently active Momo shell stable until the user accepts' service-worker.js
+          grep -q 'self.addEventListener("push"' service-worker.js
+          grep -q 'self.addEventListener("notificationclick"' service-worker.js
+          grep -q 'const DB_VERSION = 4;' app.js
+          test "$(git hash-object index.html)" = "b9e97fa2989fa6db12f21e0727907d6b285b7c55"
+          test "$(git hash-object service-worker.js)" = "3a6fc035b94788ff5c2bbcdd6adff459e0930acf"
+          test "$(git hash-object app.js)" = "3a05a34b7b96287519ba6d8350d3df10d0f2540d"
+          test "$(git hash-object firebase-momo.js)" = "663519f3dcae4390f43b323a0409b33280e0ac59"
+          test "$(git hash-object styles.css)" = "402c68de999ffcf0f7b3ebe74e8dda9290b0b352"
+          git diff --check
+
+      - name: Large-history smoke QA
+        shell: bash
+        run: |
+          node <<'NODE'
+          function compareExpensesNewest(a,b){const d=String(b.date||'').localeCompare(String(a.date||''));if(d!==0)return d;return String(b.createdAt||b.updatedAt||'').localeCompare(String(a.createdAt||a.updatedAt||''));}
+          function recent(items,limit=4){const out=[];for(const item of items){const at=out.findIndex(x=>compareExpensesNewest(item,x)<0);if(at===-1)out.push(item);else out.splice(at,0,item);if(out.length>limit)out.pop();}return out;}
+          const n=100000, items=Array.from({length:n},(_,i)=>({id:i,date:`2026-${String(i%12+1).padStart(2,'0')}-${String(i%28+1).padStart(2,'0')}`,createdAt:String(i).padStart(8,'0')}));
+          const a=recent(items).map(x=>x.id).join(','), b=[...items].sort(compareExpensesNewest).slice(0,4).map(x=>x.id).join(',');
+          if(a!==b)throw new Error('Large-history recent-expense regression');
+          console.log('MOMO_100K_HISTORY_QA_OK');
+          NODE
+
+      - name: Commit clean finalized release
+        shell: bash
+        run: |
+          git config user.name "Momo Release Bot"
+          git config user.email "momo-release-bot@users.noreply.github.com"
+          git rm .github/workflows/momo-1.5.0-finalize.yml
+          git rm scripts/momo-1.5.0-updateflow-fix.patch.gz.b64
+          if [ -e scripts/momo-1.5.0.patch.gz.b64 ]; then git rm scripts/momo-1.5.0.patch.gz.b64; fi
+          if [ -e .momo-release-1.5.0-trigger ]; then git rm .momo-release-1.5.0-trigger; fi
+          git add index.html service-worker.js
+          git diff --cached --check
+          git commit -m "Finalize Momo 1.5.0 update flow and cleanup"
+          git push origin HEAD:main
