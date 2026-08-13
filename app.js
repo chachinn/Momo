@@ -1,6 +1,6 @@
 // ========================================
 // MOMO
-// Momo 1.5.0 — Update Notes + Large-List Stability
+// Momo 1.5.1 — Reliability QA + Calendar Performance
 // CLEAN FOUNDATION + FUNCTIONAL TRIPS
 // ========================================
 
@@ -24519,8 +24519,96 @@ function getTripsForDate(
 }
 
 
+// Build the month lookup once per calendar render. The old calendar filtered
+// the entire expense history two times for every visible day, which became
+// noticeably expensive on long-lived Momo installs.
+function buildCalendarMonthIndex(
+  monthKey
+) {
+
+  const expenseLists = new Map();
+  const expenseTotals = new Map();
+  const tripLists = new Map();
+
+
+  for (const expense of expenses) {
+    const dateKey = getExpenseDateKey(expense);
+
+    if (!dateKey || !dateKey.startsWith(monthKey)) {
+      continue;
+    }
+
+    if (!expenseLists.has(dateKey)) {
+      expenseLists.set(dateKey, []);
+    }
+
+    expenseLists.get(dateKey).push(expense);
+    expenseTotals.set(
+      dateKey,
+      (expenseTotals.get(dateKey) || 0) +
+        convertCurrency(
+          expense.amount,
+          expense.currency,
+          "PHP"
+        )
+    );
+  }
+
+
+  const [yearText, monthText] = monthKey.split("-");
+  const year = Number(yearText);
+  const monthIndex = Number(monthText) - 1;
+  const monthStart = `${monthKey}-01`;
+  const monthEnd = `${monthKey}-${String(
+    getDaysInMonth(year, monthIndex)
+  ).padStart(2, "0")}`;
+
+
+  for (const trip of trips) {
+    if (
+      !trip.startDate ||
+      !trip.endDate ||
+      trip.endDate < monthStart ||
+      trip.startDate > monthEnd
+    ) {
+      continue;
+    }
+
+    const first = trip.startDate > monthStart
+      ? trip.startDate
+      : monthStart;
+    const last = trip.endDate < monthEnd
+      ? trip.endDate
+      : monthEnd;
+
+    let cursor = first;
+
+    while (cursor && cursor <= last) {
+      if (!tripLists.has(cursor)) {
+        tripLists.set(cursor, []);
+      }
+
+      tripLists.get(cursor).push(trip);
+
+      const next = addDaysToDateString(cursor, 1);
+      if (!next || next === cursor) break;
+      cursor = next;
+    }
+  }
+
+
+  return {
+    expenseLists,
+    expenseTotals,
+    tripLists
+  };
+
+}
+
+
 function renderCalendarDayDetails(
-  dateKey
+  dateKey,
+  monthIndex = null
 ) {
 
   if (
@@ -24541,10 +24629,12 @@ function renderCalendarDayDetails(
 
 
   const dayExpenses =
+    monthIndex?.expenseLists?.get(dateKey) ||
     getExpensesForDate(dateKey);
 
 
   const total =
+    monthIndex?.expenseTotals?.get(dateKey) ??
     getDateExpenseTotalPHP(dateKey);
 
 
@@ -24561,6 +24651,7 @@ function renderCalendarDayDetails(
 
 
   const activeTrips =
+    monthIndex?.tripLists?.get(dateKey) ||
     getTripsForDate(dateKey);
 
 
@@ -24722,6 +24813,12 @@ function renderCalendar() {
     );
 
 
+  const monthIndex =
+    buildCalendarMonthIndex(
+      monthKey
+    );
+
+
   if (
     !selectedCalendarDate.startsWith(
       monthKey
@@ -24772,21 +24869,21 @@ function renderCalendar() {
 
 
     const dailyTotal =
-      getDateExpenseTotalPHP(
+      monthIndex.expenseTotals.get(
         dateKey
-      );
+      ) || 0;
 
 
     const dayExpenses =
-      getExpensesForDate(
+      monthIndex.expenseLists.get(
         dateKey
-      );
+      ) || [];
 
 
     const activeTrips =
-      getTripsForDate(
+      monthIndex.tripLists.get(
         dateKey
-      );
+      ) || [];
 
 
     cells += `
@@ -24867,7 +24964,8 @@ function renderCalendar() {
 
 
   renderCalendarDayDetails(
-    selectedCalendarDate
+    selectedCalendarDate,
+    monthIndex
   );
 
 }
@@ -40253,6 +40351,21 @@ async function initializeApp() {
 
     return;
 
+  }
+
+
+  // Ask the browser to treat Momo's local-first database as persistent
+  // storage when the platform supports it. This is best-effort and never
+  // blocks startup or changes the user's saved data.
+  if (navigator.storage?.persist) {
+    navigator.storage.persist().catch(
+      (error) => {
+        console.debug(
+          "Persistent storage request skipped:",
+          error
+        );
+      }
+    );
   }
 
 

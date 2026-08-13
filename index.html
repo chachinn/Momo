@@ -17,7 +17,7 @@
   <meta name="apple-mobile-web-app-title" content="Momo">
 
   <title>Momo — Spending Diary</title>
-  <meta name="momo-app-version" content="1.5.0">
+  <meta name="momo-app-version" content="1.5.1">
 
   <link rel="manifest" href="manifest.json">
   <link rel="apple-touch-icon" href="icons/icon-192.png">
@@ -5587,7 +5587,7 @@
     (() => {
       const MOMO_VERSION =
         document.querySelector('meta[name="momo-app-version"]')?.content ||
-        "1.5.0";
+        "1.5.1";
 
       const LAST_SEEN_UPDATE_KEY =
         "momo_last_seen_update_version";
@@ -5605,31 +5605,31 @@
         title: `What’s new in Momo v${MOMO_VERSION}`,
         date: "August 13, 2026",
         intro:
-          "Momo updates now arrive more gently, and long histories stay lighter to browse.",
+          "A reliability pass for the parts of Momo you use every day.",
         items: [
           {
-            icon: "↻",
-            title: "Refresh when you’re ready",
+            icon: "✓",
+            title: "Tracker-driven QA",
             copy:
-              "When a new Momo build is ready, a small update banner appears. Momo refreshes only after you tap Refresh."
-          },
-          {
-            icon: "✨",
-            title: "See what changed",
-            copy:
-              "After the refreshed version opens, Momo shows this one-time update note so you know what changed."
+              "Core expenses, budgets, trips, cards, recurring items, planned expenses, savings, backup, authentication, reminders, and PWA update paths were regression-checked together."
           },
           {
             icon: "⚡",
-            title: "Smoother long histories",
+            title: "Faster calendar",
             copy:
-              "Expense and receipt searches now reset to a small render window, and large recurring, planned, and payable lists load in batches."
+              "The money calendar now indexes a month once instead of repeatedly scanning your entire expense history for every day."
           },
           {
             icon: "♡",
-            title: "Stability first",
+            title: "Stronger local storage",
             copy:
-              "Update checks bypass old caches while your local finance data, separated account login, and phone-reminder setup stay untouched."
+              "Momo now asks supported browsers to keep its local-first database in persistent storage, without changing your data or requiring an account."
+          },
+          {
+            icon: "🌸",
+            title: "No data migration",
+            copy:
+              "Your existing finance records, Google account setup, phone reminders, and IndexedDB schema stay exactly where they are."
           }
         ]
       };
