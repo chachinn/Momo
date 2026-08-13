@@ -17,7 +17,7 @@
   <meta name="apple-mobile-web-app-title" content="Momo">
 
   <title>Momo — Spending Diary</title>
-  <meta name="momo-app-version" content="1.7.1">
+  <meta name="momo-app-version" content="1.8.0">
 
   <link rel="manifest" href="manifest.json">
   <link rel="apple-touch-icon" href="icons/icon-192.png">
@@ -98,6 +98,9 @@
 
       <div class="drawer-section">
         <p class="drawer-label">Money</p>
+
+        <button class="drawer-item" type="button" data-drawer-nav="insights"><span class="drawer-icon">🍑</span><span class="drawer-copy"><strong>Insights & Forecast</strong><small>Momo Notices, forecast, pace, rollover, and Month Close.</small></span><span class="drawer-arrow">›</span></button>
+
 
         <button
           class="drawer-item"
@@ -551,6 +554,58 @@
             class="transaction-list momo-lately-list"
           ></div>
         </section>
+      </section>
+
+
+      <!-- MOMO 1.8 INSIGHTS -->
+      <section class="screen momo-insights-screen" data-screen="insights">
+        <div class="page-heading compact">
+          <div>
+            <p class="eyebrow">Momo noticed</p>
+            <h1>Insights & Forecast</h1>
+            <p class="page-description">A calm read of the information already in Momo — no bank connection, no paid AI, and no hidden assumptions.</p>
+          </div>
+          <span class="momo-soft-pill">Local only</span>
+        </div>
+
+        <section class="momo-forecast-card">
+          <div class="momo-tool-heading"><div><p class="section-kicker">MONTH FORECAST</p><h2>Where this month may land</h2></div><span>◔</span></div>
+          <div class="momo-forecast-grid">
+            <div><small>Projected spending</small><strong id="momoForecastSpend">—</strong></div>
+            <div><small>Projected money left</small><strong id="momoForecastLeft">—</strong></div>
+            <div><small>Known commitments</small><strong id="momoForecastCommitments">—</strong></div>
+            <div><small>Protected savings</small><strong id="momoForecastProtected">—</strong></div>
+          </div>
+          <p id="momoForecastAssumptions" class="momo-tool-note"></p>
+        </section>
+
+        <section class="momo-tool-card">
+          <div class="momo-tool-heading"><div><p class="section-kicker">MOMO NOTICES</p><h2>Things worth a glance</h2></div><span>🍑</span></div>
+          <div id="momoNoticesList" class="momo-notice-list"></div>
+        </section>
+
+        <section class="momo-tool-card">
+          <div class="momo-tool-heading"><div><p class="section-kicker">SPENDING PACE</p><h2>Budget pace vs. month pace</h2></div><span id="momoMonthPacePill" class="momo-soft-pill">—</span></div>
+          <div id="momoSpendingPaceList" class="momo-pace-list"></div>
+        </section>
+
+        <section class="momo-tool-card">
+          <div class="momo-tool-heading"><div><p class="section-kicker">BUDGET ROLLOVER</p><h2>Choose what follows you</h2></div><span>↻</span></div>
+          <p class="momo-tool-note">Monthly budgets can reset, carry unused money, carry overspending, or use a manual adjustment. Momo only looks one month back so the rule stays easy to understand.</p>
+          <div id="momoBudgetRolloverList" class="momo-rollover-list"></div>
+        </section>
+
+        <section class="momo-tool-card">
+          <div class="momo-tool-heading"><div><p class="section-kicker">MONTH CLOSE</p><h2>Keep a little snapshot</h2></div><span>✓</span></div>
+          <div class="momo-month-close-controls">
+            <select id="momoMonthCloseSelect" aria-label="Month to close"></select>
+            <button class="primary-button" type="button" data-momo-close-month>Save Month Snapshot</button>
+          </div>
+          <p class="momo-tool-note">A Month Close is a saved summary, not a lock. You can still edit old expenses later and save the snapshot again.</p>
+          <div id="momoMonthCloseList" class="momo-month-close-list"></div>
+        </section>
+
+        <!-- /MOMO 1.8 INSIGHTS -->
       </section>
 
 
@@ -5766,32 +5821,27 @@
         version: MOMO_VERSION,
         title: `What’s new in Momo v${MOMO_VERSION}`,
         date: "August 13, 2026",
-        intro:
-          "Momo now helps you plan the money you are protecting, the money arriving next, and the recurring commitments that keep showing up.",
+        intro: "Momo can now explain the month you are having, not just store it.",
         items: [
           {
-            icon: "🍑",
-            title: "Peach Jars",
-            copy:
-              "Turn any savings goal into a Peach Jar, give it an optional monthly plan, and protect that amount from Safe to Spend."
+            icon: "\ud83c\udf51",
+            title: "Momo Notices",
+            copy: "Rule-based, local insights surface useful patterns without a paid AI service."
           },
           {
-            icon: "💰",
-            title: "Payday Planner",
-            copy:
-              "Plan bills, savings, payables, wants, and a flexible buffer before payday. You can optionally use the expected amount as that month’s Momo income."
+            icon: "\u25d4",
+            title: "Month Forecast",
+            copy: "See projected spending, money left, known commitments, and the assumptions behind the estimate."
           },
           {
-            icon: "↻",
-            title: "Subscription Center",
-            copy:
-              "Recurring items can now be labeled as bills, subscriptions, memberships, or other repeats, with optional free-trial end dates and annual subscription estimates."
+            icon: "\u21bb",
+            title: "Budget Rollover & Pace",
+            copy: "Choose how monthly budgets reset or carry forward, and compare spending pace with the month."
           },
           {
-            icon: "♡",
-            title: "Deeper Payables",
-            copy:
-              "Payables now show total paid, an estimated payoff timeline, and optional APR-based interest estimates while keeping statement balance and remaining balance separate."
+            icon: "\u2713",
+            title: "Month Close",
+            copy: "Save a reusable snapshot of a month without locking your old records."
           }
         ]
       };

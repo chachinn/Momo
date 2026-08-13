@@ -1,10 +1,10 @@
 // ========================================
 // MOMO SERVICE WORKER
-// Momo 1.7.1 — compact home banners + update notes + large-list stability + push reminders + network-first PWA shell
+// Momo 1.8.0 — insights, personalization, deeper money tools + stable PWA updates
 // ========================================
 
 const APP_VERSION =
-  "1.7.1";
+  "1.8.0";
 
 
 const CACHE_NAME =

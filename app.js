@@ -1,6 +1,6 @@
 // ========================================
 // MOMO
-// Momo 1.7.1 — Compact home banners + Peach Jars + Payday Planner + Subscription Center + Payables
+// Momo 1.8.0 — Insights + Forecast + Month Close + Budget Rollover
 // CLEAN FOUNDATION + FUNCTIONAL TRIPS
 // ========================================
 
@@ -1295,6 +1295,9 @@ async function loadAppData() {
     )
       ? travelSettlementSetting.value
       : [];
+
+
+  loadMomo18Settings(settingsRecords);
 
 
   expenses.sort(
@@ -6178,10 +6181,14 @@ function createBudgetCardHTML(
     );
 
 
+  const effectiveLimit =
+    getEffectiveBudgetLimit(
+      budget
+    );
+
+
   const remaining =
-    Number(
-      budget.amount
-    ) -
+    effectiveLimit -
     spent;
 
 
@@ -6385,11 +6392,11 @@ function createBudgetCardHTML(
       <div class="budget-period-label">
 
         ${formatCurrency(
-          budget.amount,
+          effectiveLimit,
           budget.currency
         )}
 
-        limit
+        ${effectiveLimit !== Number(budget.amount || 0) ? "effective " : ""}limit
 
       </div>
 
@@ -40892,6 +40899,240 @@ window.addEventListener(
 
   }
 );
+
+
+// MOMO 1.8 — INSIGHTS, FORECASTING, MONTH CLOSE + BUDGET ROLLOVER
+const MOMO_MONTH_CLOSE_KEY = "momo_month_close_snapshots_v1";
+const MOMO_BUDGET_ROLLOVER_KEY = "momo_budget_rollover_v1";
+let momoMonthCloses = [];
+let momoBudgetRolloverPrefs = {};
+
+function loadMomo18Settings(records) {
+  const closeSetting = records.find((item) => item?.key === MOMO_MONTH_CLOSE_KEY);
+  const rolloverSetting = records.find((item) => item?.key === MOMO_BUDGET_ROLLOVER_KEY);
+  momoMonthCloses = Array.isArray(closeSetting?.value) ? closeSetting.value : [];
+  momoBudgetRolloverPrefs = rolloverSetting?.value && typeof rolloverSetting.value === "object" ? rolloverSetting.value : {};
+}
+
+async function saveMomoSetting(key, value) {
+  await putRecord(STORES.settings, { key, value, updatedAt: new Date().toISOString() });
+}
+
+function momoMonthKey(date) {
+  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}`;
+}
+
+function momoOffsetMonthKey(monthKey, offset) {
+  const [year, month] = String(monthKey).split("-").map(Number);
+  return momoMonthKey(new Date(year, month - 1 + offset, 1));
+}
+
+function momoMonthLabel(monthKey) {
+  const [year, month] = String(monthKey).split("-").map(Number);
+  return new Intl.DateTimeFormat("en-US", { month: "long", year: "numeric" }).format(new Date(year, month - 1, 1));
+}
+
+function momoBudgetSpentForMonth(budget, monthKey) {
+  return expenses.reduce((total, expense) => {
+    if (!String(expense.date || "").startsWith(monthKey)) return total;
+    const linked = expense.budgetId === budget.id;
+    const categoryMatch = !expense.budgetId && (expense.category || "Other") === (budget.category || "Other");
+    if (!linked && !categoryMatch) return total;
+    return total + convertCurrency(expense.amount, expense.currency, budget.currency || "PHP");
+  }, 0);
+}
+
+function getEffectiveBudgetLimit(budget) {
+  const base = Math.max(0, Number(budget?.amount || 0));
+  if (budget?.period !== "monthly" || base <= 0) return base;
+  const pref = momoBudgetRolloverPrefs[budget.id] || { mode: "reset", manual: 0 };
+  const currentMonth = getCurrentMonthKey();
+  const previousMonth = momoOffsetMonthKey(currentMonth, -1);
+  const previousSpent = momoBudgetSpentForMonth(budget, previousMonth);
+  const difference = base - previousSpent;
+  if (pref.mode === "roll-unused") return base + Math.max(0, difference);
+  if (pref.mode === "carry-overspending") return Math.max(0, base - Math.max(0, -difference));
+  if (pref.mode === "manual") return Math.max(0, base + Number(pref.manual || 0));
+  return base;
+}
+
+const momo18CoreBudgetUsage = getBudgetUsagePercent;
+getBudgetUsagePercent = function(budget) {
+  const limit = getEffectiveBudgetLimit(budget);
+  return limit > 0 ? getBudgetSpent(budget) / limit * 100 : 0;
+};
+
+const momo18CoreBudgetAlert = getBudgetAlertState;
+getBudgetAlertState = function(budget) {
+  const spent = getBudgetSpent(budget);
+  const limit = getEffectiveBudgetLimit(budget);
+  if (limit <= 0) return null;
+  const percent = spent / limit * 100;
+  const left = Math.max(0, limit - spent);
+  const over = Math.max(0, spent - limit);
+  if (percent >= 100) return { level: "over", threshold: 100, percent, icon: "!", title: over ? `${budget.name} is over budget` : `${budget.name} reached its limit`, message: over ? `${formatCurrency(over, budget.currency)} over the ${formatCurrency(limit, budget.currency)} effective limit` : `You've used the full ${formatCurrency(limit, budget.currency)} effective budget` };
+  if (percent >= 90) return { level: "critical", threshold: 90, percent, icon: "!", title: `${budget.name} is almost full`, message: `${percent.toFixed(0)}% used · ${formatCurrency(left, budget.currency)} left` };
+  if (percent >= 75) return { level: "warning", threshold: 75, percent, icon: "◔", title: `${budget.name} is getting close`, message: `${percent.toFixed(0)}% used · ${formatCurrency(left, budget.currency)} left` };
+  if (percent >= 50) return { level: "notice", threshold: 50, percent, icon: "♡", title: `${budget.name} passed halfway`, message: `${percent.toFixed(0)}% of this budget has been used` };
+  return null;
+};
+
+function momoExpensesForMonth(monthKey) {
+  return expenses.filter((expense) => String(expense.date || "").startsWith(monthKey));
+}
+
+function momoSavingsForMonth(monthKey) {
+  return savingsGoals.reduce((total, goal) => total + convertCurrency(
+    (Array.isArray(goal.contributions) ? goal.contributions : []).filter((item) => String(item.date || "").startsWith(monthKey)).reduce((sum, item) => sum + Number(item.amount || 0), 0),
+    goal.currency || "PHP", "PHP"
+  ), 0);
+}
+
+function momoPaidPayablesForMonth(monthKey) {
+  return cards.reduce((total, payable) => total + getPayablePayments(payable).filter((item) => String(item.date || "").startsWith(monthKey)).reduce((sum, item) => sum + payablePHPValue(payable, item.amount), 0), 0);
+}
+
+function momoCategoryTotals(monthKey) {
+  const totals = new Map();
+  for (const expense of momoExpensesForMonth(monthKey)) {
+    const label = expense.category === "Other" && expense.otherCategory ? expense.otherCategory : (expense.category || "Other");
+    totals.set(label, (totals.get(label) || 0) + convertCurrency(expense.amount, expense.currency, "PHP"));
+  }
+  return [...totals.entries()].sort((a, b) => b[1] - a[1]);
+}
+
+function momoForecastCurrentMonth() {
+  const today = new Date();
+  const monthKey = getCurrentMonthKey();
+  const days = getDaysInMonth(today.getFullYear(), today.getMonth());
+  const elapsed = Math.max(1, today.getDate());
+  const spent = totalExpensesPHP(momoExpensesForMonth(monthKey));
+  const average = spent / elapsed;
+  const monthEnd = `${monthKey}-${String(days).padStart(2, "0")}`;
+  const tomorrow = addDaysToDateString(getTodayString(), 1);
+  const scheduled = tomorrow <= monthEnd ? buildScheduledCashFlow(tomorrow, monthEnd).totalPHP : 0;
+  const projectedSpending = spent + average * Math.max(0, days - elapsed) + scheduled;
+  const base = clampMoney(monthlyIncomeByMonth[monthKey]) || clampMoney(getCurrentMonthlyBudgetTotal());
+  const protectedSavings = getProtectedSavingsRemainingPHP(monthKey);
+  const projectedLeft = base > 0 ? base - projectedSpending - protectedSavings : null;
+  return { monthKey, days, elapsed, spent, average, scheduled, projectedSpending, protectedSavings, base, projectedLeft };
+}
+
+function momoBudgetPaceRows() {
+  const now = new Date();
+  const monthProgress = now.getDate() / getDaysInMonth(now.getFullYear(), now.getMonth()) * 100;
+  return budgets.filter((budget) => budget.period === "monthly" && Number(budget.amount || 0) > 0).map((budget) => {
+    const budgetProgress = getBudgetUsagePercent(budget);
+    const delta = budgetProgress - monthProgress;
+    return { budget, budgetProgress, monthProgress, delta, tone: delta > 12 ? "ahead" : delta < -12 ? "under" : "even" };
+  }).sort((a, b) => b.delta - a.delta);
+}
+
+function momoBuildNotices() {
+  const notices = [];
+  const comparison = getMonthToDateComparison();
+  if (comparison.previousSpent > 0) {
+    const change = (comparison.currentSpent - comparison.previousSpent) / comparison.previousSpent * 100;
+    if (Math.abs(change) >= 10) notices.push({ icon: change > 0 ? "◔" : "♡", title: `Spending is ${Math.abs(change).toFixed(0)}% ${change > 0 ? "higher" : "lower"} than the same point last month`, copy: `${formatPHP(comparison.currentSpent)} now vs ${formatPHP(comparison.previousSpent)} through the same day.` });
+  }
+  const due = buildScheduledCashFlow(getTodayString(), addDaysToDateString(getTodayString(), 7));
+  if (due.totalPHP > 0) notices.push({ icon: "🔔", title: `${formatPHP(due.totalPHP)} is known to be due in the next 7 days`, copy: "This combines dated recurring items, planned expenses, and payable payments you entered in Momo." });
+  const subscriptionAnnual = recurringExpenses.filter((item) => isRecurringActive(item) && (item.kind === "subscription" || item.category === "Subscriptions")).reduce((sum, item) => sum + convertCurrency(Number(item.amount || 0) * getRecurringMonthlyFactor(item.frequency) * 12, item.currency || "PHP", "PHP"), 0);
+  if (subscriptionAnnual > 0) notices.push({ icon: "↻", title: `Subscriptions are about ${formatPHP(subscriptionAnnual)} a year`, copy: "An estimate from the active subscription amounts and frequencies currently saved." });
+  const ahead = momoBudgetPaceRows().filter((row) => row.tone === "ahead").slice(0, 2);
+  for (const row of ahead) notices.push({ icon: "!", title: `${row.budget.name} is moving faster than the month`, copy: `${row.budgetProgress.toFixed(0)}% of the budget is used while ${row.monthProgress.toFixed(0)}% of the month has passed.` });
+  if (!notices.length) notices.push({ icon: "🍑", title: "Nothing urgent is standing out", copy: "Momo will surface useful patterns here as you add more real data." });
+  return notices.slice(0, 6);
+}
+
+function momoBuildMonthSnapshot(monthKey) {
+  const list = momoExpensesForMonth(monthKey);
+  const category = momoCategoryTotals(monthKey)[0] || null;
+  const spent = totalExpensesPHP(list);
+  const income = clampMoney(monthlyIncomeByMonth[monthKey]);
+  const saved = momoSavingsForMonth(monthKey);
+  const paid = momoPaidPayablesForMonth(monthKey);
+  const tripCount = new Set(list.map((item) => item.tripId).filter(Boolean)).size;
+  return { monthKey, savedAt: new Date().toISOString(), spent, income, saved, paid, tripCount, expenseCount: list.length, biggestCategory: category?.[0] || "", biggestCategoryAmount: category?.[1] || 0, balance: income > 0 ? income - spent - saved : null };
+}
+
+async function momoSaveMonthClose(monthKey) {
+  const snapshot = momoBuildMonthSnapshot(monthKey);
+  momoMonthCloses = [snapshot, ...momoMonthCloses.filter((item) => item.monthKey !== monthKey)].slice(0, 36);
+  await saveMomoSetting(MOMO_MONTH_CLOSE_KEY, momoMonthCloses);
+  renderMomoInsights();
+  showToast(`${momoMonthLabel(monthKey)} snapshot saved ✓`);
+}
+
+function renderMomoInsights() {
+  const forecastSpend = document.getElementById("momoForecastSpend");
+  if (!forecastSpend) return;
+  const forecast = momoForecastCurrentMonth();
+  forecastSpend.textContent = formatPHP(forecast.projectedSpending);
+  document.getElementById("momoForecastLeft").textContent = forecast.projectedLeft === null ? "Add income or budget" : formatPHP(Math.max(0, forecast.projectedLeft));
+  document.getElementById("momoForecastCommitments").textContent = formatPHP(forecast.scheduled);
+  document.getElementById("momoForecastProtected").textContent = formatPHP(forecast.protectedSavings);
+  document.getElementById("momoForecastAssumptions").textContent = `Projection = ${formatPHP(forecast.spent)} already spent + your ${formatPHP(forecast.average)} daily pace for the rest of the month + ${formatPHP(forecast.scheduled)} of known dated commitments. It is an estimate, not financial advice.`;
+
+  const notices = document.getElementById("momoNoticesList");
+  notices.innerHTML = momoBuildNotices().map((item) => `<article class="momo-notice"><span>${item.icon}</span><div><strong>${escapeHTML(item.title)}</strong><p>${escapeHTML(item.copy)}</p></div></article>`).join("");
+
+  const paceRows = momoBudgetPaceRows();
+  document.getElementById("momoMonthPacePill").textContent = `${forecast.elapsed}/${forecast.days} days`;
+  document.getElementById("momoSpendingPaceList").innerHTML = paceRows.length ? paceRows.map((row) => `<article class="momo-pace-row ${row.tone}"><div><strong>${escapeHTML(row.budget.name)}</strong><small>${row.budgetProgress.toFixed(0)}% used · ${row.monthProgress.toFixed(0)}% of month passed</small></div><span>${row.tone === "ahead" ? "Ahead of pace" : row.tone === "under" ? "Under pace" : "On pace"}</span></article>`).join("") : `<div class="momo-tool-empty">Create a monthly budget to see spending pace.</div>`;
+
+  const rollover = document.getElementById("momoBudgetRolloverList");
+  const monthly = budgets.filter((item) => item.period === "monthly");
+  rollover.innerHTML = monthly.length ? monthly.map((budget) => {
+    const pref = momoBudgetRolloverPrefs[budget.id] || { mode: "reset", manual: 0 };
+    const effective = getEffectiveBudgetLimit(budget);
+    return `<article class="momo-rollover-row"><div><strong>${escapeHTML(budget.name)}</strong><small>Base ${formatCurrency(budget.amount, budget.currency)} · effective ${formatCurrency(effective, budget.currency)}</small></div><select data-momo-rollover-mode="${escapeHTML(budget.id)}"><option value="reset" ${pref.mode === "reset" ? "selected" : ""}>Reset monthly</option><option value="roll-unused" ${pref.mode === "roll-unused" ? "selected" : ""}>Roll unused forward</option><option value="carry-overspending" ${pref.mode === "carry-overspending" ? "selected" : ""}>Carry overspending forward</option><option value="manual" ${pref.mode === "manual" ? "selected" : ""}>Manual adjustment</option></select>${pref.mode === "manual" ? `<input data-momo-rollover-manual="${escapeHTML(budget.id)}" type="number" step="0.01" value="${Number(pref.manual || 0)}" aria-label="Manual rollover adjustment">` : ""}</article>`;
+  }).join("") : `<div class="momo-tool-empty">Monthly budgets will appear here.</div>`;
+
+  const select = document.getElementById("momoMonthCloseSelect");
+  const monthKeys = new Set([getCurrentMonthKey(), ...expenses.map((item) => String(item.date || "").slice(0, 7)).filter((item) => /^\d{4}-\d{2}$/.test(item))]);
+  const sortedKeys = [...monthKeys].sort().reverse().slice(0, 36);
+  const previous = select.value;
+  select.innerHTML = sortedKeys.map((key) => `<option value="${key}">${escapeHTML(momoMonthLabel(key))}</option>`).join("");
+  if (sortedKeys.includes(previous)) select.value = previous;
+  document.getElementById("momoMonthCloseList").innerHTML = momoMonthCloses.length ? momoMonthCloses.slice(0, 12).map((item) => `<article class="momo-month-close-row"><div><strong>${escapeHTML(momoMonthLabel(item.monthKey))}</strong><small>${item.expenseCount} expenses · ${item.biggestCategory ? `top: ${escapeHTML(item.biggestCategory)}` : "no category yet"}</small></div><div><b>${formatPHP(item.spent)}</b><small>${item.income > 0 ? `${formatPHP(Math.max(0, item.balance ?? 0))} left` : `${formatPHP(item.saved)} saved`}</small></div></article>`).join("") : `<div class="momo-tool-empty">No month snapshots saved yet.</div>`;
+}
+
+const momo18CoreRenderAll = renderAll;
+renderAll = function() {
+  momo18CoreRenderAll();
+  renderMomoInsights();
+};
+
+const momo18CoreShowScreen = showScreen;
+showScreen = function(name) {
+  momo18CoreShowScreen(name);
+  if (name === "insights") renderMomoInsights();
+};
+
+document.addEventListener("change", async (event) => {
+  const mode = event.target.closest("[data-momo-rollover-mode]");
+  if (mode) {
+    const id = mode.dataset.momoRolloverMode;
+    momoBudgetRolloverPrefs[id] = { ...(momoBudgetRolloverPrefs[id] || {}), mode: mode.value };
+    await saveMomoSetting(MOMO_BUDGET_ROLLOVER_KEY, momoBudgetRolloverPrefs);
+    renderAll();
+    return;
+  }
+  const manual = event.target.closest("[data-momo-rollover-manual]");
+  if (manual) {
+    const id = manual.dataset.momoRolloverManual;
+    momoBudgetRolloverPrefs[id] = { ...(momoBudgetRolloverPrefs[id] || {}), mode: "manual", manual: Number(manual.value || 0) };
+    await saveMomoSetting(MOMO_BUDGET_ROLLOVER_KEY, momoBudgetRolloverPrefs);
+    renderAll();
+  }
+});
+
+document.addEventListener("click", (event) => {
+  if (!event.target.closest("[data-momo-close-month]")) return;
+  const select = document.getElementById("momoMonthCloseSelect");
+  if (select?.value) momoSaveMonthClose(select.value).catch((error) => { console.error(error); showToast("Could not save that month snapshot."); });
+});
 
 
 // ========================================
