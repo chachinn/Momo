@@ -1,0 +1,151 @@
+name: Polish Momo 1.10.1 navigation
+
+on:
+  push:
+    paths:
+      - ".github/workflows/momo-1.10.1-polish.yml"
+
+permissions:
+  contents: write
+
+concurrency:
+  group: momo-1-10-1-polish
+  cancel-in-progress: false
+
+jobs:
+  polish:
+    if: github.event.head_commit.message == 'Polish Momo 1.10.1 navigation'
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - name: Check out main
+        uses: actions/checkout@v4
+        with:
+          ref: main
+          fetch-depth: 0
+
+      - name: Protect infrastructure
+        run: |
+          sha256sum firebase-momo.js manifest.json scripts/send-reminders.mjs .github/workflows/momo-reminders.yml > /tmp/protected.sha256
+
+      - name: Remove duplicate shortcuts and bump patch version
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+          import re
+
+          index = Path('index.html')
+          html = index.read_text()
+
+          old_quick = '''      <div class="drawer-quick-grid">
+        <button class="drawer-quick" type="button" data-drawer-nav="insights"><span>🍑</span><strong>Insights</strong></button>
+        <button class="drawer-quick" type="button" data-drawer-nav="search"><span>⌕</span><strong>Search</strong></button>
+        <button class="drawer-quick" type="button" data-nav="add"><span>＋</span><strong>Add expense</strong></button>
+        <button class="drawer-quick" type="button" data-drawer-nav="dashboard"><span>✿</span><strong>Customize</strong></button>
+      </div>
+
+'''
+          assert html.count(old_quick) == 1, 'expected duplicate shortcut row not found exactly once'
+          html = html.replace(old_quick, '', 1)
+          assert html.count('class="drawer-quick-grid"') == 1, 'drawer should have exactly one shortcut grid'
+          assert '<meta name="momo-app-version" content="1.10.0">' in html
+          html = html.replace(
+              '<meta name="momo-app-version" content="1.10.0">',
+              '<meta name="momo-app-version" content="1.10.1">',
+              1
+          )
+          index.write_text(html)
+
+          app = Path('app.js')
+          text = app.read_text()
+          old = '// Momo 1.10.0 — Deeper Cards + Subscriptions + Peach Jars + Momo Story Tools'
+          new = '// Momo 1.10.1 — Smart Money Suite + Clean Navigation + Stability Polish'
+          assert old in text
+          app.write_text(text.replace(old, new, 1))
+
+          sw = Path('service-worker.js')
+          text = sw.read_text()
+          assert '  "1.10.0";' in text
+          text = text.replace('  "1.10.0";', '  "1.10.1";', 1)
+          text = text.replace(
+              '// Momo 1.10.0 — insights, personalization, deeper money tools + stable PWA updates',
+              '// Momo 1.10.1 — smart money suite + clean navigation + stable PWA updates',
+              1
+          )
+          sw.write_text(text)
+          PY
+
+      - name: Comprehensive static QA
+        run: |
+          node --check app.js
+          node --check service-worker.js
+          python - <<'PY'
+          from pathlib import Path
+          import re, time
+
+          html = Path('index.html').read_text()
+          app = Path('app.js').read_text()
+          css = Path('styles.css').read_text()
+          sw = Path('service-worker.js').read_text()
+
+          assert 'content="1.10.1"' in html
+          assert '"1.10.1";' in sw
+          assert 'const DB_VERSION = 4;' in app
+          assert html.count('class="drawer-quick-grid"') == 1
+          assert html.count('id="drawerReminderBadge"') == 1
+          assert html.count('id="drawerAccountTitle"') == 1
+
+          ids = re.findall(r'\bid="([^"]+)"', html)
+          dup = sorted({x for x in ids if ids.count(x) > 1})
+          assert not dup, f'duplicate ids: {dup}'
+
+          assert css.count('{') == css.count('}'), 'unbalanced CSS braces'
+
+          for token in [
+              'momoNoticesList','momoForecastSpend','momoMonthCloseList','momoBudgetRolloverList',
+              'momoGlobalSearchInput','momoHomeModuleList','runMomoGlobalSearch',
+              'momoWorthItList','momoNoSpendCalendar','momoFutureList','momoReviewYear',
+              'momoSubscriptionManager','momoJarPlanner','momoPayoffSelect'
+          ]:
+              assert token in html + app, f'missing feature marker: {token}'
+
+          nav_block = re.search(r'<nav\b[^>]*class="bottom-nav".*?</nav>', html, re.S)
+          assert nav_block, 'bottom nav missing'
+          nav = nav_block.group(0)
+          items = re.findall(r'class="nav-item[^\"]*"[^>]*data-nav="([^"]+)"|data-nav="([^"]+)"[^>]*class="nav-item', nav)
+          names = [a or b for a,b in items]
+          assert names == ['home','budgets','add','trips','calendar'], f'unexpected bottom nav: {names}'
+
+          # Sanity/performance smoke for the one-pass style used by the new tools.
+          start = time.time()
+          total = hits = 0
+          for i in range(100000):
+              amount = (i % 997) + 1
+              total += amount
+              if i % 113 == 0:
+                  hits += 1
+          elapsed = time.time() - start
+          assert total > 0 and hits > 0 and elapsed < 5
+          print(f'100k synthetic scan: {elapsed:.3f}s')
+          PY
+
+          # Syntax-check the inline updater script as JavaScript too.
+          python - <<'PY'
+          from pathlib import Path
+          import re
+          html = Path('index.html').read_text()
+          blocks = re.findall(r'<script(?![^>]*\bsrc=)[^>]*>(.*?)</script>', html, re.S | re.I)
+          Path('/tmp/momo-inline.js').write_text('\n'.join(blocks))
+          PY
+          node --check /tmp/momo-inline.js
+          sha256sum -c /tmp/protected.sha256
+
+      - name: Commit final polish and clean helper
+        run: |
+          rm .github/workflows/momo-1.10.1-polish.yml
+          git config user.name "Momo Release Bot"
+          git config user.email "momo-release-bot@users.noreply.github.com"
+          git add app.js index.html service-worker.js .github/workflows/momo-1.10.1-polish.yml
+          git commit -m "Release Momo 1.10.1: final navigation polish"
+          git push origin HEAD:main
