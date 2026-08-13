@@ -49,7 +49,11 @@ jobs:
           old = 'html, n = pattern.subn(block, html, count=1)'
           new = 'html, n = pattern.subn(lambda _match: block, html, count=1)'
           assert old in text, 'release note patch target missing'
-          path.write_text(text.replace(old, new, 1))
+          text = text.replace(old, new, 1)
+          text = text.replace("if expected >= '1.8.0':", "if tuple(map(int, expected.split('.'))) >= (1, 8, 0):", 1)
+          text = text.replace("if expected >= '1.9.0':", "if tuple(map(int, expected.split('.'))) >= (1, 9, 0):", 1)
+          text = text.replace("if expected >= '1.10.0':", "if tuple(map(int, expected.split('.'))) >= (1, 10, 0):", 1)
+          path.write_text(text)
           PY
           python -m py_compile /tmp/momo-next-wave.py
 
