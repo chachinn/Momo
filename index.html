@@ -17,7 +17,7 @@
   <meta name="apple-mobile-web-app-title" content="Momo">
 
   <title>Momo — Spending Diary</title>
-  <meta name="momo-app-version" content="1.9.0">
+  <meta name="momo-app-version" content="1.10.0">
 
   <link rel="manifest" href="manifest.json">
   <link rel="apple-touch-icon" href="icons/icon-192.png">
@@ -103,19 +103,32 @@
         <button class="drawer-quick" type="button" data-drawer-nav="dashboard"><span>✿</span><strong>Customize</strong></button>
       </div>
 
-      <div class="drawer-section"><p class="drawer-label">Plan</p>
-        <button class="drawer-item" type="button" data-drawer-nav="budgets"><span class="drawer-icon">♡</span><span class="drawer-copy"><strong>Budgets</strong><small>Limits and spending pace.</small></span><span class="drawer-arrow">›</span></button>
-        <button class="drawer-item" type="button" data-drawer-nav="recurring"><span class="drawer-icon">↻</span><span class="drawer-copy"><strong>Recurring & Subscriptions</strong><small>Bills, memberships, and renewals.</small></span><span class="drawer-arrow">›</span></button>
-        <button class="drawer-item" type="button" data-drawer-nav="planned"><span class="drawer-icon">☆</span><span class="drawer-copy"><strong>Planned Expenses</strong><small>Things that are not spent yet.</small></span><span class="drawer-arrow">›</span></button>
-        <button class="drawer-item" type="button" data-drawer-nav="savings"><span class="drawer-icon">🌱</span><span class="drawer-copy"><strong>Savings & Peach Jars</strong><small>Goals and protected plans.</small></span><span class="drawer-arrow">›</span></button>
-        <button class="drawer-item" type="button" data-drawer-nav="payday"><span class="drawer-icon">🍑</span><span class="drawer-copy"><strong>Payday Planner</strong><small>Plan your next pay before it arrives.</small></span><span class="drawer-arrow">›</span></button>
-        <button class="drawer-item" type="button" data-drawer-nav="payables"><span class="drawer-icon">🌸</span><span class="drawer-copy"><strong>Payables</strong><small>Cards, loans, and installments.</small></span><span class="drawer-arrow">›</span></button>
+      <div class="drawer-quick-grid">
+        <button class="drawer-quick" type="button" data-drawer-nav="insights"><span>🍑</span><strong>Insights</strong></button>
+        <button class="drawer-quick" type="button" data-drawer-nav="search"><span>⌕</span><strong>Search</strong></button>
+        <button class="drawer-quick" type="button" data-drawer-nav="future"><span>☆</span><strong>Future Buys</strong></button>
+        <button class="drawer-quick" type="button" data-nav="add"><span>＋</span><strong>Add expense</strong></button>
       </div>
 
-      <div class="drawer-section"><p class="drawer-label">Review</p>
-        <button class="drawer-item" type="button" data-drawer-nav="activity"><span class="drawer-icon">🧾</span><span class="drawer-copy"><strong>Activity</strong><small>Full expense history and filters.</small></span><span class="drawer-arrow">›</span></button>
-        <button class="drawer-item" type="button" data-drawer-nav="receipts"><span class="drawer-icon">🖼️</span><span class="drawer-copy"><strong>Receipt Gallery</strong><small>Photos attached to purchases.</small></span><span class="drawer-arrow">›</span></button>
-        <button class="drawer-item" type="button" data-drawer-nav="reports"><span class="drawer-icon">◔</span><span class="drawer-copy"><strong>Reports</strong><small>Totals, categories, and trends.</small></span><span class="drawer-arrow">›</span></button>
+      <div class="drawer-section"><p class="drawer-label">Smart Money</p>
+        <button class="drawer-item" type="button" data-drawer-nav="insights"><span class="drawer-icon">◔</span><span class="drawer-copy"><strong>Insights & Forecast</strong><small>Notices, pace, rollover, Month Close, and payoff tools.</small></span><span class="drawer-arrow">›</span></button>
+        <button class="drawer-item" type="button" data-drawer-nav="search"><span class="drawer-icon">⌕</span><span class="drawer-copy"><strong>Money Search</strong><small>Find records across Momo.</small></span><span class="drawer-arrow">›</span></button>
+        <button class="drawer-item" type="button" data-drawer-nav="future"><span class="drawer-icon">☆</span><span class="drawer-copy"><strong>Future Buys</strong><small>Planned purchases with Safe-to-Spend context.</small></span><span class="drawer-arrow">›</span></button>
+        <button class="drawer-item" type="button" data-drawer-nav="review"><span class="drawer-icon">✦</span><span class="drawer-copy"><strong>Year in Review</strong><small>Your private annual Momo story.</small></span><span class="drawer-arrow">›</span></button>
+      </div>
+
+      <div class="drawer-section"><p class="drawer-label">Plan</p>
+        <button class="drawer-item" type="button" data-drawer-nav="budgets"><span class="drawer-icon">♡</span><span class="drawer-copy"><strong>Budgets</strong><small>Limits and spending pace.</small></span><span class="drawer-arrow">›</span></button>
+        <button class="drawer-item" type="button" data-drawer-nav="recurring"><span class="drawer-icon">↻</span><span class="drawer-copy"><strong>Recurring & Subscriptions</strong><small>Bills, renewals, trials, and price history.</small></span><span class="drawer-arrow">›</span></button>
+        <button class="drawer-item" type="button" data-drawer-nav="savings"><span class="drawer-icon">🌱</span><span class="drawer-copy"><strong>Savings & Peach Jars</strong><small>Goals, protected plans, and target pacing.</small></span><span class="drawer-arrow">›</span></button>
+        <button class="drawer-item" type="button" data-drawer-nav="payday"><span class="drawer-icon">🍑</span><span class="drawer-copy"><strong>Payday Planner</strong><small>Give the next pay a job.</small></span><span class="drawer-arrow">›</span></button>
+        <button class="drawer-item" type="button" data-drawer-nav="payables"><span class="drawer-icon">🌸</span><span class="drawer-copy"><strong>Payables</strong><small>Cards, loans, installments, and history.</small></span><span class="drawer-arrow">›</span></button>
+      </div>
+
+      <div class="drawer-section"><p class="drawer-label">Records</p>
+        <button class="drawer-item" type="button" data-drawer-nav="activity"><span class="drawer-icon">🧾</span><span class="drawer-copy"><strong>Activity</strong><small>Expense history and advanced filters.</small></span><span class="drawer-arrow">›</span></button>
+        <button class="drawer-item" type="button" data-drawer-nav="receipts"><span class="drawer-icon">🖼️</span><span class="drawer-copy"><strong>Receipt Gallery</strong><small>Purchase photos in one place.</small></span><span class="drawer-arrow">›</span></button>
+        <button class="drawer-item" type="button" data-drawer-nav="reports"><span class="drawer-icon">◔</span><span class="drawer-copy"><strong>Reports</strong><small>Breakdowns and trends.</small></span><span class="drawer-arrow">›</span></button>
         <button class="drawer-item" type="button" data-drawer-nav="reminders"><span class="drawer-icon">🔔</span><span class="drawer-copy"><strong>Gentle Reminders</strong><small>Automatic and custom nudges.</small></span><span id="drawerReminderBadge" class="drawer-reminder-badge" hidden>0</span><span class="drawer-arrow">›</span></button>
         <button class="drawer-item" type="button" data-drawer-nav="backup"><span class="drawer-icon">⇩</span><span class="drawer-copy"><strong>Backup & Export</strong><small>Protect or export local Momo data.</small></span><span class="drawer-arrow">›</span></button>
       </div>
@@ -126,8 +139,8 @@
         <button class="drawer-item" type="button" data-drawer-nav="converter"><span class="drawer-icon">💱</span><span class="drawer-copy"><strong>Currency Converter</strong><small>Convert and calculate on the go.</small></span><span class="drawer-arrow">›</span></button>
       </div>
 
-      <div class="drawer-section"><p class="drawer-label">Account & Help</p>
-        <button class="drawer-item" type="button" data-drawer-nav="dashboard"><span class="drawer-icon">✿</span><span class="drawer-copy"><strong>Customize Home</strong><small>Show, hide, and reorder Home cards.</small></span><span class="drawer-arrow">›</span></button>
+      <div class="drawer-section"><p class="drawer-label">Personalize</p>
+        <button class="drawer-item" type="button" data-drawer-nav="dashboard"><span class="drawer-icon">✿</span><span class="drawer-copy"><strong>Customize Home</strong><small>Show, hide, reorder, and compact Home.</small></span><span class="drawer-arrow">›</span></button>
         <button class="drawer-item" type="button" data-drawer-nav="account"><span class="drawer-icon">☁</span><span class="drawer-copy"><strong id="drawerAccountTitle">Account & Cloud</strong><small id="drawerAccountSubtitle">Using Momo on this device.</small></span><span class="drawer-arrow">›</span></button>
         <button class="drawer-item" type="button" data-drawer-nav="guide"><span class="drawer-icon">?</span><span class="drawer-copy"><strong>Momo Guide</strong><small>How-tos, tips, and the welcome tour.</small></span><span class="drawer-arrow">›</span></button>
       </div>
@@ -413,6 +426,27 @@
           <div id="momoMonthCloseList" class="momo-month-close-list"></div>
         </section>
 
+        <section class="momo-tool-card momo10-extra">
+          <div class="momo-tool-heading"><div><p class="section-kicker">WORTH IT?</p><h2>Rate recent flexible spending</h2></div><span>♡</span></div>
+          <p class="momo-tool-note">Optional and private. This is reflection, not a score.</p>
+          <div id="momoWorthItList" class="momo-worth-list"></div>
+        </section>
+        <section class="momo-tool-card momo10-extra">
+          <div class="momo-tool-heading"><div><p class="section-kicker">NO-SPEND DAYS</p><h2>Quiet money days</h2></div><span id="momoNoSpendCount" class="momo-soft-pill">0 days</span></div>
+          <p class="momo-tool-note">A no-spend day here means no discretionary expense was recorded. Bills, subscriptions, and groceries do not break it.</p>
+          <div id="momoNoSpendCalendar" class="momo-no-spend-calendar"></div>
+        </section>
+        <section class="momo-tool-card momo10-extra">
+          <div class="momo-tool-heading"><div><p class="section-kicker">LITTLE WINS</p><h2>Progress worth noticing</h2></div><span>✨</span></div>
+          <div id="momoLittleWins" class="momo-little-wins"></div>
+        </section>
+        <section class="momo-tool-card momo10-extra">
+          <div class="momo-tool-heading"><div><p class="section-kicker">PAYOFF LAB</p><h2>What if I pay a little extra?</h2></div><span>♡</span></div>
+          <div id="momoCardHealth" class="momo-card-health"></div>
+          <div class="momo-payoff-controls"><select id="momoPayoffSelect"></select><input id="momoPayoffExtra" type="number" inputmode="decimal" min="0" step="0.01" placeholder="Extra each month"></div>
+          <div id="momoPayoffResult" class="momo-payoff-result"></div>
+        </section>
+
         <!-- /MOMO 1.8 INSIGHTS -->
       </section>
 
@@ -444,6 +478,24 @@
           <div id="momoHomeDensity" class="momo-density-choice"><button type="button" data-momo-density="cozy">Cozy</button><button type="button" data-momo-density="compact">Compact</button></div>
         </section>
         <section class="momo-tool-card"><div class="momo-tool-heading"><div><p class="section-kicker">HOME CARDS</p><h2>Show, hide & reorder</h2></div></div><div id="momoHomeModuleList" class="momo-home-module-list"></div></section>
+      </section>
+
+
+      <!-- MOMO 1.10 FUTURE BUYS -->
+      <section class="screen momo-future-screen" data-screen="future">
+        <div class="page-heading compact"><div><p class="eyebrow">Before you buy</p><h1>Future Buys</h1><p class="page-description">A softer view of Planned Expenses, with Safe-to-Spend context before something becomes real spending.</p></div><button id="momoFutureAdd" class="round-add-btn" type="button" aria-label="Add future purchase">＋</button></div>
+        <section class="momo-future-summary"><div><small>Still planned</small><strong id="momoFutureTotal">₱0.00</strong></div><div><small>Items</small><strong id="momoFutureCount">0</strong></div></section>
+        <div id="momoFutureList" class="momo-future-list"></div>
+      </section>
+
+
+      <!-- MOMO 1.10 YEAR REVIEW -->
+      <section class="screen momo-year-review-screen" data-screen="review">
+        <div class="page-heading compact"><div><p class="eyebrow">Your year with Momo</p><h1>Year in Review</h1><p class="page-description">A private annual recap built from the records already on this device.</p></div><select id="momoReviewYear" class="date-pill" aria-label="Review year"></select></div>
+        <section class="momo-review-hero"><p class="section-kicker">MOMO STORY</p><h2 id="momoReviewHeadline">Your year, one little peach at a time.</h2><div class="momo-review-grid"><div><small>Spent</small><strong id="momoReviewSpent">₱0.00</strong></div><div><small>Saved</small><strong id="momoReviewSaved">₱0.00</strong></div><div><small>Expenses</small><strong id="momoReviewExpenseCount">0</strong></div><div><small>Trips</small><strong id="momoReviewTrips">0</strong></div></div></section>
+        <section class="momo-tool-card"><div class="momo-tool-heading"><div><p class="section-kicker">WHERE IT WENT</p><h2>Top categories</h2></div></div><div id="momoReviewCategories" class="momo-review-bars"></div></section>
+        <section class="momo-tool-card"><div class="momo-tool-heading"><div><p class="section-kicker">WORTH IT?</p><h2>How purchases felt</h2></div></div><div id="momoReviewWorth" class="momo-review-worth"></div></section>
+        <section class="momo-tool-card"><div class="momo-tool-heading"><div><p class="section-kicker">LITTLE WINS</p><h2>Things you moved forward</h2></div></div><div id="momoReviewWins" class="momo-little-wins"></div></section>
       </section>
 
 
@@ -1914,6 +1966,7 @@
             <div><small>Trials ending in 30d</small><strong id="subscriptionTrialCount">0</strong></div>
           </div>
         </section>
+        <section class="momo-advanced-section"><div class="momo-tool-heading"><div><p class="section-kicker">MANAGE SUBSCRIPTIONS</p><h2>Renewals & price history</h2></div></div><div id="momoSubscriptionManager" class="momo-subscription-manager"></div></section>
 
         <div class="recurring-summary-grid">
           <section class="card recurring-summary-card">
@@ -2100,6 +2153,7 @@
             <strong id="savingsProtectedPlan">₱0.00</strong>
           </div>
         </section>
+        <section class="momo-advanced-section"><div class="momo-tool-heading"><div><p class="section-kicker">PEACH JAR PLANNER</p><h2>Target pace & pause</h2></div></div><div id="momoJarPlanner" class="momo-jar-planner"></div></section>
 
         <div
           id="savingsGoalList"
@@ -5659,27 +5713,27 @@
         version: MOMO_VERSION,
         title: `What’s new in Momo v${MOMO_VERSION}`,
         date: "August 13, 2026",
-        intro: "Momo is easier to move around and easier to make your own.",
+        intro: "This release completes Momo\u2019s new smart-money wave: understand the month, find anything, personalize Home, and go deeper without making the app feel heavier.",
         items: [
           {
+            icon: "\ud83c\udf51",
+            title: "Insights to Month Close",
+            copy: "Momo Notices, forecasting, spending pace, budget rollover, and saved month snapshots are together in Insights."
+          },
+          {
             icon: "\u2315",
-            title: "Money Search",
-            copy: "Search across expenses, plans, recurring costs, payables, savings, and trips with richer filters."
+            title: "Search + a cleaner Momo",
+            copy: "Universal Money Search, customizable Home, cleaner five-tab navigation, and a reorganized hamburger keep the app easier to use."
           },
           {
-            icon: "\u273f",
-            title: "Customize Home",
-            copy: "Show, hide, reorder, and choose a compact or cozy Home layout."
+            icon: "\u2661",
+            title: "Deeper money tools",
+            copy: "Credit-card health, payoff scenarios, subscription states and price history, and Peach Jar pacing add more useful context."
           },
           {
-            icon: "\u2630",
-            title: "Cleaner navigation",
-            copy: "The hamburger is grouped by Plan, Review, Travel, and Account & Help, while the five core bottom tabs stay focused."
-          },
-          {
-            icon: "\u26a1",
-            title: "Large-history friendly",
-            copy: "Search is debounced, capped, and yields between large batches so long histories do not freeze the screen."
+            icon: "\u2728",
+            title: "Momo-only features",
+            copy: "Worth It?, no-spend days, Little Wins, Future Buys, and Year in Review make your money history feel more personal."
           }
         ]
       };

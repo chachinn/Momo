@@ -1,6 +1,6 @@
 // ========================================
 // MOMO
-// Momo 1.9.0 — Custom Home + Global Money Search + Navigation Cleanup
+// Momo 1.10.0 — Deeper Cards + Subscriptions + Peach Jars + Momo Story Tools
 // CLEAN FOUNDATION + FUNCTIONAL TRIPS
 // ========================================
 
@@ -1301,6 +1301,9 @@ async function loadAppData() {
 
 
   loadMomo19Settings(settingsRecords);
+
+
+  loadMomo10Settings(settingsRecords);
 
 
   expenses.sort(
@@ -41300,6 +41303,126 @@ document.addEventListener("click", async (event) => {
   }
   const density = event.target.closest("[data-momo-density]");
   if (density) { momoHomeLayout.density = density.dataset.momoDensity === "compact" ? "compact" : "cozy"; await saveMomoHomeLayout(); applyMomoHomeLayout(); renderMomoHomeCustomizer(); }
+});
+
+
+// MOMO 1.10 — DEEPER TOOLS + MOMO-ONLY FEATURES
+const MOMO_JAR_PAUSE_KEY = "momo_paused_peach_jars_v1";
+let momoPausedJars = new Set();
+
+function loadMomo10Settings(records) {
+  const value = records.find((item) => item?.key === MOMO_JAR_PAUSE_KEY)?.value;
+  momoPausedJars = new Set(Array.isArray(value) ? value : []);
+}
+
+const momo10CoreProtectedSavings = getProtectedSavingsRemainingPHP;
+getProtectedSavingsRemainingPHP = function(monthKey = getCurrentMonthKey()) {
+  return savingsGoals.reduce((total, goal) => {
+    if (!goal?.protectedJar || momoPausedJars.has(goal.id) || Number(goal.monthlyPlan || 0) <= 0) return total;
+    const plannedPHP = convertCurrency(Number(goal.monthlyPlan || 0), goal.currency || "PHP", "PHP");
+    return total + Math.max(0, plannedPHP - getSavingsGoalMonthContributedPHP(goal, monthKey));
+  }, 0);
+};
+
+function momoFlexibleExpense(expense) {
+  return !new Set(["Bills", "Subscriptions", "Groceries"]).has(expense.category || "Other");
+}
+
+function momoDaysOfSafeSpend(amountPHP) {
+  const safe = getMomoTodaySnapshot().safePerDay;
+  return safe && safe > 0 ? amountPHP / safe : null;
+}
+
+function renderMomoFutureBuys() {
+  const list = document.getElementById("momoFutureList"); if (!list) return;
+  const planned = plannedExpenses.filter((item) => item.status === "planned").slice().sort((a,b) => String(a.targetDate || "9999-12-31").localeCompare(String(b.targetDate || "9999-12-31")));
+  const total = planned.reduce((sum,item) => sum + convertCurrency(item.amount, item.currency || "PHP", "PHP"), 0);
+  document.getElementById("momoFutureTotal").textContent = formatPHP(total); document.getElementById("momoFutureCount").textContent = String(planned.length);
+  list.innerHTML = planned.length ? planned.map((item) => { const php = convertCurrency(item.amount, item.currency || "PHP", "PHP"); const days = momoDaysOfSafeSpend(php); return `<button class="momo-future-item" type="button" data-nav="planned"><span>☆</span><div><strong>${escapeHTML(item.title || "Future purchase")}</strong><small>${item.targetDate ? `Target ${formatShortDate(item.targetDate)}` : "No target date"}${days ? ` · about ${days.toFixed(days < 10 ? 1 : 0)} Safe-to-Spend day${days >= 1.5 ? "s" : ""}` : ""}</small></div><b>${Number(item.amount || 0) ? formatCurrency(item.amount, item.currency || "PHP") : "No amount"}</b></button>`; }).join("") : `<div class="momo-tool-empty">Nothing planned yet. Add a Future Buy whenever you want time to think before spending.</div>`;
+}
+
+function momoNoSpendSummary(year = new Date().getFullYear(), month = new Date().getMonth()) {
+  const monthKey = `${year}-${String(month + 1).padStart(2,"0")}`; const days = getDaysInMonth(year, month); const todayKey = getTodayString();
+  const spentDays = new Set(expenses.filter((item) => String(item.date || "").startsWith(monthKey) && momoFlexibleExpense(item)).map((item) => item.date));
+  const cells = []; let count = 0;
+  for (let day=1; day<=days; day += 1) { const key = `${monthKey}-${String(day).padStart(2,"0")}`; const future = key > todayKey; const quiet = !future && !spentDays.has(key); if (quiet) count += 1; cells.push({day,key,quiet,future}); }
+  return { count, cells };
+}
+
+function momoLittleWins(year = new Date().getFullYear()) {
+  const wins = [];
+  for (const goal of savingsGoals) if (getSavingsGoalProgress(goal) >= 100) wins.push(`Reached ${goal.name || "a savings goal"}`);
+  const paidThisYear = cards.reduce((sum, item) => sum + getPayablePayments(item).filter((p) => String(p.date || "").startsWith(String(year))).reduce((s,p) => s + payablePHPValue(item,p.amount),0),0);
+  if (paidThisYear > 0) wins.push(`Recorded ${formatPHP(paidThisYear)} toward payables this year`);
+  const currentUnder = momoBudgetPaceRows().filter((row) => row.tone === "under").length; if (currentUnder) wins.push(`${currentUnder} monthly budget${currentUnder === 1 ? " is" : "s are"} currently under spending pace`);
+  const quiet = momoNoSpendSummary().count; if (quiet) wins.push(`${quiet} quiet discretionary-spend day${quiet === 1 ? "" : "s"} this month`);
+  return wins.slice(0, 8);
+}
+
+function renderMomo10InsightsExtras() {
+  const worth = document.getElementById("momoWorthItList"); if (!worth) return;
+  const recent = expenses.filter(momoFlexibleExpense).slice(0, 8);
+  worth.innerHTML = recent.length ? recent.map((item) => `<article class="momo-worth-row"><div><strong>${escapeHTML(item.title || "Expense")}</strong><small>${formatCurrency(item.amount,item.currency || "PHP")} · ${formatShortDate(item.date)}</small></div><div class="momo-worth-actions"><button type="button" data-momo-worth="loved" data-expense-id="${escapeHTML(item.id)}" class="${item.worthIt === "loved" ? "active" : ""}">Loved it</button><button type="button" data-momo-worth="fine" data-expense-id="${escapeHTML(item.id)}" class="${item.worthIt === "fine" ? "active" : ""}">Fine</button><button type="button" data-momo-worth="not-really" data-expense-id="${escapeHTML(item.id)}" class="${item.worthIt === "not-really" ? "active" : ""}">Not really</button></div></article>`).join("") : `<div class="momo-tool-empty">Flexible purchases will appear here when you have some.</div>`;
+  const quiet = momoNoSpendSummary(); document.getElementById("momoNoSpendCount").textContent = `${quiet.count} day${quiet.count === 1 ? "" : "s"}`; document.getElementById("momoNoSpendCalendar").innerHTML = quiet.cells.map((cell) => `<span class="${cell.future ? "future" : cell.quiet ? "quiet" : "spent"}" title="${cell.key}">${cell.day}</span>`).join("");
+  const wins = momoLittleWins(); document.getElementById("momoLittleWins").innerHTML = wins.length ? wins.map((item) => `<div><span>✓</span><p>${escapeHTML(item)}</p></div>`).join("") : `<div class="momo-tool-empty">Little wins will collect here naturally.</div>`;
+  renderMomoPayoffLab();
+}
+
+function momoPayoffProjection(payable, extra = 0) {
+  const balance = getPayableBalance(payable); const basePayment = Number(payable.regularPayment || payable.minimumDue || 0); const payment = basePayment + Math.max(0, Number(extra || 0)); const apr = Math.max(0, Number(payable.interestAPR || 0));
+  if (balance <= 0) return { months:0, interest:0 }; if (payment <= 0) return { months:null, interest:null };
+  const rate = apr / 100 / 12; let remaining = balance, months = 0, interest = 0;
+  while (remaining > .005 && months < 600) { const monthInterest = remaining * rate; if (rate > 0 && payment <= monthInterest) return {months:null,interest:null}; interest += monthInterest; remaining = Math.max(0, remaining + monthInterest - payment); months += 1; }
+  return months >= 600 ? {months:null,interest:null} : {months,interest};
+}
+
+function renderMomoPayoffLab() {
+  const health = document.getElementById("momoCardHealth"); const select = document.getElementById("momoPayoffSelect"); const result = document.getElementById("momoPayoffResult"); if (!health || !select || !result) return;
+  const creditCards = cards.filter((item) => item.type === "credit-card");
+  health.innerHTML = creditCards.length ? creditCards.map((item) => { const limit = Number(item.creditLimit || 0); const balance = getPayableBalance(item); const util = limit > 0 ? balance / limit * 100 : null; const available = limit > 0 ? Math.max(0,limit-balance) : null; return `<article><div><strong>${escapeHTML(item.name || "Credit card")}</strong><small>${item.statementDay ? `Statement day ${item.statementDay}` : "Statement day not set"}${item.dueDate ? ` · due ${formatShortDate(item.dueDate)}` : ""}</small></div><div><b>${util === null ? "—" : `${util.toFixed(0)}% utilization`}</b><small>${available === null ? "Add a credit limit" : `${formatCurrency(available,item.currency || "PHP")} available`}</small></div></article>`; }).join("") : `<div class="momo-tool-empty">Credit-card health appears here when you add a credit card payable.</div>`;
+  const active = cards.filter((item) => getPayableBalance(item) > 0); const previous = select.value; select.innerHTML = active.length ? active.map((item) => `<option value="${escapeHTML(item.id)}">${escapeHTML(item.name || getPayableMeta(item).label)}</option>`).join("") : `<option value="">No active payables</option>`; if (active.some((item) => item.id === previous)) select.value = previous;
+  const payable = active.find((item) => item.id === select.value) || active[0]; if (!payable) { result.innerHTML = `<p>Add an active payable to try a payoff scenario.</p>`; return; }
+  const extra = Number(document.getElementById("momoPayoffExtra")?.value || 0); const base = momoPayoffProjection(payable,0); const boosted = momoPayoffProjection(payable,extra);
+  result.innerHTML = boosted.months === null ? `<p>The saved payment is not enough to produce a payoff estimate. Increase the payment amount.</p>` : `<div><strong>${boosted.months} month${boosted.months === 1 ? "" : "s"}</strong><small>estimated with ${formatCurrency(extra,payable.currency || "PHP")} extra / month</small></div><div><strong>${formatCurrency(boosted.interest || 0,payable.currency || "PHP")}</strong><small>estimated interest${base.months && extra > 0 ? ` · about ${Math.max(0,base.months-boosted.months)} month${Math.max(0,base.months-boosted.months)===1?"":"s"} sooner` : ""}</small></div>`;
+}
+
+function renderMomoSubscriptionManager() {
+  const list = document.getElementById("momoSubscriptionManager"); if (!list) return;
+  const subscriptions = recurringExpenses.filter((item) => item.kind === "subscription" || item.kind === "membership" || item.category === "Subscriptions");
+  list.innerHTML = subscriptions.length ? subscriptions.map((item) => { const monthly = Number(item.amount || 0) * getRecurringMonthlyFactor(item.frequency); const annual = monthly * 12; const state = item.subscriptionState || (item.active === false ? "paused" : "active"); const history = Array.isArray(item.priceHistory) ? item.priceHistory : []; const trialDays = item.trialEndDate ? Math.ceil((createLocalDate(item.trialEndDate)-createLocalDate(getTodayString()))/86400000) : null; return `<article class="momo-sub-manager-row"><div><strong>${escapeHTML(item.name || "Subscription")}</strong><small>${state} · ${formatCurrency(monthly,item.currency || "PHP")}/mo equivalent · ${formatCurrency(annual,item.currency || "PHP")}/yr${trialDays !== null && trialDays >= 0 ? ` · trial ${trialDays}d left` : ""}${history.length ? ` · ${history.length} price change${history.length===1?"":"s"}` : ""}</small></div><div><button type="button" data-sub-price="${escapeHTML(item.id)}">Price</button>${state === "active" ? `<button type="button" data-sub-state="paused" data-sub-id="${escapeHTML(item.id)}">Pause</button><button type="button" data-sub-state="cancelled" data-sub-id="${escapeHTML(item.id)}">Cancel</button>` : `<button type="button" data-sub-state="active" data-sub-id="${escapeHTML(item.id)}">Resume</button>`}</div></article>`; }).join("") : `<div class="momo-tool-empty">Subscriptions and memberships will appear here.</div>`;
+}
+
+function renderMomoJarPlanner() {
+  const list = document.getElementById("momoJarPlanner"); if (!list) return;
+  const jars = savingsGoals.filter((item) => item.jarMode);
+  list.innerHTML = jars.length ? jars.map((goal) => { const saved = getSavingsGoalSaved(goal); const remaining = Math.max(0, Number(goal.targetAmount || 0) - saved); let recommended = null; if (goal.targetDate && goal.targetDate >= getTodayString()) { const target = createLocalDate(goal.targetDate); const now = createLocalDate(getTodayString()); const months = Math.max(1, (target.getFullYear()-now.getFullYear())*12 + target.getMonth()-now.getMonth() + (target.getDate()>=now.getDate()?1:0)); recommended = remaining / months; } const paused = momoPausedJars.has(goal.id); return `<article class="momo-jar-planner-row ${paused ? "paused" : ""}"><div><strong>${escapeHTML(goal.emoji || "🍑")} ${escapeHTML(goal.name)}</strong><small>${recommended !== null ? `${formatCurrency(recommended,goal.currency || "PHP")}/month could reach the current target date` : "Add a target date for a suggested monthly contribution"}</small></div><button type="button" data-momo-jar-pause="${escapeHTML(goal.id)}">${paused ? "Resume Jar" : "Pause Jar"}</button></article>`; }).join("") : `<div class="momo-tool-empty">Turn a Savings Goal into a Peach Jar to use this planner.</div>`;
+}
+
+function renderMomoYearReview() {
+  const yearSelect = document.getElementById("momoReviewYear"); if (!yearSelect) return;
+  const years = new Set([new Date().getFullYear(), ...expenses.map((item) => Number(String(item.date || "").slice(0,4))).filter(Number.isFinite)]); const sorted = [...years].sort((a,b)=>b-a); const old = Number(yearSelect.value); yearSelect.innerHTML = sorted.map((year)=>`<option value="${year}">${year}</option>`).join(""); if (sorted.includes(old)) yearSelect.value=String(old); const year = Number(yearSelect.value || sorted[0]);
+  let spent=0,count=0; const category=new Map(); const tripIds=new Set(); const worth={loved:0,fine:0,"not-really":0};
+  for (const item of expenses) { if (!String(item.date || "").startsWith(String(year))) continue; const php=convertCurrency(item.amount,item.currency,"PHP"); spent+=php; count+=1; const label=item.category === "Other"&&item.otherCategory?item.otherCategory:(item.category||"Other"); category.set(label,(category.get(label)||0)+php); if(item.tripId)tripIds.add(item.tripId); if(worth[item.worthIt]!==undefined)worth[item.worthIt]+=1; }
+  const saved=savingsGoals.reduce((total,goal)=>total+convertCurrency((goal.contributions||[]).filter((c)=>String(c.date||"").startsWith(String(year))).reduce((s,c)=>s+Number(c.amount||0),0),goal.currency||"PHP","PHP"),0);
+  document.getElementById("momoReviewSpent").textContent=formatPHP(spent); document.getElementById("momoReviewSaved").textContent=formatPHP(saved); document.getElementById("momoReviewExpenseCount").textContent=String(count); document.getElementById("momoReviewTrips").textContent=String(tripIds.size); document.getElementById("momoReviewHeadline").textContent=count?`${year} had ${count} little money moments in Momo.`:`${year} is still a blank page in Momo.`;
+  const top=[...category.entries()].sort((a,b)=>b[1]-a[1]).slice(0,6); const max=top[0]?.[1]||1; document.getElementById("momoReviewCategories").innerHTML=top.length?top.map(([name,value])=>`<div><span><strong>${escapeHTML(name)}</strong><small>${formatPHP(value)}</small></span><i><b style="width:${Math.max(4,value/max*100)}%"></b></i></div>`).join(""):`<div class="momo-tool-empty">No spending categories for this year.</div>`;
+  document.getElementById("momoReviewWorth").innerHTML=`<div><strong>${worth.loved}</strong><small>Loved it</small></div><div><strong>${worth.fine}</strong><small>Fine</small></div><div><strong>${worth["not-really"]}</strong><small>Not really</small></div>`;
+  const wins=momoLittleWins(year); document.getElementById("momoReviewWins").innerHTML=wins.length?wins.map((item)=>`<div><span>✓</span><p>${escapeHTML(item)}</p></div>`).join(""):`<div class="momo-tool-empty">No tracked wins yet — that is okay.</div>`;
+}
+
+const momo10CoreRenderAll = renderAll;
+renderAll = function() { momo10CoreRenderAll(); if (currentScreenName === "insights") renderMomo10InsightsExtras(); if (currentScreenName === "recurring") renderMomoSubscriptionManager(); if (currentScreenName === "savings") renderMomoJarPlanner(); if (currentScreenName === "future") renderMomoFutureBuys(); if (currentScreenName === "review") renderMomoYearReview(); };
+const momo10CoreShowScreen = showScreen;
+showScreen = function(name) { momo10CoreShowScreen(name); if (name === "insights") renderMomo10InsightsExtras(); if (name === "recurring") renderMomoSubscriptionManager(); if (name === "savings") renderMomoJarPlanner(); if (name === "future") renderMomoFutureBuys(); if (name === "review") renderMomoYearReview(); };
+
+document.addEventListener("input", (event) => { if (event.target.id === "momoPayoffExtra") renderMomoPayoffLab(); });
+document.addEventListener("change", (event) => { if (event.target.id === "momoPayoffSelect") renderMomoPayoffLab(); if (event.target.id === "momoReviewYear") renderMomoYearReview(); });
+document.addEventListener("click", async (event) => {
+  if (event.target.closest("#momoFutureAdd")) { document.getElementById("addPlannedExpenseButton")?.click(); return; }
+  const worth = event.target.closest("[data-momo-worth]"); if (worth) { const expense = expenses.find((item)=>item.id===worth.dataset.expenseId); if (!expense) return; const updated={...expense,worthIt:worth.dataset.momoWorth,updatedAt:new Date().toISOString()}; await putRecord(STORES.expenses,updated); const index=expenses.findIndex((item)=>item.id===expense.id); if(index>=0)expenses[index]=updated; renderMomo10InsightsExtras(); showToast("Saved to Worth It? ♡"); return; }
+  const jar = event.target.closest("[data-momo-jar-pause]"); if (jar) { const id=jar.dataset.momoJarPause; if(momoPausedJars.has(id))momoPausedJars.delete(id);else momoPausedJars.add(id); await saveMomoSetting(MOMO_JAR_PAUSE_KEY,[...momoPausedJars]); renderSavingsGoals(); renderMomoJarPlanner(); renderMomoToday(); showToast(momoPausedJars.has(id)?"Peach Jar paused":"Peach Jar resumed"); return; }
+  const subState = event.target.closest("[data-sub-state]"); if (subState) { const item=recurringExpenses.find((entry)=>entry.id===subState.dataset.subId); if(!item)return; const state=subState.dataset.subState; const updated={...item,subscriptionState:state,active:state==="active",updatedAt:new Date().toISOString()}; await putRecord(STORES.recurring,updated); await loadAppData(); renderRecurringExpenses(); renderMomoSubscriptionManager(); renderMomoToday(); showToast(state==="active"?"Subscription resumed":state==="paused"?"Subscription paused":"Subscription cancelled"); return; }
+  const price = event.target.closest("[data-sub-price]"); if (price) { const item=recurringExpenses.find((entry)=>entry.id===price.dataset.subPrice); if(!item)return; const answer=window.prompt(`New price for ${item.name}?`,String(item.amount||"")); if(answer===null)return; const amount=Number(answer); if(!Number.isFinite(amount)||amount<=0){showToast("Enter an amount greater than 0.");return;} const history=Array.isArray(item.priceHistory)?[...item.priceHistory]:[]; history.unshift({fromAmount:Number(item.amount||0),toAmount:amount,currency:item.currency||"PHP",date:getTodayString()}); const updated={...item,amount,priceHistory:history.slice(0,24),updatedAt:new Date().toISOString()}; await putRecord(STORES.recurring,updated); await loadAppData(); renderRecurringExpenses(); renderMomoSubscriptionManager(); renderMomoToday(); showToast("Subscription price updated"); }
 });
 
 
