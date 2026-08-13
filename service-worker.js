@@ -1,10 +1,10 @@
 // ========================================
 // MOMO SERVICE WORKER
-// Momo 1.6.0 — update notes + large-list stability + push reminders + network-first PWA shell
+// Momo 1.7.0 — update notes + large-list stability + push reminders + network-first PWA shell
 // ========================================
 
 const APP_VERSION =
-  "1.6.0";
+  "1.7.0";
 
 
 const CACHE_NAME =

@@ -1,6 +1,6 @@
 // ========================================
 // MOMO
-// Momo 1.6.0 — Momo Today + Safe to Spend + Cash Flow Calendar
+// Momo 1.7.0 — Peach Jars + Payday Planner + Subscription Center + Payables
 // CLEAN FOUNDATION + FUNCTIONAL TRIPS
 // ========================================
 
@@ -76,6 +76,24 @@ let savingsGoals = [];
 
 let selectedSavingsGoalId =
   "";
+
+
+const PAYDAY_PLAN_SETTING_KEY =
+  "payday_plan_v1";
+
+const PAYDAY_PLAN_DEFAULTS = {
+  nextPayday: "",
+  expectedAmount: 0,
+  bills: 0,
+  savings: 0,
+  payables: 0,
+  wants: 0,
+  notes: ""
+};
+
+let paydayPlan = {
+  ...PAYDAY_PLAN_DEFAULTS
+};
 
 
 const TRIP_SHOPPING_SETTING_KEY =
@@ -1231,6 +1249,20 @@ async function loadAppData() {
       "object"
       ? monthlyIncomeSetting.value
       : {};
+
+
+  const paydayPlanSetting =
+    settingsRecords.find(
+      (item) => item?.key === PAYDAY_PLAN_SETTING_KEY
+    );
+
+  paydayPlan = {
+    ...PAYDAY_PLAN_DEFAULTS,
+    ...(paydayPlanSetting?.value &&
+    typeof paydayPlanSetting.value === "object"
+      ? paydayPlanSetting.value
+      : {})
+  };
 
 
   const tripShoppingSetting =
@@ -4209,6 +4241,16 @@ function showScreen(
   ) {
 
     renderRecurringExpenses();
+
+  }
+
+
+  if (
+    name ===
+    "payday"
+  ) {
+
+    renderPaydayPlanner();
 
   }
 
@@ -21010,6 +21052,42 @@ function buildScheduledCashFlow(
 }
 
 
+function getSavingsGoalMonthContributedPHP(
+  goal,
+  monthKey = getCurrentMonthKey()
+) {
+  const contributed = (Array.isArray(goal?.contributions)
+    ? goal.contributions
+    : [])
+    .filter((item) => String(item.date || "").startsWith(monthKey))
+    .reduce((sum, item) => sum + Number(item.amount || 0), 0);
+
+  return convertCurrency(
+    contributed,
+    goal?.currency || "PHP",
+    "PHP"
+  );
+}
+
+function getProtectedSavingsRemainingPHP(
+  monthKey = getCurrentMonthKey()
+) {
+  return savingsGoals.reduce((total, goal) => {
+    if (!goal?.protectedJar || Number(goal.monthlyPlan || 0) <= 0) {
+      return total;
+    }
+
+    const plannedPHP = convertCurrency(
+      Number(goal.monthlyPlan || 0),
+      goal.currency || "PHP",
+      "PHP"
+    );
+    const contributedPHP = getSavingsGoalMonthContributedPHP(goal, monthKey);
+    return total + Math.max(0, plannedPHP - contributedPHP);
+  }, 0);
+}
+
+
 function getMomoTodaySnapshot() {
   const today = getTodayString();
   const now = createLocalDate(today) || new Date();
@@ -21024,10 +21102,11 @@ function getMomoTodaySnapshot() {
   const baseLabel = monthIncome > 0 ? "monthly income" : "monthly budget";
   const spent = getMonthlySpent();
   const saved = getCurrentMonthSavingsPHP();
+  const protectedSavingsRemaining = getProtectedSavingsRemainingPHP(monthKey);
   const monthSchedule = buildScheduledCashFlow(today, monthEnd);
   const sevenDaySchedule = buildScheduledCashFlow(today, sevenDayEnd);
   const cushion = baseAmount > 0
-    ? baseAmount - spent - saved - monthSchedule.totalPHP
+    ? baseAmount - spent - saved - protectedSavingsRemaining - monthSchedule.totalPHP
     : null;
   const daysRemaining = Math.max(
     1,
@@ -21047,6 +21126,7 @@ function getMomoTodaySnapshot() {
     baseLabel,
     spent,
     saved,
+    protectedSavingsRemaining,
     projectedCommitments: monthSchedule.totalPHP,
     dueNext7Days: sevenDaySchedule.totalPHP,
     cushion,
@@ -21104,7 +21184,7 @@ function renderMomoToday() {
         "Add monthly income or a monthly budget and Momo can estimate a gentle daily amount after spending, savings, and known upcoming commitments.";
     } else {
       explanation.textContent =
-        `Based on your ${snapshot.baseLabel}, minus ${formatPHP(snapshot.spent)} already spent, ${formatPHP(snapshot.saved)} saved this month, and ${formatPHP(snapshot.projectedCommitments)} in known upcoming commitments. ${snapshot.daysRemaining} day${snapshot.daysRemaining === 1 ? "" : "s"} remain this month.`;
+        `Based on your ${snapshot.baseLabel}, minus ${formatPHP(snapshot.spent)} already spent, ${formatPHP(snapshot.saved)} saved this month, ${formatPHP(snapshot.protectedSavingsRemaining)} still protected for Peach Jars, and ${formatPHP(snapshot.projectedCommitments)} in known upcoming commitments. ${snapshot.daysRemaining} day${snapshot.daysRemaining === 1 ? "" : "s"} remain this month.`;
     }
   }
 
@@ -26133,6 +26213,16 @@ function openRecurringModal(
       "PHP";
 
 
+    const recurringKind = document.getElementById("recurringKind");
+    if (recurringKind) {
+      recurringKind.value = recurring.kind ||
+        (recurring.category === "Subscriptions" ? "subscription" : "bill");
+    }
+
+    const recurringTrialEnd = document.getElementById("recurringTrialEndDate");
+    if (recurringTrialEnd) recurringTrialEnd.value = recurring.trialEndDate || "";
+
+
     recurringCategory.value =
       recurring.category ||
       "Bills";
@@ -26225,6 +26315,13 @@ function openRecurringModal(
 
     recurringCurrency.value =
       "PHP";
+
+
+    const recurringKind = document.getElementById("recurringKind");
+    if (recurringKind) recurringKind.value = "bill";
+
+    const recurringTrialEnd = document.getElementById("recurringTrialEndDate");
+    if (recurringTrialEnd) recurringTrialEnd.value = "";
 
 
     recurringCategory.value =
@@ -26489,6 +26586,12 @@ recurringForm?.addEventListener(
       variableAmount:
         recurringAmountVaries,
 
+      kind:
+        document.getElementById("recurringKind")?.value || "bill",
+
+      trialEndDate:
+        document.getElementById("recurringTrialEndDate")?.value || "",
+
       currency:
         recurringCurrency.value,
 
@@ -26637,6 +26740,12 @@ function createRecurringCardHTML(
                 recurring.name
               )}
             </h3>
+
+            <span class="recurring-kind-badge">${escapeHTML(
+              recurring.kind === "subscription" ? "Subscription" :
+              recurring.kind === "membership" ? "Membership" :
+              recurring.kind === "other" ? "Other recurring" : "Bill"
+            )}</span>
 
             <span
               class="recurring-status ${status.className}"
@@ -27112,6 +27221,32 @@ function renderRecurringExpenses() {
       );
 
   }
+
+
+  const subscriptionItems = active.filter(
+    (item) => item.kind === "subscription" || item.category === "Subscriptions"
+  );
+
+  const subscriptionAnnualPHP = subscriptionItems.reduce(
+    (total, item) => total + convertCurrency(
+      Number(item.amount || 0) * getRecurringMonthlyFactor(item.frequency) * 12,
+      item.currency || "PHP",
+      "PHP"
+    ),
+    0
+  );
+
+  const trialSoonLimit = addDaysToDateString(today, 30);
+  const trialCount = active.filter(
+    (item) => item.trialEndDate && item.trialEndDate >= today && item.trialEndDate <= trialSoonLimit
+  ).length;
+
+  const subscriptionCountElement = document.getElementById("subscriptionActiveCount");
+  const subscriptionAnnualElement = document.getElementById("subscriptionAnnualEstimate");
+  const subscriptionTrialsElement = document.getElementById("subscriptionTrialCount");
+  if (subscriptionCountElement) subscriptionCountElement.textContent = String(subscriptionItems.length);
+  if (subscriptionAnnualElement) subscriptionAnnualElement.textContent = formatPHP(subscriptionAnnualPHP);
+  if (subscriptionTrialsElement) subscriptionTrialsElement.textContent = String(trialCount);
 
 
   if (
@@ -34917,6 +35052,16 @@ function openSavingsGoalModal(
     "";
 
 
+  const goalMode = document.getElementById("savingsGoalMode");
+  if (goalMode) goalMode.value = goal?.jarMode ? "jar" : "goal";
+
+  const monthlyPlan = document.getElementById("savingsGoalMonthlyPlan");
+  if (monthlyPlan) monthlyPlan.value = goal?.monthlyPlan ?? "";
+
+  const protectedJar = document.getElementById("savingsGoalProtected");
+  if (protectedJar) protectedJar.checked = Boolean(goal?.protectedJar);
+
+
   document.getElementById(
     "savingsGoalNotes"
   ).value =
@@ -35186,6 +35331,20 @@ function renderSavingsGoals() {
   }
 
 
+  const protectedPlanElement =
+    document.getElementById("savingsProtectedPlan");
+
+  if (protectedPlanElement) {
+    const monthlyProtected = savingsGoals.reduce(
+      (total, goal) => total + (goal.protectedJar
+        ? convertCurrency(Number(goal.monthlyPlan || 0), goal.currency || "PHP", "PHP")
+        : 0),
+      0
+    );
+    protectedPlanElement.textContent = formatPHP(monthlyProtected);
+  }
+
+
   if (
     sorted.length ===
     0
@@ -35285,6 +35444,8 @@ function renderSavingsGoals() {
                       )}
                     </strong>
 
+                    ${goal.jarMode ? `<em class="peach-jar-badge">🍑 Peach Jar${goal.protectedJar ? " · protected" : ""}</em>` : ""}
+
                     <span>
                       ${
                         complete
@@ -35319,6 +35480,8 @@ function renderSavingsGoals() {
 
                 </div>
 
+
+                ${Number(goal.monthlyPlan || 0) > 0 ? `<p class="peach-jar-plan">Monthly plan · ${formatCurrency(goal.monthlyPlan, goal.currency || "PHP")}${goal.protectedJar ? " · included in Safe to Spend" : ""}</p>` : ""}
 
                 <div class="savings-goal-numbers">
 
@@ -35627,6 +35790,13 @@ function openSavingsGoalDetail(
               `
             : ""
         }
+
+        ${goal.jarMode ? `
+              <div class="peach-jar-detail">
+                <strong>🍑 Peach Jar</strong>
+                <span>${Number(goal.monthlyPlan || 0) > 0 ? `${formatCurrency(goal.monthlyPlan, goal.currency || "PHP")} planned each month` : "No monthly plan"}${goal.protectedJar ? " · protected in Safe to Spend" : ""}</span>
+              </div>
+            ` : ""}
 
         ${
           goal.notes
@@ -36169,6 +36339,12 @@ savingsGoalForm
             "savingsGoalTargetDate"
           ).value ||
           "",
+        jarMode:
+          document.getElementById("savingsGoalMode")?.value === "jar",
+        monthlyPlan:
+          Math.max(0, Number(document.getElementById("savingsGoalMonthlyPlan")?.value || 0)),
+        protectedJar:
+          Boolean(document.getElementById("savingsGoalProtected")?.checked),
         notes:
           document.getElementById(
             "savingsGoalNotes"
@@ -37318,6 +37494,48 @@ function payableDueTone(dateString) {
   return "";
 }
 
+function getPayableTotalPaid(payable) {
+  return getPayablePayments(payable).reduce(
+    (sum, payment) => sum + Number(payment.amount || 0),
+    0
+  );
+}
+
+function estimatePayablePayoff(payable) {
+  const balance = getPayableBalance(payable);
+  const payment = Number(payable.regularPayment || payable.minimumDue || 0);
+  const apr = Math.max(0, Number(payable.interestAPR || 0));
+
+  if (balance <= 0) return { months: 0, interest: 0, finishDate: "" };
+  if (payment <= 0) return { months: null, interest: null, finishDate: "" };
+
+  const monthlyRate = apr > 0 ? apr / 100 / 12 : 0;
+  let remaining = balance;
+  let months = 0;
+  let interest = 0;
+
+  while (remaining > 0.005 && months < 600) {
+    const monthInterest = remaining * monthlyRate;
+    if (monthlyRate > 0 && payment <= monthInterest) {
+      return { months: null, interest: null, finishDate: "" };
+    }
+    interest += monthInterest;
+    remaining = Math.max(0, remaining + monthInterest - payment);
+    months += 1;
+  }
+
+  if (months >= 600) return { months: null, interest: null, finishDate: "" };
+
+  const finish = new Date();
+  finish.setMonth(finish.getMonth() + months);
+  return {
+    months,
+    interest,
+    finishDate: `${finish.getFullYear()}-${String(finish.getMonth()+1).padStart(2,"0")}-${String(finish.getDate()).padStart(2,"0")}`
+  };
+}
+
+
 function renderPayables() {
   const list = document.getElementById("payablesList");
   const empty = document.getElementById("payablesEmpty");
@@ -37466,6 +37684,8 @@ function openPayableEditor(id = "") {
   document.getElementById("payableCreditLimit").value = item?.creditLimit ?? "";
   document.getElementById("payableStatementBalance").value = item?.statementBalance ?? "";
   document.getElementById("payableMinimumDue").value = item?.minimumDue ?? "";
+  const payableInterestAPR = document.getElementById("payableInterestAPR");
+  if (payableInterestAPR) payableInterestAPR.value = item?.interestAPR ?? "";
   document.getElementById("payableStatementDay").value = item?.statementDay ?? "";
   document.getElementById("payableInstallmentCount").value = item?.installmentCount ?? "";
   document.getElementById("payableInstallmentsPaid").value = item?.installmentsPaid ?? "";
@@ -37546,6 +37766,7 @@ async function savePayable(event) {
     creditLimit: type === "credit-card" ? Number(document.getElementById("payableCreditLimit").value || 0) : 0,
     statementBalance,
     minimumDue: type === "credit-card" ? Number(document.getElementById("payableMinimumDue").value || 0) : 0,
+    interestAPR: type === "credit-card" ? Math.max(0, Number(document.getElementById("payableInterestAPR")?.value || 0)) : Math.max(0, Number(existing?.interestAPR || 0)),
     statementDay: type === "credit-card" ? Number(document.getElementById("payableStatementDay").value || 0) : 0,
     installmentCount: type === "installment" ? Number(document.getElementById("payableInstallmentCount").value || 0) : 0,
     installmentsPaid: type === "installment" ? Number(document.getElementById("payableInstallmentsPaid").value || 0) : 0,
@@ -37610,6 +37831,8 @@ function renderPayableDetail(id) {
   const balance = getPayableBalance(item);
   const payments = [...getPayablePayments(item)].sort((a, b) => String(b.date).localeCompare(String(a.date)));
   const available = item.type === "credit-card" && Number(item.creditLimit || 0) > 0 ? Math.max(0, Number(item.creditLimit) - balance) : null;
+  const totalPaid = getPayableTotalPaid(item);
+  const payoff = estimatePayablePayoff(item);
   document.getElementById("payableDetailKicker").textContent = meta.label;
   document.getElementById("payableDetailTitle").textContent = item.name || meta.label;
   body.innerHTML = `
@@ -37625,7 +37848,12 @@ function renderPayableDetail(id) {
       ${Number(item.creditLimit || 0) ? `<div><small>Credit limit</small><strong>${formatCurrency(item.creditLimit, item.currency || "PHP")}</strong></div>` : ""}
       ${Number(item.minimumDue || 0) ? `<div><small>Minimum due</small><strong>${formatCurrency(item.minimumDue, item.currency || "PHP")}</strong></div>` : ""}
       ${Number(item.installmentCount || 0) ? `<div><small>Installments</small><strong>${Number(item.installmentsPaid || 0)} / ${Number(item.installmentCount)}</strong></div>` : ""}
+      <div><small>Total paid</small><strong>${formatCurrency(totalPaid, item.currency || "PHP")}</strong></div>
+      ${payoff.months !== null && payoff.months > 0 ? `<div><small>Est. payoff</small><strong>${payoff.months} mo · ${formatShortDate(payoff.finishDate)}</strong></div>` : ""}
+      ${Number(item.interestAPR || 0) > 0 ? `<div><small>APR</small><strong>${Number(item.interestAPR).toFixed(2)}%</strong></div>` : ""}
+      ${payoff.interest !== null && payoff.interest > 0 ? `<div><small>Est. interest</small><strong>${formatCurrency(payoff.interest, item.currency || "PHP")}</strong></div>` : ""}
     </div>
+    ${Number(item.interestAPR || 0) > 0 ? `<p class="payable-estimate-note">Payoff and interest are planning estimates based on the regular payment you entered. Momo does not include issuer-specific fees or future purchases.</p>` : ""}
     ${item.notes ? `<p class="payable-detail-note">🌷 ${escapeHTML(item.notes)}</p>` : ""}
     <div class="payable-detail-actions">
       ${balance > 0 ? `<button class="primary-button" type="button" data-payable-pay="${escapeHTML(item.id)}">Record Payment</button>` : ""}
@@ -37757,6 +37985,124 @@ document.getElementById("closePayableModal")?.addEventListener("click", closePay
 document.getElementById("closePayableDetail")?.addEventListener("click", closePayableDetail);
 document.getElementById("closePayablePayment")?.addEventListener("click", closePayablePayment);
 
+
+
+// ========================================
+// PAYDAY PLANNER
+// ========================================
+
+async function savePaydayPlan() {
+  await putRecord(STORES.settings, {
+    key: PAYDAY_PLAN_SETTING_KEY,
+    value: paydayPlan,
+    updatedAt: new Date().toISOString()
+  });
+}
+
+function getPaydayPlanTotals() {
+  const amount = Math.max(0, Number(paydayPlan.expectedAmount || 0));
+  const bills = Math.max(0, Number(paydayPlan.bills || 0));
+  const savings = Math.max(0, Number(paydayPlan.savings || 0));
+  const payables = Math.max(0, Number(paydayPlan.payables || 0));
+  const wants = Math.max(0, Number(paydayPlan.wants || 0));
+  const assigned = bills + savings + payables + wants;
+  return { amount, bills, savings, payables, wants, assigned, buffer: amount - assigned };
+}
+
+function renderPaydayPlanner() {
+  const form = document.getElementById("paydayPlannerForm");
+  if (!form) return;
+
+  const setValue = (id, value) => {
+    const input = document.getElementById(id);
+    if (input && document.activeElement !== input) input.value = value ?? "";
+  };
+
+  setValue("paydayNextDate", paydayPlan.nextPayday || "");
+  setValue("paydayExpectedAmount", paydayPlan.expectedAmount || "");
+  setValue("paydayBills", paydayPlan.bills || "");
+  setValue("paydaySavings", paydayPlan.savings || "");
+  setValue("paydayPayables", paydayPlan.payables || "");
+  setValue("paydayWants", paydayPlan.wants || "");
+  setValue("paydayNotes", paydayPlan.notes || "");
+
+  const totals = getPaydayPlanTotals();
+  const assigned = document.getElementById("paydayAssignedTotal");
+  const buffer = document.getElementById("paydayBufferTotal");
+  const status = document.getElementById("paydayPlanStatus");
+
+  if (assigned) assigned.textContent = formatPHP(totals.assigned);
+  if (buffer) {
+    buffer.textContent = totals.amount > 0
+      ? `${totals.buffer < 0 ? "−" : ""}${formatPHP(Math.abs(totals.buffer))}`
+      : "—";
+    buffer.classList.toggle("danger", totals.buffer < 0);
+  }
+
+  if (status) {
+    if (!paydayPlan.nextPayday && totals.amount <= 0) {
+      status.textContent = "Add a payday and expected amount to start planning.";
+    } else if (totals.buffer < 0) {
+      status.textContent = `Your plan is ${formatPHP(Math.abs(totals.buffer))} over the expected pay. Adjust a bucket before payday.`;
+    } else {
+      status.textContent = `${formatPHP(Math.max(0, totals.buffer))} is still unassigned as a flexible buffer.`;
+    }
+  }
+}
+
+function readPaydayPlannerForm() {
+  const numberValue = (id) => Math.max(0, Number(document.getElementById(id)?.value || 0));
+  return {
+    nextPayday: document.getElementById("paydayNextDate")?.value || "",
+    expectedAmount: numberValue("paydayExpectedAmount"),
+    bills: numberValue("paydayBills"),
+    savings: numberValue("paydaySavings"),
+    payables: numberValue("paydayPayables"),
+    wants: numberValue("paydayWants"),
+    notes: document.getElementById("paydayNotes")?.value.trim() || ""
+  };
+}
+
+document.getElementById("paydayPlannerForm")?.addEventListener("input", () => {
+  paydayPlan = readPaydayPlannerForm();
+  renderPaydayPlanner();
+});
+
+document.getElementById("paydayPlannerForm")?.addEventListener("submit", async (event) => {
+  event.preventDefault();
+  paydayPlan = readPaydayPlannerForm();
+  try {
+    await savePaydayPlan();
+    renderPaydayPlanner();
+    showToast("Payday plan saved 🍑");
+  } catch (error) {
+    console.error("Could not save payday plan:", error);
+    showToast("Could not save the payday plan.");
+  }
+});
+
+document.getElementById("paydayUseAsIncome")?.addEventListener("click", async () => {
+  paydayPlan = readPaydayPlannerForm();
+  const amount = Number(paydayPlan.expectedAmount || 0);
+  if (!(amount > 0)) {
+    showToast("Add the expected payday amount first.");
+    return;
+  }
+
+  const targetDate = createLocalDate(paydayPlan.nextPayday) || new Date();
+  const monthKey = `${targetDate.getFullYear()}-${String(targetDate.getMonth() + 1).padStart(2, "0")}`;
+  monthlyIncomeByMonth[monthKey] = amount;
+
+  try {
+    await saveMonthlyIncome();
+    await savePaydayPlan();
+    renderHomeSummary();
+    showToast(`Saved ${formatPHP(amount)} as ${monthKey}'s income.`);
+  } catch (error) {
+    console.error("Could not use payday plan as income:", error);
+    showToast("Could not update monthly income.");
+  }
+});
 
 
 // ========================================
@@ -38980,6 +39326,7 @@ function renderAll() {
     planned: ["Planned expenses", renderPlannedExpenses],
     add: ["Favorite Quick Add", renderFavoriteQuickAdd],
     payables: ["Payables", renderPayables],
+    payday: ["Payday Planner", renderPaydayPlanner],
     savings: ["Savings goals", renderSavingsGoals],
     settlement: ["Shared Settlement", renderTravelSettlement],
     receipts: ["Receipt Gallery", renderReceiptGallery],

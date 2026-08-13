@@ -17,7 +17,7 @@
   <meta name="apple-mobile-web-app-title" content="Momo">
 
   <title>Momo — Spending Diary</title>
-  <meta name="momo-app-version" content="1.6.0">
+  <meta name="momo-app-version" content="1.7.0">
 
   <link rel="manifest" href="manifest.json">
   <link rel="apple-touch-icon" href="icons/icon-192.png">
@@ -200,6 +200,19 @@
           <span class="drawer-copy">
             <strong>Savings Goals</strong>
             <small>Track money you are setting aside for something special.</small>
+          </span>
+          <span class="drawer-arrow">›</span>
+        </button>
+
+        <button
+          class="drawer-item"
+          type="button"
+          data-drawer-nav="payday"
+        >
+          <span class="drawer-icon">🍑</span>
+          <span class="drawer-copy">
+            <strong>Payday Planner</strong>
+            <small>Give your next pay a gentle job before it arrives.</small>
           </span>
           <span class="drawer-arrow">›</span>
         </button>
@@ -1970,7 +1983,7 @@
         <div class="page-heading compact">
           <div>
             <p class="eyebrow">Regular payments</p>
-            <h1>Recurring Expenses</h1>
+            <h1>Recurring & Subscriptions</h1>
             <p class="page-description">
               Track subscriptions and repeating costs without storing account details.
             </p>
@@ -1996,6 +2009,18 @@
             </button>
           </div>
         </div>
+
+        <section class="subscription-center-card">
+          <div class="subscription-center-heading">
+            <div><p class="section-kicker">SUBSCRIPTION CENTER</p><h2>Keep renewals visible</h2></div>
+            <span>↻</span>
+          </div>
+          <div class="subscription-center-grid">
+            <div><small>Active subscriptions</small><strong id="subscriptionActiveCount">0</strong></div>
+            <div><small>Est. annual cost</small><strong id="subscriptionAnnualEstimate">₱0.00</strong></div>
+            <div><small>Trials ending in 30d</small><strong id="subscriptionTrialCount">0</strong></div>
+          </div>
+        </section>
 
         <div class="recurring-summary-grid">
           <section class="card recurring-summary-card">
@@ -2135,9 +2160,9 @@
         <div class="page-heading compact">
           <div>
             <p class="eyebrow">Little by little</p>
-            <h1>Savings Goals</h1>
+            <h1>Savings & Peach Jars</h1>
             <p class="page-description">
-              Keep track of money you are setting aside without counting it as spending.
+              Track goals normally, or turn one into a Peach Jar with a monthly amount you want Momo to protect.
             </p>
           </div>
 
@@ -2173,6 +2198,13 @@
           <div>
             <p class="label">Goals</p>
             <strong id="savingsGoalCount">0</strong>
+          </div>
+
+          <div class="budget-summary-divider"></div>
+
+          <div>
+            <p class="label">Protected / month</p>
+            <strong id="savingsProtectedPlan">₱0.00</strong>
           </div>
         </section>
 
@@ -2277,6 +2309,50 @@
             Add a photo to an expense and it will appear here automatically.
           </p>
         </div>
+      </section>
+
+
+      <!-- PAYDAY PLANNER -->
+      <section class="screen" data-screen="payday">
+        <div class="page-heading compact">
+          <div>
+            <p class="eyebrow">Before the money lands</p>
+            <h1>Payday Planner</h1>
+            <p class="page-description">Give your expected pay a simple plan. Nothing here moves real money or changes expenses automatically.</p>
+          </div>
+        </div>
+
+        <section class="payday-hero">
+          <div><small>NEXT PAYDAY</small><strong>Plan it before it arrives 🍑</strong><p id="paydayPlanStatus">Add a payday and expected amount to start planning.</p></div>
+          <span class="momo-peach-icon" aria-hidden="true"></span>
+        </section>
+
+        <form id="paydayPlannerForm" class="payday-planner-card">
+          <div class="modal-field-row">
+            <label class="modal-field"><span>Next Payday</span><input id="paydayNextDate" type="date"></label>
+            <label class="modal-field"><span>Expected Pay</span><input id="paydayExpectedAmount" type="number" inputmode="decimal" min="0" step="0.01" placeholder="0"></label>
+          </div>
+
+          <div class="payday-bucket-grid">
+            <label><span>🧾 Bills</span><input id="paydayBills" type="number" inputmode="decimal" min="0" step="0.01" placeholder="0"></label>
+            <label><span>🌱 Savings / Jars</span><input id="paydaySavings" type="number" inputmode="decimal" min="0" step="0.01" placeholder="0"></label>
+            <label><span>♡ Payables</span><input id="paydayPayables" type="number" inputmode="decimal" min="0" step="0.01" placeholder="0"></label>
+            <label><span>✨ Wants / flexible</span><input id="paydayWants" type="number" inputmode="decimal" min="0" step="0.01" placeholder="0"></label>
+          </div>
+
+          <div class="payday-summary-grid">
+            <div><small>Assigned</small><strong id="paydayAssignedTotal">₱0.00</strong></div>
+            <div><small>Flexible buffer</small><strong id="paydayBufferTotal">—</strong></div>
+          </div>
+
+          <label class="modal-field"><span>Notes <small>Optional</small></span><textarea id="paydayNotes" rows="3" maxlength="300" placeholder="Rent first, Japan fund, extra card payment…"></textarea></label>
+
+          <div class="payday-actions">
+            <button class="primary-button" type="submit">Save Payday Plan</button>
+            <button id="paydayUseAsIncome" class="secondary-button" type="button">Use expected pay as monthly income</button>
+          </div>
+          <p class="momo-today-disclaimer">This planner is only a private planning tool. It does not connect to payroll, a bank, or a credit provider.</p>
+        </form>
       </section>
 
 
@@ -3614,6 +3690,7 @@
             </div>
             <div class="modal-field-row">
               <label><span>Minimum Due</span><input id="payableMinimumDue" type="number" inputmode="decimal" min="0" step="0.01" placeholder="0"></label>
+              <label><span>APR % <small>(optional)</small></span><input id="payableInterestAPR" type="number" inputmode="decimal" min="0" step="0.01" placeholder="0"></label>
               <label><span>Statement Day</span><input id="payableStatementDay" type="number" inputmode="numeric" min="1" max="31" placeholder="15"></label>
             </div>
           </div>
@@ -3758,6 +3835,30 @@
           <label class="modal-field">
             <span>Target Date <small>Optional</small></span>
             <input id="savingsGoalTargetDate" type="date">
+          </label>
+
+          <div class="modal-field-row">
+            <label class="modal-field">
+              <span>Style</span>
+              <select id="savingsGoalMode">
+                <option value="goal">Savings Goal</option>
+                <option value="jar">Peach Jar 🍑</option>
+              </select>
+            </label>
+
+            <label class="modal-field">
+              <span>Monthly Plan <small>Optional</small></span>
+              <input id="savingsGoalMonthlyPlan" type="number" inputmode="decimal" min="0" step="0.01" placeholder="0">
+            </label>
+          </div>
+
+          <label class="recurring-variable-amount peach-jar-protect-toggle">
+            <input id="savingsGoalProtected" type="checkbox">
+            <span class="recurring-variable-check" aria-hidden="true">✓</span>
+            <span class="recurring-variable-copy">
+              <strong>Protect this monthly plan</strong>
+              <small>Safe to Spend will leave the remaining monthly Peach Jar amount untouched.</small>
+            </span>
           </label>
 
           <label class="modal-field">
@@ -5012,6 +5113,22 @@
             >
           </label>
 
+          <div class="modal-field-row">
+            <label class="modal-field">
+              <span>Type</span>
+              <select id="recurringKind">
+                <option value="bill">Bill</option>
+                <option value="subscription">Subscription</option>
+                <option value="membership">Membership</option>
+                <option value="other">Other recurring</option>
+              </select>
+            </label>
+            <label class="modal-field">
+              <span>Trial End <small>Optional</small></span>
+              <input id="recurringTrialEndDate" type="date">
+            </label>
+          </div>
+
           <div class="modal-field-row recurring-amount-fields">
             <label class="modal-field">
               <span>Amount</span>
@@ -5632,7 +5749,7 @@
     (() => {
       const MOMO_VERSION =
         document.querySelector('meta[name="momo-app-version"]')?.content ||
-        "1.6.0";
+        "1.7.0";
 
       const LAST_SEEN_UPDATE_KEY =
         "momo_last_seen_update_version";
@@ -5650,31 +5767,31 @@
         title: `What’s new in Momo v${MOMO_VERSION}`,
         date: "August 13, 2026",
         intro:
-          "Momo can now turn the information you already track into a calmer picture of what is safe, due, and coming next.",
+          "Momo now helps you plan the money you are protecting, the money arriving next, and the recurring commitments that keep showing up.",
         items: [
           {
             icon: "🍑",
-            title: "Momo Today",
+            title: "Peach Jars",
             copy:
-              "Home now shows what you spent today, what is due soon, your known upcoming commitments, and a month cushion."
+              "Turn any savings goal into a Peach Jar, give it an optional monthly plan, and protect that amount from Safe to Spend."
+          },
+          {
+            icon: "💰",
+            title: "Payday Planner",
+            copy:
+              "Plan bills, savings, payables, wants, and a flexible buffer before payday. You can optionally use the expected amount as that month’s Momo income."
+          },
+          {
+            icon: "↻",
+            title: "Subscription Center",
+            copy:
+              "Recurring items can now be labeled as bills, subscriptions, memberships, or other repeats, with optional free-trial end dates and annual subscription estimates."
           },
           {
             icon: "♡",
-            title: "Safe to Spend",
+            title: "Deeper Payables",
             copy:
-              "Momo estimates a gentle daily amount from your income or budget after recorded spending, savings contributions, recurring costs, planned purchases, and payables."
-          },
-          {
-            icon: "▦",
-            title: "Cash Flow Calendar",
-            copy:
-              "Calendar now layers recurring payments, planned expenses, and payable due dates beside your real spending without turning future items into expenses."
-          },
-          {
-            icon: "▣",
-            title: "Active payables at a glance",
-            copy:
-              "Your nearest active payables now appear on Home so card and installment commitments are easier to see before you spend."
+              "Payables now show total paid, an estimated payoff timeline, and optional APR-based interest estimates while keeping statement balance and remaining balance separate."
           }
         ]
       };

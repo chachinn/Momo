@@ -16774,3 +16774,43 @@ body.momo-update-modal-open {
 @media (min-width: 700px) {
   .momo-today-grid { grid-template-columns: repeat(4, minmax(0, 1fr)); }
 }
+
+/* ========================================
+   MOMO 1.7 — JARS / PAYDAY / SUBSCRIPTIONS
+======================================== */
+.savings-summary-card { grid-template-columns: repeat(3, minmax(0,1fr)); }
+.peach-jar-badge { display:inline-flex; width:fit-content; margin-top:4px; padding:3px 7px; border-radius:999px; background:rgba(255,221,232,.72); color:var(--pink-dark,#b74f73); font-size:.68rem; font-style:normal; font-weight:800; }
+.peach-jar-plan { margin:10px 0 0; padding:8px 10px; border-radius:12px; background:rgba(255,239,245,.68); color:var(--muted); font-size:.75rem; }
+.peach-jar-detail { display:flex; flex-direction:column; gap:3px; margin-top:12px; padding:11px 12px; border-radius:14px; background:rgba(255,235,242,.66); }
+.peach-jar-detail span { color:var(--muted); font-size:.78rem; }
+.subscription-center-card { margin-bottom:14px; padding:18px; border:1px solid rgba(224,157,174,.3); border-radius:24px; background:linear-gradient(145deg,rgba(255,255,255,.96),rgba(255,241,246,.88)); }
+.subscription-center-heading { display:flex; align-items:center; justify-content:space-between; gap:12px; }
+.subscription-center-heading h2 { margin:2px 0 0; }
+.subscription-center-heading>span { font-size:1.45rem; }
+.subscription-center-grid { display:grid; grid-template-columns:repeat(3,minmax(0,1fr)); gap:8px; margin-top:14px; }
+.subscription-center-grid>div { padding:11px; border-radius:15px; background:rgba(255,255,255,.78); min-width:0; }
+.subscription-center-grid small { display:block; color:var(--muted); font-size:.68rem; }
+.subscription-center-grid strong { display:block; margin-top:4px; overflow-wrap:anywhere; }
+.recurring-kind-badge { display:inline-flex; margin-left:6px; padding:2px 7px; border-radius:999px; background:rgba(255,232,239,.72); color:var(--muted); font-size:.66rem; font-weight:800; }
+.payday-hero { display:flex; align-items:center; justify-content:space-between; gap:16px; margin-bottom:14px; padding:20px; border-radius:26px; background:linear-gradient(135deg,rgba(255,229,238,.92),rgba(255,250,251,.98)); border:1px solid rgba(224,157,174,.3); }
+.payday-hero small { display:block; color:var(--pink); font-weight:900; letter-spacing:.08em; }
+.payday-hero strong { display:block; margin-top:4px; font-size:1.25rem; }
+.payday-hero p { margin:6px 0 0; color:var(--muted); line-height:1.45; }
+.payday-planner-card { padding:18px; border-radius:24px; border:1px solid rgba(224,157,174,.27); background:rgba(255,255,255,.9); }
+.payday-bucket-grid { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:10px; margin:12px 0; }
+.payday-bucket-grid label { display:flex; flex-direction:column; gap:6px; padding:12px; border-radius:16px; background:rgba(255,241,246,.62); }
+.payday-bucket-grid span { font-size:.78rem; font-weight:800; }
+.payday-bucket-grid input { width:100%; }
+.payday-summary-grid { display:grid; grid-template-columns:repeat(2,minmax(0,1fr)); gap:10px; margin:12px 0 16px; }
+.payday-summary-grid>div { padding:14px; border-radius:16px; background:rgba(255,248,250,.96); border:1px solid rgba(224,157,174,.2); }
+.payday-summary-grid small { display:block; color:var(--muted); }
+.payday-summary-grid strong { display:block; margin-top:3px; font-size:1.08rem; }
+.payday-summary-grid strong.danger { color:#b83f55; }
+.payday-actions { display:grid; gap:9px; margin-top:14px; }
+.payable-estimate-note { margin:10px 0; padding:10px 12px; border-radius:13px; background:rgba(255,245,248,.9); color:var(--muted); font-size:.72rem; line-height:1.45; }
+@media (max-width:520px) {
+  .savings-summary-card { grid-template-columns:1fr; }
+  .savings-summary-card .budget-summary-divider { width:100%; height:1px; }
+  .subscription-center-grid { grid-template-columns:1fr; }
+  .payday-bucket-grid { grid-template-columns:1fr; }
+}
