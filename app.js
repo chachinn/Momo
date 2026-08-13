@@ -1,6 +1,6 @@
 // ========================================
 // MOMO
-// Momo 1.8.0 — Insights + Forecast + Month Close + Budget Rollover
+// Momo 1.9.0 — Custom Home + Global Money Search + Navigation Cleanup
 // CLEAN FOUNDATION + FUNCTIONAL TRIPS
 // ========================================
 
@@ -1298,6 +1298,9 @@ async function loadAppData() {
 
 
   loadMomo18Settings(settingsRecords);
+
+
+  loadMomo19Settings(settingsRecords);
 
 
   expenses.sort(
@@ -41132,6 +41135,171 @@ document.addEventListener("click", (event) => {
   if (!event.target.closest("[data-momo-close-month]")) return;
   const select = document.getElementById("momoMonthCloseSelect");
   if (select?.value) momoSaveMonthClose(select.value).catch((error) => { console.error(error); showToast("Could not save that month snapshot."); });
+});
+
+
+// MOMO 1.9 — CUSTOM HOME + GLOBAL MONEY SEARCH
+const MOMO_HOME_LAYOUT_KEY = "momo_home_layout_v1";
+const MOMO_HOME_DEFAULT_ORDER = ["snapshot", "today", "reminders", "adventure", "lately"];
+const MOMO_HOME_LABELS = { snapshot: ["Money Snapshot", "Your month at a glance"], today: ["Momo Today", "Safe to Spend and what is due"], reminders: ["Gentle Nudges", "Upcoming reminders"], adventure: ["Next Adventure", "Trip snapshot"], lately: ["Recent Spending", "Your latest entries"] };
+let momoHomeLayout = { order: [...MOMO_HOME_DEFAULT_ORDER], hidden: [], density: "cozy" };
+let momoSearchTimer = null;
+let momoSearchRunId = 0;
+
+function loadMomo19Settings(records) {
+  const setting = records.find((item) => item?.key === MOMO_HOME_LAYOUT_KEY)?.value;
+  if (setting && typeof setting === "object") {
+    const order = Array.isArray(setting.order) ? setting.order.filter((id) => MOMO_HOME_DEFAULT_ORDER.includes(id)) : [];
+    momoHomeLayout = { order: [...order, ...MOMO_HOME_DEFAULT_ORDER.filter((id) => !order.includes(id))], hidden: Array.isArray(setting.hidden) ? setting.hidden.filter((id) => MOMO_HOME_DEFAULT_ORDER.includes(id)) : [], density: setting.density === "compact" ? "compact" : "cozy" };
+  }
+}
+
+async function saveMomoHomeLayout() {
+  await saveMomoSetting(MOMO_HOME_LAYOUT_KEY, momoHomeLayout);
+}
+
+function applyMomoHomeLayout() {
+  const home = document.querySelector('[data-screen="home"]');
+  if (!home) return;
+  for (const id of momoHomeLayout.order) {
+    const element = home.querySelector(`[data-home-module="${id}"]`);
+    if (element) home.appendChild(element);
+  }
+  home.querySelectorAll("[data-home-module]").forEach((element) => { element.hidden = momoHomeLayout.hidden.includes(element.dataset.homeModule); });
+  document.body.classList.toggle("momo-home-compact", momoHomeLayout.density === "compact");
+}
+
+function renderMomoHomeCustomizer() {
+  const list = document.getElementById("momoHomeModuleList");
+  if (!list) return;
+  list.innerHTML = momoHomeLayout.order.map((id, index) => {
+    const label = MOMO_HOME_LABELS[id] || [id, ""];
+    const hidden = momoHomeLayout.hidden.includes(id);
+    return `<article class="momo-home-module-row"><label><input type="checkbox" data-momo-home-visible="${id}" ${hidden ? "" : "checked"}><span><strong>${escapeHTML(label[0])}</strong><small>${escapeHTML(label[1])}</small></span></label><div><button type="button" data-momo-home-move="${id}" data-direction="up" ${index === 0 ? "disabled" : ""}>↑</button><button type="button" data-momo-home-move="${id}" data-direction="down" ${index === momoHomeLayout.order.length - 1 ? "disabled" : ""}>↓</button></div></article>`;
+  }).join("");
+  document.querySelectorAll("[data-momo-density]").forEach((button) => button.classList.toggle("active", button.dataset.momoDensity === momoHomeLayout.density));
+}
+
+function momoSearchNormalize(value) { return normalizeActivitySearchText(value || ""); }
+function momoSearchTokens() { return momoSearchNormalize(document.getElementById("momoGlobalSearchInput")?.value).split(" ").filter(Boolean); }
+function momoSearchYield() { return new Promise((resolve) => requestAnimationFrame(resolve)); }
+function momoSearchMatchesTokens(text, tokens) { const normalized = momoSearchNormalize(text); return tokens.every((token) => normalized.includes(token)); }
+function momoSearchDateOkay(date, from, to) { return (!from || !date || date >= from) && (!to || !date || date <= to); }
+function momoSearchAmountOkay(amount, min, max) { return (min === null || amount >= min) && (max === null || amount <= max); }
+
+function populateMomoSearchFilters() {
+  const category = document.getElementById("momoGlobalSearchCategory");
+  const payment = document.getElementById("momoGlobalSearchPayment");
+  const trip = document.getElementById("momoGlobalSearchTrip");
+  if (!category || !payment || !trip) return;
+  const current = [category.value, payment.value, trip.value];
+  const categories = [...new Set(expenses.map((item) => item.category === "Other" && item.otherCategory ? item.otherCategory : item.category).filter(Boolean))].sort();
+  const payments = [...new Set(expenses.map((item) => item.paymentMethod === "Other" && item.otherPaymentMethod ? item.otherPaymentMethod : item.paymentMethod).filter(Boolean))].sort();
+  category.innerHTML = `<option value="">All categories</option>${categories.map((item) => `<option value="${escapeHTML(item)}">${escapeHTML(item)}</option>`).join("")}`;
+  payment.innerHTML = `<option value="">All payment methods</option>${payments.map((item) => `<option value="${escapeHTML(item)}">${escapeHTML(item)}</option>`).join("")}`;
+  trip.innerHTML = `<option value="">All trips</option><option value="__personal__">Personal / no trip</option>${trips.map((item) => `<option value="${escapeHTML(item.id)}">${escapeHTML(item.name)}</option>`).join("")}`;
+  [category, payment, trip].forEach((control, index) => { if ([...control.options].some((option) => option.value === current[index])) control.value = current[index]; });
+}
+
+async function runMomoGlobalSearch() {
+  const resultsElement = document.getElementById("momoGlobalSearchResults");
+  const statusElement = document.getElementById("momoGlobalSearchStatus");
+  if (!resultsElement || !statusElement) return;
+  const runId = ++momoSearchRunId;
+  const type = document.getElementById("momoGlobalSearchType")?.value || "all";
+  const tokens = momoSearchTokens();
+  const category = document.getElementById("momoGlobalSearchCategory")?.value || "";
+  const payment = document.getElementById("momoGlobalSearchPayment")?.value || "";
+  const tripId = document.getElementById("momoGlobalSearchTrip")?.value || "";
+  const receipt = document.getElementById("momoGlobalSearchReceipt")?.value || "";
+  const from = document.getElementById("momoGlobalSearchFrom")?.value || "";
+  const to = document.getElementById("momoGlobalSearchTo")?.value || "";
+  const minRaw = document.getElementById("momoGlobalSearchMin")?.value;
+  const maxRaw = document.getElementById("momoGlobalSearchMax")?.value;
+  const min = minRaw === "" || minRaw == null ? null : Number(minRaw);
+  const max = maxRaw === "" || maxRaw == null ? null : Number(maxRaw);
+  const hasFilter = tokens.length || type !== "all" || category || payment || tripId || receipt || from || to || min !== null || max !== null;
+  if (!hasFilter) { resultsElement.innerHTML = `<div class="momo-tool-empty">Search by a word, type, date, amount, category, payment method, trip, or receipt.</div>`; statusElement.textContent = "Type something or choose a filter."; return; }
+  statusElement.textContent = "Searching…";
+  const output = [];
+  const push = (item) => { if (output.length < 120) output.push(item); };
+  const tripLookup = new Map(trips.map((item) => [item.id, item]));
+
+  if (type === "all" || type === "expense") {
+    for (let i = 0; i < expenses.length && output.length < 120; i += 1) {
+      if (runId !== momoSearchRunId) return;
+      const item = expenses[i]; const amountPHP = convertCurrency(item.amount, item.currency, "PHP");
+      const categoryText = item.category === "Other" && item.otherCategory ? item.otherCategory : (item.category || "Other");
+      const paymentText = item.paymentMethod === "Other" && item.otherPaymentMethod ? item.otherPaymentMethod : (item.paymentMethod || "");
+      if (category && categoryText !== category) continue; if (payment && paymentText !== payment) continue;
+      if (tripId === "__personal__" && item.tripId) continue; if (tripId && tripId !== "__personal__" && item.tripId !== tripId) continue;
+      if (receipt === "with" && !item.photo) continue; if (receipt === "without" && item.photo) continue;
+      if (!momoSearchDateOkay(item.date, from, to) || !momoSearchAmountOkay(amountPHP, min, max)) continue;
+      const trip = tripLookup.get(item.tripId); const text = [item.title, item.location, item.notes, categoryText, paymentText, item.date, trip?.name, ...(normalizeExpenseTags(item.tags) || [])].join(" ");
+      if (tokens.length && !momoSearchMatchesTokens(text, tokens)) continue;
+      push({ kind: "expense", id: item.id, icon: getCategoryEmoji(item.category), title: item.title || "Expense", meta: `${categoryText} · ${formatShortDate(item.date)}`, amount: formatCurrency(item.amount, item.currency), destination: "activity" });
+      if (i && i % 1200 === 0) await momoSearchYield();
+    }
+  }
+
+  const scan = async (kind, list, mapper) => {
+    if (type !== "all" && type !== kind) return;
+    for (let i = 0; i < list.length && output.length < 120; i += 1) {
+      if (runId !== momoSearchRunId) return;
+      const mapped = mapper(list[i]); if (!mapped) continue;
+      if (!momoSearchDateOkay(mapped.date, from, to) || !momoSearchAmountOkay(mapped.amountPHP || 0, min, max)) continue;
+      if (tokens.length && !momoSearchMatchesTokens(mapped.searchText, tokens)) continue;
+      push({ kind, ...mapped });
+      if (i && i % 800 === 0) await momoSearchYield();
+    }
+  };
+  await scan("planned", plannedExpenses, (item) => ({ id: item.id, icon: "☆", title: item.title || "Planned expense", meta: `${item.status || "planned"} · ${item.targetDate ? formatShortDate(item.targetDate) : "no date"}`, amount: Number(item.amount || 0) ? formatCurrency(item.amount, item.currency || "PHP") : "Amount not set", amountPHP: convertCurrency(item.amount, item.currency || "PHP", "PHP"), date: item.targetDate, destination: "planned", searchText: [item.title, item.notes, item.category, item.targetDate].join(" ") }));
+  await scan("recurring", recurringExpenses, (item) => ({ id: item.id, icon: "↻", title: item.name || "Recurring", meta: `${item.kind || "bill"} · ${item.nextDueDate ? formatShortDate(item.nextDueDate) : "no due date"}`, amount: Number(item.amount || 0) ? formatCurrency(item.amount, item.currency || "PHP") : "Varies", amountPHP: convertCurrency(item.amount, item.currency || "PHP", "PHP"), date: item.nextDueDate, destination: "recurring", searchText: [item.name, item.notes, item.kind, item.category, item.paymentMethod].join(" ") }));
+  await scan("payable", cards, (item) => ({ id: item.id, icon: "♡", title: item.name || "Payable", meta: `${getPayableMeta(item).label} · ${item.dueDate ? formatShortDate(item.dueDate) : "no due date"}`, amount: formatCurrency(getPayableBalance(item), item.currency || "PHP"), amountPHP: payablePHPValue(item, getPayableBalance(item)), date: item.dueDate, destination: "payables", searchText: [item.name, item.provider, item.notes, getPayableMeta(item).label].join(" ") }));
+  await scan("savings", savingsGoals, (item) => ({ id: item.id, icon: item.emoji || "🌱", title: item.name || "Savings", meta: `${item.jarMode ? "Peach Jar" : "Savings goal"} · ${Math.round(getSavingsGoalProgress(item))}%`, amount: formatCurrency(getSavingsGoalSaved(item), item.currency || "PHP"), amountPHP: convertCurrency(getSavingsGoalSaved(item), item.currency || "PHP", "PHP"), date: item.targetDate, destination: "savings", searchText: [item.name, item.notes, item.jarMode ? "peach jar" : "savings goal"].join(" ") }));
+  await scan("trip", trips, (item) => ({ id: item.id, icon: "✈", title: item.name || "Trip", meta: item.destination || "Trip", amount: Number(item.budget || 0) ? formatCurrency(item.budget, item.currency || "PHP") : "No budget", amountPHP: convertCurrency(item.budget, item.currency || "PHP", "PHP"), date: item.startDate, destination: "trips", searchText: [item.name, item.destination, item.notes, item.startDate, item.endDate].join(" ") }));
+  if (runId !== momoSearchRunId) return;
+  statusElement.textContent = `${output.length}${output.length === 120 ? "+" : ""} result${output.length === 1 ? "" : "s"}`;
+  resultsElement.innerHTML = output.length ? output.map((item) => `<button class="momo-global-result" type="button" data-momo-search-kind="${item.kind}" data-momo-search-id="${escapeHTML(item.id)}" data-momo-search-destination="${item.destination}"><span>${item.icon}</span><div><strong>${escapeHTML(item.title)}</strong><small>${escapeHTML(item.meta || "")}</small></div><b>${escapeHTML(item.amount || "")}</b></button>`).join("") : `<div class="momo-tool-empty">No matching Momo records.</div>`;
+}
+
+function scheduleMomoGlobalSearch() { clearTimeout(momoSearchTimer); momoSearchTimer = setTimeout(() => runMomoGlobalSearch().catch(console.error), 220); }
+function renderMomoGlobalSearch() { populateMomoSearchFilters(); scheduleMomoGlobalSearch(); }
+
+const momo19CoreRenderAll = renderAll;
+renderAll = function() { momo19CoreRenderAll(); applyMomoHomeLayout(); if (currentScreenName === "dashboard") renderMomoHomeCustomizer(); };
+const momo19CoreShowScreen = showScreen;
+showScreen = function(name) { momo19CoreShowScreen(name); if (name === "search") renderMomoGlobalSearch(); if (name === "dashboard") renderMomoHomeCustomizer(); applyMomoHomeLayout(); };
+
+document.addEventListener("input", (event) => { if (event.target.matches("#momoGlobalSearchInput,#momoGlobalSearchFrom,#momoGlobalSearchTo,#momoGlobalSearchMin,#momoGlobalSearchMax")) scheduleMomoGlobalSearch(); });
+document.addEventListener("change", (event) => { if (event.target.matches("#momoGlobalSearchType,#momoGlobalSearchCategory,#momoGlobalSearchPayment,#momoGlobalSearchTrip,#momoGlobalSearchReceipt")) scheduleMomoGlobalSearch(); });
+document.addEventListener("click", async (event) => {
+  if (event.target.closest("#momoGlobalSearchClear")) {
+    ["momoGlobalSearchInput","momoGlobalSearchFrom","momoGlobalSearchTo","momoGlobalSearchMin","momoGlobalSearchMax"].forEach((id) => { const el = document.getElementById(id); if (el) el.value = ""; });
+    ["momoGlobalSearchCategory","momoGlobalSearchPayment","momoGlobalSearchTrip","momoGlobalSearchReceipt"].forEach((id) => { const el = document.getElementById(id); if (el) el.value = ""; });
+    const type = document.getElementById("momoGlobalSearchType"); if (type) type.value = "all"; scheduleMomoGlobalSearch(); return;
+  }
+  const result = event.target.closest("[data-momo-search-destination]");
+  if (result) {
+    if (result.dataset.momoSearchKind === "expense") { const item = expenses.find((entry) => entry.id === result.dataset.momoSearchId); if (item) openExpenseDetail(item); }
+    else showScreen(result.dataset.momoSearchDestination);
+    return;
+  }
+  const visible = event.target.closest("[data-momo-home-visible]");
+  if (visible) {
+    const id = visible.dataset.momoHomeVisible; const nextHidden = new Set(momoHomeLayout.hidden);
+    if (visible.checked) nextHidden.delete(id); else nextHidden.add(id);
+    if (nextHidden.size >= MOMO_HOME_DEFAULT_ORDER.length) { visible.checked = true; showToast("Keep at least one Home card visible."); return; }
+    momoHomeLayout.hidden = [...nextHidden]; await saveMomoHomeLayout(); applyMomoHomeLayout(); renderMomoHomeCustomizer(); return;
+  }
+  const move = event.target.closest("[data-momo-home-move]");
+  if (move) {
+    const id = move.dataset.momoHomeMove; const index = momoHomeLayout.order.indexOf(id); const target = index + (move.dataset.direction === "up" ? -1 : 1);
+    if (index >= 0 && target >= 0 && target < momoHomeLayout.order.length) { const next = [...momoHomeLayout.order]; [next[index], next[target]] = [next[target], next[index]]; momoHomeLayout.order = next; await saveMomoHomeLayout(); applyMomoHomeLayout(); renderMomoHomeCustomizer(); }
+    return;
+  }
+  const density = event.target.closest("[data-momo-density]");
+  if (density) { momoHomeLayout.density = density.dataset.momoDensity === "compact" ? "compact" : "cozy"; await saveMomoHomeLayout(); applyMomoHomeLayout(); renderMomoHomeCustomizer(); }
 });
 
 

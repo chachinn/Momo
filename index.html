@@ -17,7 +17,7 @@
   <meta name="apple-mobile-web-app-title" content="Momo">
 
   <title>Momo — Spending Diary</title>
-  <meta name="momo-app-version" content="1.8.0">
+  <meta name="momo-app-version" content="1.9.0">
 
   <link rel="manifest" href="manifest.json">
   <link rel="apple-touch-icon" href="icons/icon-192.png">
@@ -96,232 +96,40 @@
         </button>
       </div>
 
-      <div class="drawer-section">
-        <p class="drawer-label">Money</p>
-
-        <button class="drawer-item" type="button" data-drawer-nav="insights"><span class="drawer-icon">🍑</span><span class="drawer-copy"><strong>Insights & Forecast</strong><small>Momo Notices, forecast, pace, rollover, and Month Close.</small></span><span class="drawer-arrow">›</span></button>
-
-
-        <button
-          class="drawer-item"
-          type="button"
-          data-drawer-nav="budgets"
-        >
-          <span class="drawer-icon">♡</span>
-          <span class="drawer-copy">
-            <strong>Budgets</strong>
-            <small>Plan how much you want to spend.</small>
-          </span>
-          <span class="drawer-arrow">›</span>
-        </button>
-
-        <button
-          class="drawer-item"
-          type="button"
-          data-drawer-nav="activity"
-        >
-          <span class="drawer-icon">🧾</span>
-          <span class="drawer-copy">
-            <strong>Activity</strong>
-            <small>See your spending history.</small>
-          </span>
-          <span class="drawer-arrow">›</span>
-        </button>
-
-        <button
-          class="drawer-item"
-          type="button"
-          data-drawer-nav="receipts"
-        >
-          <span class="drawer-icon">🖼️</span>
-          <span class="drawer-copy">
-            <strong>Receipt Gallery</strong>
-            <small>Browse photos attached to your expenses.</small>
-          </span>
-          <span class="drawer-arrow">›</span>
-        </button>
-
-        <button
-          class="drawer-item"
-          type="button"
-          data-drawer-nav="reports"
-        >
-          <span class="drawer-icon">◔</span>
-          <span class="drawer-copy">
-            <strong>Reports</strong>
-            <small>Review your spending totals.</small>
-          </span>
-          <span class="drawer-arrow">›</span>
-        </button>
-
-        <button
-          class="drawer-item"
-          type="button"
-          data-drawer-nav="reminders"
-        >
-          <span class="drawer-icon">🔔</span>
-          <span class="drawer-copy">
-            <strong>Smart Reminders</strong>
-            <small>Momo keeps an eye on what’s coming up.</small>
-          </span>
-          <span id="drawerReminderBadge" class="drawer-reminder-badge" hidden>0</span>
-          <span class="drawer-arrow">›</span>
-        </button>
-
-        <button
-          class="drawer-item"
-          type="button"
-          data-drawer-nav="recurring"
-        >
-          <span class="drawer-icon">↻</span>
-          <span class="drawer-copy">
-            <strong>Recurring Expenses</strong>
-            <small>Keep track of subscriptions and regular payments.</small>
-          </span>
-          <span class="drawer-arrow">›</span>
-        </button>
-
-        <button
-          class="drawer-item"
-          type="button"
-          data-drawer-nav="planned"
-        >
-          <span class="drawer-icon">☆</span>
-          <span class="drawer-copy">
-            <strong>Planned Expenses</strong>
-            <small>Save future purchases without counting them as spent.</small>
-          </span>
-          <span class="drawer-arrow">›</span>
-        </button>
-
-        <button
-          class="drawer-item"
-          type="button"
-          data-drawer-nav="savings"
-        >
-          <span class="drawer-icon">🌱</span>
-          <span class="drawer-copy">
-            <strong>Savings Goals</strong>
-            <small>Track money you are setting aside for something special.</small>
-          </span>
-          <span class="drawer-arrow">›</span>
-        </button>
-
-        <button
-          class="drawer-item"
-          type="button"
-          data-drawer-nav="payday"
-        >
-          <span class="drawer-icon">🍑</span>
-          <span class="drawer-copy">
-            <strong>Payday Planner</strong>
-            <small>Give your next pay a gentle job before it arrives.</small>
-          </span>
-          <span class="drawer-arrow">›</span>
-        </button>
-
-        <button
-          class="drawer-item"
-          type="button"
-          data-drawer-nav="payables"
-        >
-          <span class="drawer-icon">🌸</span>
-          <span class="drawer-copy">
-            <strong>Payables</strong>
-            <small>Keep cards, loans, installments, and borrowed money in one gentle place.</small>
-          </span>
-          <span class="drawer-arrow">›</span>
-        </button>
-
-        <button
-          class="drawer-item"
-          type="button"
-          data-drawer-nav="backup"
-        >
-          <span class="drawer-icon">⇩</span>
-          <span class="drawer-copy">
-            <strong>Backup & Export</strong>
-            <small>Protect your Momo data or export expenses to CSV.</small>
-          </span>
-          <span class="drawer-arrow">›</span>
-        </button>
+      <div class="drawer-quick-grid">
+        <button class="drawer-quick" type="button" data-drawer-nav="insights"><span>🍑</span><strong>Insights</strong></button>
+        <button class="drawer-quick" type="button" data-drawer-nav="search"><span>⌕</span><strong>Search</strong></button>
+        <button class="drawer-quick" type="button" data-nav="add"><span>＋</span><strong>Add expense</strong></button>
+        <button class="drawer-quick" type="button" data-drawer-nav="dashboard"><span>✿</span><strong>Customize</strong></button>
       </div>
 
-      <div class="drawer-section">
-        <p class="drawer-label">Travel</p>
-
-        <button
-          class="drawer-item"
-          type="button"
-          data-drawer-nav="trips"
-        >
-          <span class="drawer-icon">✈️</span>
-          <span class="drawer-copy">
-            <strong>Trips</strong>
-            <small>Track travel budgets and expenses.</small>
-          </span>
-          <span class="drawer-arrow">›</span>
-        </button>
-
-        <button
-          class="drawer-item"
-          type="button"
-          data-drawer-nav="settlement"
-        >
-          <span class="drawer-icon">🤝</span>
-          <span class="drawer-copy">
-            <strong>Shared Settlement</strong>
-            <small>Split everyday or trip costs and see who owes whom.</small>
-          </span>
-          <span class="drawer-arrow">›</span>
-        </button>
-
-        <button
-          class="drawer-item"
-          type="button"
-          data-drawer-nav="converter"
-        >
-          <span class="drawer-icon">💱</span>
-          <span class="drawer-copy">
-            <strong>Currency Converter</strong>
-            <small>Convert and calculate while traveling.</small>
-          </span>
-          <span class="drawer-arrow">›</span>
-        </button>
+      <div class="drawer-section"><p class="drawer-label">Plan</p>
+        <button class="drawer-item" type="button" data-drawer-nav="budgets"><span class="drawer-icon">♡</span><span class="drawer-copy"><strong>Budgets</strong><small>Limits and spending pace.</small></span><span class="drawer-arrow">›</span></button>
+        <button class="drawer-item" type="button" data-drawer-nav="recurring"><span class="drawer-icon">↻</span><span class="drawer-copy"><strong>Recurring & Subscriptions</strong><small>Bills, memberships, and renewals.</small></span><span class="drawer-arrow">›</span></button>
+        <button class="drawer-item" type="button" data-drawer-nav="planned"><span class="drawer-icon">☆</span><span class="drawer-copy"><strong>Planned Expenses</strong><small>Things that are not spent yet.</small></span><span class="drawer-arrow">›</span></button>
+        <button class="drawer-item" type="button" data-drawer-nav="savings"><span class="drawer-icon">🌱</span><span class="drawer-copy"><strong>Savings & Peach Jars</strong><small>Goals and protected plans.</small></span><span class="drawer-arrow">›</span></button>
+        <button class="drawer-item" type="button" data-drawer-nav="payday"><span class="drawer-icon">🍑</span><span class="drawer-copy"><strong>Payday Planner</strong><small>Plan your next pay before it arrives.</small></span><span class="drawer-arrow">›</span></button>
+        <button class="drawer-item" type="button" data-drawer-nav="payables"><span class="drawer-icon">🌸</span><span class="drawer-copy"><strong>Payables</strong><small>Cards, loans, and installments.</small></span><span class="drawer-arrow">›</span></button>
       </div>
 
-      <div class="drawer-section">
-        <p class="drawer-label">Account</p>
-
-        <button
-          class="drawer-item"
-          type="button"
-          data-drawer-nav="account"
-        >
-          <span class="drawer-icon">☁</span>
-          <span class="drawer-copy">
-            <strong id="drawerAccountTitle">Account & Cloud</strong>
-            <small id="drawerAccountSubtitle">Using Momo on this device.</small>
-          </span>
-          <span class="drawer-arrow">›</span>
-        </button>
+      <div class="drawer-section"><p class="drawer-label">Review</p>
+        <button class="drawer-item" type="button" data-drawer-nav="activity"><span class="drawer-icon">🧾</span><span class="drawer-copy"><strong>Activity</strong><small>Full expense history and filters.</small></span><span class="drawer-arrow">›</span></button>
+        <button class="drawer-item" type="button" data-drawer-nav="receipts"><span class="drawer-icon">🖼️</span><span class="drawer-copy"><strong>Receipt Gallery</strong><small>Photos attached to purchases.</small></span><span class="drawer-arrow">›</span></button>
+        <button class="drawer-item" type="button" data-drawer-nav="reports"><span class="drawer-icon">◔</span><span class="drawer-copy"><strong>Reports</strong><small>Totals, categories, and trends.</small></span><span class="drawer-arrow">›</span></button>
+        <button class="drawer-item" type="button" data-drawer-nav="reminders"><span class="drawer-icon">🔔</span><span class="drawer-copy"><strong>Gentle Reminders</strong><small>Automatic and custom nudges.</small></span><span id="drawerReminderBadge" class="drawer-reminder-badge" hidden>0</span><span class="drawer-arrow">›</span></button>
+        <button class="drawer-item" type="button" data-drawer-nav="backup"><span class="drawer-icon">⇩</span><span class="drawer-copy"><strong>Backup & Export</strong><small>Protect or export local Momo data.</small></span><span class="drawer-arrow">›</span></button>
       </div>
 
-      <div class="drawer-section">
-        <p class="drawer-label">Help</p>
+      <div class="drawer-section"><p class="drawer-label">Travel</p>
+        <button class="drawer-item" type="button" data-drawer-nav="trips"><span class="drawer-icon">✈</span><span class="drawer-copy"><strong>Trips</strong><small>Travel budgets and spending.</small></span><span class="drawer-arrow">›</span></button>
+        <button class="drawer-item" type="button" data-drawer-nav="settlement"><span class="drawer-icon">🤝</span><span class="drawer-copy"><strong>Shared Settlement</strong><small>Split everyday or travel costs.</small></span><span class="drawer-arrow">›</span></button>
+        <button class="drawer-item" type="button" data-drawer-nav="converter"><span class="drawer-icon">💱</span><span class="drawer-copy"><strong>Currency Converter</strong><small>Convert and calculate on the go.</small></span><span class="drawer-arrow">›</span></button>
+      </div>
 
-        <button
-          class="drawer-item"
-          type="button"
-          data-drawer-nav="guide"
-        >
-          <span class="drawer-icon">?</span>
-          <span class="drawer-copy">
-            <strong>Momo Guide</strong>
-            <small>Quick how-tos, tips, and the welcome tour.</small>
-          </span>
-          <span class="drawer-arrow">›</span>
-        </button>
+      <div class="drawer-section"><p class="drawer-label">Account & Help</p>
+        <button class="drawer-item" type="button" data-drawer-nav="dashboard"><span class="drawer-icon">✿</span><span class="drawer-copy"><strong>Customize Home</strong><small>Show, hide, and reorder Home cards.</small></span><span class="drawer-arrow">›</span></button>
+        <button class="drawer-item" type="button" data-drawer-nav="account"><span class="drawer-icon">☁</span><span class="drawer-copy"><strong id="drawerAccountTitle">Account & Cloud</strong><small id="drawerAccountSubtitle">Using Momo on this device.</small></span><span class="drawer-arrow">›</span></button>
+        <button class="drawer-item" type="button" data-drawer-nav="guide"><span class="drawer-icon">?</span><span class="drawer-copy"><strong>Momo Guide</strong><small>How-tos, tips, and the welcome tour.</small></span><span class="drawer-arrow">›</span></button>
       </div>
 
       <div class="drawer-footer">
@@ -369,7 +177,7 @@
           </div>
         </section>
 
-        <section class="momo-home-section">
+        <section id="homeSnapshotSection" class="momo-home-section" data-home-module="snapshot">
           <div class="momo-home-section-heading">
             <div>
               <p class="momo-section-kicker">✦ MONEY SNAPSHOT</p>
@@ -465,7 +273,7 @@
           </article>
         </section>
 
-        <section id="momoTodaySection" class="momo-home-section momo-today-section">
+        <section id="momoTodaySection" class="momo-home-section momo-today-section" data-home-module="today">
           <div class="momo-home-section-heading">
             <div>
               <p class="momo-section-kicker">🍑 MOMO TODAY</p>
@@ -501,7 +309,7 @@
           </article>
         </section>
 
-        <section id="homeRemindersSection" class="momo-home-section momo-reminders-home">
+        <section id="homeRemindersSection" class="momo-home-section momo-reminders-home" data-home-module="reminders">
           <div class="momo-home-section-heading">
             <div>
               <p class="momo-section-kicker">🔔 GENTLE NUDGES</p>
@@ -514,7 +322,7 @@
         </section>
 
 
-        <section class="momo-home-section">
+        <section id="homeAdventureSection" class="momo-home-section" data-home-module="adventure">
           <div class="momo-home-section-heading">
             <div>
               <p class="momo-section-kicker">✈ NEXT ADVENTURE</p>
@@ -533,7 +341,7 @@
           <div id="homeTripSnapshot"></div>
         </section>
 
-        <section class="momo-home-section momo-lately-section">
+        <section id="homeLatelySection" class="momo-home-section momo-lately-section" data-home-module="lately">
           <div class="momo-home-section-heading">
             <div>
               <p class="momo-section-kicker">🧾 LATELY</p>
@@ -606,6 +414,36 @@
         </section>
 
         <!-- /MOMO 1.8 INSIGHTS -->
+      </section>
+
+
+      <!-- MOMO 1.9 SEARCH -->
+      <section class="screen momo-global-search-screen" data-screen="search">
+        <div class="page-heading compact"><div><p class="eyebrow">Find anything</p><h1>Money Search</h1><p class="page-description">Search expenses, plans, recurring items, payables, savings, and trips without loading one giant list onto the screen.</p></div><span>⌕</span></div>
+        <section class="momo-search-panel">
+          <label class="momo-search-box"><span>⌕</span><input id="momoGlobalSearchInput" type="search" placeholder="Try Japan, Starbucks, credit card…" autocomplete="off"></label>
+          <div class="momo-search-filter-grid">
+            <select id="momoGlobalSearchType"><option value="all">Everything</option><option value="expense">Expenses</option><option value="planned">Planned</option><option value="recurring">Recurring</option><option value="payable">Payables</option><option value="savings">Savings</option><option value="trip">Trips</option></select>
+            <select id="momoGlobalSearchCategory"><option value="">All categories</option></select>
+            <select id="momoGlobalSearchPayment"><option value="">All payment methods</option></select>
+            <select id="momoGlobalSearchTrip"><option value="">All trips</option></select>
+            <select id="momoGlobalSearchReceipt"><option value="">Receipt or no receipt</option><option value="with">With receipt</option><option value="without">Without receipt</option></select>
+          </div>
+          <div class="momo-search-filter-grid two"><input id="momoGlobalSearchFrom" type="date" aria-label="From date"><input id="momoGlobalSearchTo" type="date" aria-label="To date"><input id="momoGlobalSearchMin" type="number" inputmode="decimal" min="0" placeholder="Min ₱"><input id="momoGlobalSearchMax" type="number" inputmode="decimal" min="0" placeholder="Max ₱"></div>
+          <div class="momo-search-footer"><span id="momoGlobalSearchStatus">Type something or choose a filter.</span><button id="momoGlobalSearchClear" class="text-btn" type="button">Clear</button></div>
+        </section>
+        <div id="momoGlobalSearchResults" class="momo-global-results"></div>
+      </section>
+
+
+      <!-- MOMO 1.9 HOME CUSTOMIZER -->
+      <section class="screen momo-home-customizer-screen" data-screen="dashboard">
+        <div class="page-heading compact"><div><p class="eyebrow">Make it yours</p><h1>Customize Home</h1><p class="page-description">Keep the intro visible, then choose which money cards appear and what order they use.</p></div><span>✿</span></div>
+        <section class="momo-tool-card">
+          <div class="momo-tool-heading"><div><p class="section-kicker">CARD DENSITY</p><h2>How roomy should Home feel?</h2></div></div>
+          <div id="momoHomeDensity" class="momo-density-choice"><button type="button" data-momo-density="cozy">Cozy</button><button type="button" data-momo-density="compact">Compact</button></div>
+        </section>
+        <section class="momo-tool-card"><div class="momo-tool-heading"><div><p class="section-kicker">HOME CARDS</p><h2>Show, hide & reorder</h2></div></div><div id="momoHomeModuleList" class="momo-home-module-list"></div></section>
       </section>
 
 
@@ -5821,27 +5659,27 @@
         version: MOMO_VERSION,
         title: `What’s new in Momo v${MOMO_VERSION}`,
         date: "August 13, 2026",
-        intro: "Momo can now explain the month you are having, not just store it.",
+        intro: "Momo is easier to move around and easier to make your own.",
         items: [
           {
-            icon: "\ud83c\udf51",
-            title: "Momo Notices",
-            copy: "Rule-based, local insights surface useful patterns without a paid AI service."
+            icon: "\u2315",
+            title: "Money Search",
+            copy: "Search across expenses, plans, recurring costs, payables, savings, and trips with richer filters."
           },
           {
-            icon: "\u25d4",
-            title: "Month Forecast",
-            copy: "See projected spending, money left, known commitments, and the assumptions behind the estimate."
+            icon: "\u273f",
+            title: "Customize Home",
+            copy: "Show, hide, reorder, and choose a compact or cozy Home layout."
           },
           {
-            icon: "\u21bb",
-            title: "Budget Rollover & Pace",
-            copy: "Choose how monthly budgets reset or carry forward, and compare spending pace with the month."
+            icon: "\u2630",
+            title: "Cleaner navigation",
+            copy: "The hamburger is grouped by Plan, Review, Travel, and Account & Help, while the five core bottom tabs stay focused."
           },
           {
-            icon: "\u2713",
-            title: "Month Close",
-            copy: "Save a reusable snapshot of a month without locking your old records."
+            icon: "\u26a1",
+            title: "Large-history friendly",
+            copy: "Search is debounced, capped, and yields between large batches so long histories do not freeze the screen."
           }
         ]
       };

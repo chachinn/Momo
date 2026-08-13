@@ -1,10 +1,10 @@
 // ========================================
 // MOMO SERVICE WORKER
-// Momo 1.8.0 — insights, personalization, deeper money tools + stable PWA updates
+// Momo 1.9.0 — insights, personalization, deeper money tools + stable PWA updates
 // ========================================
 
 const APP_VERSION =
-  "1.8.0";
+  "1.9.0";
 
 
 const CACHE_NAME =
