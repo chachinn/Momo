@@ -1,6 +1,6 @@
 // ========================================
 // MOMO
-// Momo 1.7.0 — Peach Jars + Payday Planner + Subscription Center + Payables
+// Momo 1.7.1 — Compact home banners + Peach Jars + Payday Planner + Subscription Center + Payables
 // CLEAN FOUNDATION + FUNCTIONAL TRIPS
 // ========================================
 
