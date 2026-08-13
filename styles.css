@@ -16627,3 +16627,150 @@ body.momo-update-modal-open {
     contain-intrinsic-size: 260px;
   }
 }
+
+/* ========================================
+   MOMO 1.6 — TODAY + CASH FLOW
+======================================== */
+.momo-today-card {
+  border: 1px solid rgba(224, 157, 174, 0.34);
+  border-radius: 28px;
+  background: linear-gradient(145deg, rgba(255,255,255,.96), rgba(255,242,246,.9));
+  box-shadow: 0 16px 40px rgba(154, 91, 111, .08);
+  padding: 20px;
+  overflow: hidden;
+}
+
+.momo-today-safe {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 16px;
+}
+
+.momo-today-safe small,
+.momo-today-grid small,
+.momo-today-payables-heading small {
+  display: block;
+  color: var(--muted);
+  font-size: .72rem;
+  letter-spacing: .07em;
+  text-transform: uppercase;
+  font-weight: 800;
+}
+
+.momo-today-safe > div > strong {
+  display: block;
+  margin-top: 5px;
+  font-size: clamp(1.65rem, 7vw, 2.4rem);
+  line-height: 1.05;
+  color: var(--text);
+}
+
+.momo-today-safe p {
+  max-width: 560px;
+  margin: 9px 0 0;
+  color: var(--muted);
+  font-size: .86rem;
+  line-height: 1.5;
+}
+
+.momo-today-peach {
+  flex: 0 0 54px;
+  width: 54px;
+  height: 54px;
+  display: grid;
+  place-items: center;
+  border-radius: 18px;
+  background: rgba(255, 225, 235, .72);
+}
+
+.momo-today-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 10px;
+  margin-top: 18px;
+}
+
+.momo-today-grid > div {
+  min-width: 0;
+  padding: 13px 14px;
+  border: 1px solid rgba(224,157,174,.24);
+  border-radius: 18px;
+  background: rgba(255,255,255,.78);
+}
+
+.momo-today-grid strong {
+  display: block;
+  margin-top: 5px;
+  overflow-wrap: anywhere;
+  font-size: 1rem;
+}
+
+.momo-today-payables-heading {
+  display: flex;
+  align-items: end;
+  justify-content: space-between;
+  gap: 12px;
+  margin-top: 20px;
+  padding-top: 18px;
+  border-top: 1px solid rgba(224,157,174,.2);
+}
+
+.momo-today-payables-heading strong { display: block; margin-top: 2px; }
+.momo-today-payables { display: grid; gap: 8px; margin-top: 10px; }
+
+.momo-today-payable {
+  width: 100%;
+  display: grid;
+  grid-template-columns: 34px minmax(0,1fr) auto;
+  align-items: center;
+  gap: 10px;
+  border: 0;
+  border-radius: 16px;
+  padding: 11px 12px;
+  text-align: left;
+  background: rgba(255,255,255,.86);
+  color: inherit;
+}
+
+.momo-today-payable > span { font-size: 1.1rem; text-align: center; }
+.momo-today-payable div { min-width: 0; }
+.momo-today-payable div strong,
+.momo-today-payable div small { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.momo-today-payable div small { margin-top: 2px; color: var(--muted); font-size: .76rem; }
+.momo-today-payable > b { font-size: .88rem; white-space: nowrap; }
+.momo-today-empty { padding: 13px; border-radius: 16px; color: var(--muted); background: rgba(255,255,255,.65); }
+.momo-today-disclaimer { margin: 14px 2px 0; color: var(--muted); font-size: .72rem; line-height: 1.45; }
+
+.calendar-cashflow-summary {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0,1fr));
+  gap: 10px;
+  margin-bottom: 12px;
+}
+
+.calendar-cashflow-summary > div {
+  padding: 14px 15px;
+  border: 1px solid rgba(224,157,174,.28);
+  border-radius: 20px;
+  background: rgba(255,255,255,.86);
+}
+.calendar-cashflow-summary small { display: block; color: var(--muted); font-size: .75rem; }
+.calendar-cashflow-summary strong { display: block; margin-top: 4px; font-size: 1.04rem; }
+
+.calendar-cell.has-scheduled { box-shadow: inset 0 0 0 1px rgba(213,116,145,.18); }
+.calendar-day-markers em { font-style: normal; color: var(--pink); font-size: .72rem; line-height: 1; }
+.calendar-scheduled-section { margin: 14px 0; padding: 14px; border-radius: 20px; background: rgba(255,240,246,.72); }
+.calendar-scheduled-heading { display: flex; justify-content: space-between; gap: 12px; align-items: end; }
+.calendar-scheduled-heading h3 { margin: 2px 0 0; }
+.calendar-scheduled-list { display: grid; gap: 8px; margin-top: 11px; }
+.calendar-scheduled-item { display: grid; grid-template-columns: 28px minmax(0,1fr) auto; gap: 8px; align-items: center; padding: 10px; border-radius: 14px; background: rgba(255,255,255,.78); }
+.calendar-scheduled-item div { min-width: 0; }
+.calendar-scheduled-item div strong,
+.calendar-scheduled-item div small { display: block; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+.calendar-scheduled-item div small { color: var(--muted); font-size: .72rem; margin-top: 2px; }
+.calendar-scheduled-item b { font-size: .8rem; white-space: nowrap; }
+
+@media (min-width: 700px) {
+  .momo-today-grid { grid-template-columns: repeat(4, minmax(0, 1fr)); }
+}

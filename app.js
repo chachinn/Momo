@@ -1,6 +1,6 @@
 // ========================================
 // MOMO
-// Momo 1.5.1 — Reliability QA + Calendar Performance
+// Momo 1.6.0 — Momo Today + Safe to Spend + Cash Flow Calendar
 // CLEAN FOUNDATION + FUNCTIONAL TRIPS
 // ========================================
 
@@ -20830,6 +20830,303 @@ async function saveMonthlyIncome() {
 }
 
 
+// ========================================
+// MOMO TODAY + SAFE TO SPEND
+// ========================================
+
+function clampMoney(value) {
+  const number = Number(value || 0);
+  return Number.isFinite(number) ? Math.max(0, number) : 0;
+}
+
+
+function getPayableScheduledAmountPHP(payable) {
+  const balance = getPayableBalance(payable);
+
+  if (balance <= 0) return 0;
+
+  const scheduled =
+    Number(payable.regularPayment || 0) ||
+    Number(payable.minimumDue || 0) ||
+    balance;
+
+  return payablePHPValue(
+    payable,
+    Math.min(balance, Math.max(0, scheduled))
+  );
+}
+
+
+function getRecurringOccurrencesBetween(
+  recurring,
+  startDate,
+  endDate,
+  limit = 64
+) {
+  if (
+    !isRecurringActive(recurring) ||
+    !recurring.nextDueDate ||
+    !startDate ||
+    !endDate ||
+    startDate > endDate
+  ) {
+    return [];
+  }
+
+  const results = [];
+  let cursor = recurring.nextDueDate;
+  let guard = 0;
+
+  while (cursor && cursor < startDate && guard < limit) {
+    cursor = getNextRecurringDate(
+      cursor,
+      recurring.frequency,
+      recurring.anchorDay
+    );
+    guard += 1;
+  }
+
+  while (
+    cursor &&
+    cursor <= endDate &&
+    guard < limit
+  ) {
+    if (!recurring.endDate || cursor <= recurring.endDate) {
+      results.push(cursor);
+    }
+
+    const next = getNextRecurringDate(
+      cursor,
+      recurring.frequency,
+      recurring.anchorDay
+    );
+
+    if (!next || next === cursor) break;
+    cursor = next;
+    guard += 1;
+  }
+
+  return results;
+}
+
+
+function buildScheduledCashFlow(
+  startDate,
+  endDate
+) {
+  const byDate = new Map();
+  let totalPHP = 0;
+
+  const addItem = (date, item) => {
+    if (!date || date < startDate || date > endDate) return;
+
+    if (!byDate.has(date)) byDate.set(date, []);
+    byDate.get(date).push(item);
+    totalPHP += Number(item.amountPHP || 0);
+  };
+
+  for (const recurring of recurringExpenses) {
+    const amountPHP = convertCurrency(
+      Number(recurring.amount || 0),
+      recurring.currency || "PHP",
+      "PHP"
+    );
+
+    // A variable recurring payment with no usual amount stays visible as a
+    // dated commitment but does not invent an amount for Safe to Spend.
+    const hasAmount = amountPHP > 0;
+
+    for (const date of getRecurringOccurrencesBetween(
+      recurring,
+      startDate,
+      endDate
+    )) {
+      addItem(date, {
+        type: "recurring",
+        icon: "↻",
+        title: recurring.name || "Recurring expense",
+        amountPHP: hasAmount ? amountPHP : 0,
+        amountKnown: hasAmount,
+        originalAmount: Number(recurring.amount || 0),
+        currency: recurring.currency || "PHP"
+      });
+    }
+  }
+
+  for (const planned of plannedExpenses) {
+    if (
+      planned.status !== "planned" ||
+      !planned.targetDate ||
+      planned.targetDate < startDate ||
+      planned.targetDate > endDate
+    ) {
+      continue;
+    }
+
+    const amountPHP = convertCurrency(
+      Number(planned.amount || 0),
+      planned.currency || "PHP",
+      "PHP"
+    );
+
+    addItem(planned.targetDate, {
+      type: "planned",
+      icon: "☆",
+      title: planned.title || "Planned expense",
+      amountPHP,
+      amountKnown: amountPHP > 0,
+      originalAmount: Number(planned.amount || 0),
+      currency: planned.currency || "PHP"
+    });
+  }
+
+  for (const payable of cards) {
+    if (
+      getPayableBalance(payable) <= 0 ||
+      !payable.dueDate ||
+      payable.dueDate < startDate ||
+      payable.dueDate > endDate
+    ) {
+      continue;
+    }
+
+    const amountPHP = getPayableScheduledAmountPHP(payable);
+
+    addItem(payable.dueDate, {
+      type: "payable",
+      icon: "♡",
+      title: payable.name || "Payable",
+      amountPHP,
+      amountKnown: amountPHP > 0,
+      originalAmount:
+        Number(payable.regularPayment || 0) ||
+        Number(payable.minimumDue || 0) ||
+        getPayableBalance(payable),
+      currency: payable.currency || "PHP"
+    });
+  }
+
+  return { byDate, totalPHP };
+}
+
+
+function getMomoTodaySnapshot() {
+  const today = getTodayString();
+  const now = createLocalDate(today) || new Date();
+  const monthKey = getCurrentMonthKey();
+  const monthEnd = `${monthKey}-${String(
+    getDaysInMonth(now.getFullYear(), now.getMonth())
+  ).padStart(2, "0")}`;
+  const sevenDayEnd = addDaysToDateString(today, 7);
+  const monthIncome = clampMoney(monthlyIncomeByMonth[monthKey]);
+  const monthBudget = clampMoney(getCurrentMonthlyBudgetTotal());
+  const baseAmount = monthIncome > 0 ? monthIncome : monthBudget;
+  const baseLabel = monthIncome > 0 ? "monthly income" : "monthly budget";
+  const spent = getMonthlySpent();
+  const saved = getCurrentMonthSavingsPHP();
+  const monthSchedule = buildScheduledCashFlow(today, monthEnd);
+  const sevenDaySchedule = buildScheduledCashFlow(today, sevenDayEnd);
+  const cushion = baseAmount > 0
+    ? baseAmount - spent - saved - monthSchedule.totalPHP
+    : null;
+  const daysRemaining = Math.max(
+    1,
+    getDaysInMonth(now.getFullYear(), now.getMonth()) - now.getDate() + 1
+  );
+  const safePerDay = cushion === null
+    ? null
+    : Math.max(0, cushion) / daysRemaining;
+
+  return {
+    today,
+    monthKey,
+    monthEnd,
+    monthIncome,
+    monthBudget,
+    baseAmount,
+    baseLabel,
+    spent,
+    saved,
+    projectedCommitments: monthSchedule.totalPHP,
+    dueNext7Days: sevenDaySchedule.totalPHP,
+    cushion,
+    safePerDay,
+    daysRemaining
+  };
+}
+
+
+function getActivePayablesForHome(limit = 3) {
+  return cards
+    .filter((item) => getPayableBalance(item) > 0)
+    .sort((a, b) => {
+      const aDate = a.dueDate || "9999-12-31";
+      const bDate = b.dueDate || "9999-12-31";
+      return aDate.localeCompare(bDate);
+    })
+    .slice(0, limit);
+}
+
+
+function renderMomoToday() {
+  const section = document.getElementById("momoTodaySection");
+  if (!section) return;
+
+  const snapshot = getMomoTodaySnapshot();
+  const setText = (id, value) => {
+    const element = document.getElementById(id);
+    if (element) element.textContent = value;
+  };
+
+  setText(
+    "momoSafeToday",
+    snapshot.safePerDay === null
+      ? "Set income or budget"
+      : formatPHP(snapshot.safePerDay)
+  );
+  setText("momoSpentToday", formatPHP(getTodaySpentPHP()));
+  setText("momoDueNext7", formatPHP(snapshot.dueNext7Days));
+  setText(
+    "momoMonthCushion",
+    snapshot.cushion === null
+      ? "—"
+      : formatPHP(Math.max(0, snapshot.cushion))
+  );
+  setText(
+    "momoProjectedFixed",
+    formatPHP(snapshot.projectedCommitments)
+  );
+
+  const explanation = document.getElementById("momoSafeExplanation");
+  if (explanation) {
+    if (snapshot.baseAmount <= 0) {
+      explanation.textContent =
+        "Add monthly income or a monthly budget and Momo can estimate a gentle daily amount after spending, savings, and known upcoming commitments.";
+    } else {
+      explanation.textContent =
+        `Based on your ${snapshot.baseLabel}, minus ${formatPHP(snapshot.spent)} already spent, ${formatPHP(snapshot.saved)} saved this month, and ${formatPHP(snapshot.projectedCommitments)} in known upcoming commitments. ${snapshot.daysRemaining} day${snapshot.daysRemaining === 1 ? "" : "s"} remain this month.`;
+    }
+  }
+
+  const cardList = document.getElementById("momoActivePayables");
+  if (cardList) {
+    const active = getActivePayablesForHome();
+    cardList.innerHTML = active.length
+      ? active.map((item) => `
+          <button class="momo-today-payable" type="button" data-payable-open="${escapeHTML(item.id)}">
+            <span>${item.type === "credit-card" ? "▣" : "♡"}</span>
+            <div>
+              <strong>${escapeHTML(item.name || "Payable")}</strong>
+              <small>${item.dueDate ? `Due ${formatShortDate(item.dueDate)}` : "No due date"}</small>
+            </div>
+            <b>${formatCurrency(getPayableBalance(item), item.currency || "PHP")}</b>
+          </button>
+        `).join("")
+      : `<div class="momo-today-empty">No active payables waiting on you 🌸</div>`;
+  }
+}
+
+
 function renderHomeSummary() {
 
   const spent =
@@ -21285,6 +21582,8 @@ function renderHomeSummary() {
 
 
   renderHomeSpendingOverview();
+
+  renderMomoToday();
 
 }
 
@@ -24597,10 +24896,18 @@ function buildCalendarMonthIndex(
   }
 
 
+  const scheduled = buildScheduledCashFlow(
+    monthStart,
+    monthEnd
+  );
+
+
   return {
     expenseLists,
     expenseTotals,
-    tripLists
+    tripLists,
+    scheduleLists: scheduled.byDate,
+    scheduledTotal: scheduled.totalPHP
   };
 
 }
@@ -24655,6 +24962,19 @@ function renderCalendarDayDetails(
     getTripsForDate(dateKey);
 
 
+  const scheduledItems =
+    monthIndex?.scheduleLists?.get(dateKey) ||
+    buildScheduledCashFlow(dateKey, dateKey).byDate.get(dateKey) ||
+    [];
+
+
+  const scheduledTotal =
+    scheduledItems.reduce(
+      (sum, item) => sum + Number(item.amountPHP || 0),
+      0
+    );
+
+
   calendarDayDetails.innerHTML = `
 
     <div class="calendar-detail-heading">
@@ -24673,7 +24993,7 @@ function renderCalendarDayDetails(
 
       <div class="calendar-detail-total">
 
-        <span>Total</span>
+        <span>Spent</span>
 
         <strong>
           ${formatPHP(total)}
@@ -24704,6 +25024,34 @@ function renderCalendarDayDetails(
 
           `
 
+        : ""
+    }
+
+    ${
+      scheduledItems.length
+        ? `
+            <section class="calendar-scheduled-section">
+              <div class="calendar-scheduled-heading">
+                <div>
+                  <p class="eyebrow">Coming up</p>
+                  <h3>Known cash flow</h3>
+                </div>
+                <strong>${formatPHP(scheduledTotal)}</strong>
+              </div>
+              <div class="calendar-scheduled-list">
+                ${scheduledItems.map((item) => `
+                  <div class="calendar-scheduled-item">
+                    <span>${item.icon}</span>
+                    <div>
+                      <strong>${escapeHTML(item.title)}</strong>
+                      <small>${item.type === "recurring" ? "Recurring" : item.type === "planned" ? "Planned" : "Payable"}</small>
+                    </div>
+                    <b>${item.amountKnown ? formatPHP(item.amountPHP) : "Amount varies"}</b>
+                  </div>
+                `).join("")}
+              </div>
+            </section>
+          `
         : ""
     }
 
@@ -24819,6 +25167,26 @@ function renderCalendar() {
     );
 
 
+  const calendarActual =
+    Array.from(monthIndex.expenseTotals.values()).reduce(
+      (sum, value) => sum + Number(value || 0),
+      0
+    );
+
+  const calendarActualElement =
+    document.getElementById("calendarMonthActual");
+  const calendarScheduledElement =
+    document.getElementById("calendarMonthScheduled");
+
+  if (calendarActualElement) {
+    calendarActualElement.textContent = formatPHP(calendarActual);
+  }
+
+  if (calendarScheduledElement) {
+    calendarScheduledElement.textContent = formatPHP(monthIndex.scheduledTotal);
+  }
+
+
   if (
     !selectedCalendarDate.startsWith(
       monthKey
@@ -24886,11 +25254,18 @@ function renderCalendar() {
       ) || [];
 
 
+    const scheduledItems =
+      monthIndex.scheduleLists.get(
+        dateKey
+      ) || [];
+
+
     cells += `
 
       <button
         class="calendar-cell
           ${dailyTotal > 0 ? "has-spending" : ""}
+          ${scheduledItems.length ? "has-scheduled" : ""}
           ${dateKey === today ? "is-today" : ""}
           ${dateKey === selectedCalendarDate ? "is-selected" : ""}"
         type="button"
@@ -24922,6 +25297,12 @@ function renderCalendar() {
           ${
             dayExpenses.length
               ? `<b></b>`
+              : ""
+          }
+
+          ${
+            scheduledItems.length
+              ? `<em>◌</em>`
               : ""
           }
 

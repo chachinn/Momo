@@ -17,7 +17,7 @@
   <meta name="apple-mobile-web-app-title" content="Momo">
 
   <title>Momo — Spending Diary</title>
-  <meta name="momo-app-version" content="1.5.1">
+  <meta name="momo-app-version" content="1.6.0">
 
   <link rel="manifest" href="manifest.json">
   <link rel="apple-touch-icon" href="icons/icon-192.png">
@@ -446,6 +446,42 @@
                 <strong id="homeRecurringTotal">₱0.00</strong>
               </div>
             </div>
+          </article>
+        </section>
+
+        <section id="momoTodaySection" class="momo-home-section momo-today-section">
+          <div class="momo-home-section-heading">
+            <div>
+              <p class="momo-section-kicker">🍑 MOMO TODAY</p>
+              <h2>What your money looks like now</h2>
+            </div>
+            <button class="text-btn momo-section-link" type="button" data-nav="calendar">Cash flow</button>
+          </div>
+
+          <article class="momo-today-card">
+            <div class="momo-today-safe">
+              <div>
+                <small>Safe to spend today</small>
+                <strong id="momoSafeToday">—</strong>
+                <p id="momoSafeExplanation">Add income or a monthly budget to calculate this.</p>
+              </div>
+              <span class="momo-today-peach" aria-hidden="true"><span class="momo-peach-icon"></span></span>
+            </div>
+
+            <div class="momo-today-grid">
+              <div><small>Spent today</small><strong id="momoSpentToday">₱0.00</strong></div>
+              <div><small>Due next 7 days</small><strong id="momoDueNext7">₱0.00</strong></div>
+              <div><small>Month cushion</small><strong id="momoMonthCushion">—</strong></div>
+              <div><small>Known upcoming</small><strong id="momoProjectedFixed">₱0.00</strong></div>
+            </div>
+
+            <div class="momo-today-payables-heading">
+              <div><small>ACTIVE PAYABLES</small><strong>Next on your list</strong></div>
+              <button class="text-btn" type="button" data-drawer-nav="payables">See all</button>
+            </div>
+            <div id="momoActivePayables" class="momo-today-payables"></div>
+
+            <p class="momo-today-disclaimer">Safe to Spend is a planning estimate based only on information you entered in Momo. It is not a bank balance or financial advice.</p>
           </article>
         </section>
 
@@ -1841,7 +1877,7 @@
             <p class="eyebrow">Spending timeline</p>
             <h1>Calendar</h1>
             <p class="page-description">
-              See when you spent, one day at a time.
+              See what you spent and what is already coming up, one day at a time.
             </p>
           </div>
 
@@ -1853,6 +1889,11 @@
             Today
           </button>
         </div>
+
+        <section class="calendar-cashflow-summary" aria-label="Monthly cash flow summary">
+          <div><small>Spent this month</small><strong id="calendarMonthActual">₱0.00</strong></div>
+          <div><small>Known upcoming</small><strong id="calendarMonthScheduled">₱0.00</strong></div>
+        </section>
 
         <section class="card calendar-card">
           <div class="calendar-month-header">
@@ -1901,6 +1942,10 @@
             <span>
               <i class="calendar-legend-dot"></i>
               Spending
+            </span>
+
+            <span>
+              ◌ Planned / due
             </span>
 
             <span>
@@ -5587,7 +5632,7 @@
     (() => {
       const MOMO_VERSION =
         document.querySelector('meta[name="momo-app-version"]')?.content ||
-        "1.5.1";
+        "1.6.0";
 
       const LAST_SEEN_UPDATE_KEY =
         "momo_last_seen_update_version";
@@ -5605,31 +5650,31 @@
         title: `What’s new in Momo v${MOMO_VERSION}`,
         date: "August 13, 2026",
         intro:
-          "A reliability pass for the parts of Momo you use every day.",
+          "Momo can now turn the information you already track into a calmer picture of what is safe, due, and coming next.",
         items: [
           {
-            icon: "✓",
-            title: "Tracker-driven QA",
+            icon: "🍑",
+            title: "Momo Today",
             copy:
-              "Core expenses, budgets, trips, cards, recurring items, planned expenses, savings, backup, authentication, reminders, and PWA update paths were regression-checked together."
-          },
-          {
-            icon: "⚡",
-            title: "Faster calendar",
-            copy:
-              "The money calendar now indexes a month once instead of repeatedly scanning your entire expense history for every day."
+              "Home now shows what you spent today, what is due soon, your known upcoming commitments, and a month cushion."
           },
           {
             icon: "♡",
-            title: "Stronger local storage",
+            title: "Safe to Spend",
             copy:
-              "Momo now asks supported browsers to keep its local-first database in persistent storage, without changing your data or requiring an account."
+              "Momo estimates a gentle daily amount from your income or budget after recorded spending, savings contributions, recurring costs, planned purchases, and payables."
           },
           {
-            icon: "🌸",
-            title: "No data migration",
+            icon: "▦",
+            title: "Cash Flow Calendar",
             copy:
-              "Your existing finance records, Google account setup, phone reminders, and IndexedDB schema stay exactly where they are."
+              "Calendar now layers recurring payments, planned expenses, and payable due dates beside your real spending without turning future items into expenses."
+          },
+          {
+            icon: "▣",
+            title: "Active payables at a glance",
+            copy:
+              "Your nearest active payables now appear on Home so card and installment commitments are easier to see before you spend."
           }
         ]
       };
