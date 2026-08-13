@@ -42,6 +42,15 @@ jobs:
             | base64 --decode \
             | gzip --decompress \
             > /tmp/momo-next-wave.py
+          python - <<'PY'
+          from pathlib import Path
+          path = Path('/tmp/momo-next-wave.py')
+          text = path.read_text()
+          old = 'html, n = pattern.subn(block, html, count=1)'
+          new = 'html, n = pattern.subn(lambda _match: block, html, count=1)'
+          assert old in text, 'release note patch target missing'
+          path.write_text(text.replace(old, new, 1))
+          PY
           python -m py_compile /tmp/momo-next-wave.py
 
       - name: Lock protected infrastructure hashes
