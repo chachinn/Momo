@@ -38,7 +38,7 @@ jobs:
 
       - name: Rebuild verified patch helper
         run: |
-          cat scripts/momo-next-wave.part00 scripts/momo-next-wave.part01 scripts/momo-next-wave.part02 scripts/momo-next-wave.part03 scripts/momo-next-wave.part04 \
+          cat scripts/momo-next-wave.part00 scripts/momo-next-wave.part01 scripts/momo-next-wave.part02a scripts/momo-next-wave.part02b scripts/momo-next-wave.part03 scripts/momo-next-wave.part04 \
             | base64 --decode \
             | gzip --decompress \
             > /tmp/momo-next-wave.py
@@ -94,7 +94,7 @@ jobs:
 
       - name: Final cleanup and release Momo 1.10.0
         run: |
-          rm -f scripts/momo-next-wave.part00 scripts/momo-next-wave.part01 scripts/momo-next-wave.part02 scripts/momo-next-wave.part03 scripts/momo-next-wave.part04
+          rm -f scripts/momo-next-wave.part00 scripts/momo-next-wave.part01 scripts/momo-next-wave.part02 scripts/momo-next-wave.part02a scripts/momo-next-wave.part02b scripts/momo-next-wave.part03 scripts/momo-next-wave.part04
           rm -f .github/workflows/momo-next-wave.yml
           git add -A
           git commit -m "Release Momo 1.10.0: smart money suite and clean navigation"
