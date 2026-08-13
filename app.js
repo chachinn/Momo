@@ -1,6 +1,6 @@
 // ========================================
 // MOMO
-// Momo 1.10.0 — Deeper Cards + Subscriptions + Peach Jars + Momo Story Tools
+// Momo 1.10.1 — Smart Money Suite + Clean Navigation + Stability Polish
 // CLEAN FOUNDATION + FUNCTIONAL TRIPS
 // ========================================
 
