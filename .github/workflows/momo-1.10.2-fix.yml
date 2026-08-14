@@ -1,0 +1,87 @@
+name: Momo 1.10.2 Activity stability fix
+
+on:
+  push:
+    paths:
+      - .github/workflows/momo-1.10.2-fix.yml
+
+permissions:
+  contents: write
+
+jobs:
+  fix:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: main
+          fetch-depth: 0
+
+      - name: Apply Activity runtime fix and patch version
+        run: |
+          python - <<'PY'
+          from pathlib import Path
+
+          app_path = Path('app.js')
+          app = app_path.read_text(encoding='utf-8')
+          old_call = '''          convertToPHP(
+            expense.amount,
+            expense.currency
+          )'''
+          new_call = '''          convertCurrency(
+            expense.amount,
+            expense.currency,
+            "PHP"
+          )'''
+          assert app.count(old_call) == 1, f'Expected exactly one broken Activity conversion call, found {app.count(old_call)}'
+          assert 'function convertToPHP' not in app, 'Unexpected convertToPHP definition exists; review before patching'
+          app = app.replace(old_call, new_call, 1)
+          assert '// Momo 1.10.1 — Smart Money Suite + Clean Navigation + Stability Polish' in app
+          app = app.replace(
+            '// Momo 1.10.1 — Smart Money Suite + Clean Navigation + Stability Polish',
+            '// Momo 1.10.2 — Activity Fix + Smart Money Suite + Stability Polish',
+            1
+          )
+          app_path.write_text(app, encoding='utf-8')
+
+          index_path = Path('index.html')
+          html = index_path.read_text(encoding='utf-8')
+          assert '<meta name="momo-app-version" content="1.10.1">' in html
+          html = html.replace(
+            '<meta name="momo-app-version" content="1.10.1">',
+            '<meta name="momo-app-version" content="1.10.2">',
+            1
+          )
+          index_path.write_text(html, encoding='utf-8')
+
+          sw_path = Path('service-worker.js')
+          sw = sw_path.read_text(encoding='utf-8')
+          assert '  "1.10.1";' in sw
+          sw = sw.replace('  "1.10.1";', '  "1.10.2";', 1)
+          sw = sw.replace(
+            '// Momo 1.10.1 — smart money suite + clean navigation + stable PWA updates',
+            '// Momo 1.10.2 — Activity stability fix + clean navigation + stable PWA updates',
+            1
+          )
+          sw_path.write_text(sw, encoding='utf-8')
+          PY
+
+      - name: Regression checks
+        run: |
+          node --check app.js
+          node --check service-worker.js
+          grep -q 'const DB_VERSION = 4;' app.js
+          grep -q 'content="1.10.2"' index.html
+          grep -q '"1.10.2";' service-worker.js
+          ! grep -q 'convertToPHP(' app.js
+          grep -q 'convertCurrency(' app.js
+
+      - name: Commit production fix and remove helper
+        run: |
+          rm .github/workflows/momo-1.10.2-fix.yml
+          git config user.name "Momo Release Bot"
+          git config user.email "momo-release-bot@users.noreply.github.com"
+          git add app.js index.html service-worker.js .github/workflows/momo-1.10.2-fix.yml
+          git commit -m "Release Momo 1.10.2: fix Activity populated-history crash"
+          git push origin HEAD:main
