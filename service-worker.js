@@ -1,10 +1,10 @@
 // ========================================
 // MOMO SERVICE WORKER
-// Momo 1.10.1 — smart money suite + clean navigation + stable PWA updates
+// Momo 1.10.2 — Activity stability fix + clean navigation + stable PWA updates
 // ========================================
 
 const APP_VERSION =
-  "1.10.1";
+  "1.10.2";
 
 
 const CACHE_NAME =
