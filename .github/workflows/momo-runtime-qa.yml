@@ -36,6 +36,7 @@ jobs:
             page.on('pageerror',e=>pageErrors.push(String(e)));
             page.on('console',m=>{if(m.type()==='error')consoleErrors.push(m.text())});
             const active=()=>page.locator('.screen.active').getAttribute('data-screen');
+            const waitForScreen=(target)=>page.waitForFunction(t=>document.querySelector('.screen.active')?.dataset.screen===t,target,{timeout:1500});
             const noOverflow=async n=>{const x=await page.evaluate(()=>document.documentElement.scrollWidth-window.innerWidth);if(x>3)throw Error(`${n} overflow ${x}px`)};
 
             const t0=Date.now(); const r=await page.goto('http://127.0.0.1:8765/',{waitUntil:'domcontentloaded'}); if(!r?.ok())throw Error('startup HTTP failure');
@@ -45,7 +46,7 @@ jobs:
             await page.waitForTimeout(100); const startupMs=Date.now()-t0;
             if((await active())!=='home')throw Error(`startup=${await active()}`);
 
-            await page.locator('.bottom-nav [data-nav="budgets"]').click(); await page.waitForTimeout(180);
+            await page.locator('.bottom-nav [data-nav="budgets"]').click(); await waitForScreen('budgets'); await page.waitForTimeout(120);
             let contextTipVerified=false;
             if(await page.locator('#contextTipModal').isVisible().catch(()=>false)){
               const got=page.locator('#contextTipGotIt'); if(!(await got.isVisible()))throw Error('context tip has no usable Got it button'); await got.click(); contextTipVerified=true;
@@ -55,8 +56,7 @@ jobs:
             const expected=['home','budgets','add','trips','calendar'];
             const names=await page.locator('.bottom-nav .nav-item').evaluateAll(n=>n.map(x=>x.dataset.nav)); if(JSON.stringify(names)!==JSON.stringify(expected))throw Error(`bottom nav ${JSON.stringify(names)}`);
             for(const target of expected){
-              await page.locator(`.bottom-nav [data-nav="${target}"]`).click(); await page.waitForTimeout(70);
-              if((await active())!==target)throw Error(`tab ${target}->${await active()}`);
+              await page.locator(`.bottom-nav [data-nav="${target}"]`).click(); await waitForScreen(target);
               if(target==='add' && !(await page.locator('#expenseForm').isVisible()))throw Error('Add expense form hidden while Add is active');
               await noOverflow(target);
             }
@@ -66,8 +66,8 @@ jobs:
             if((await page.locator('.drawer-quick-grid').count())!==1)throw Error('drawer shortcut duplication');
             const must=['insights','search','future','review','budgets','recurring','savings','payday','payables','activity','receipts','reports','reminders','backup','trips','settlement','converter','dashboard','account','guide'];
             for(const target of must){
-              if((await page.locator('#sideDrawer').getAttribute('aria-hidden'))!=='false'){await page.locator('#menuButton').click();await page.waitForTimeout(50)}
-              const b=page.locator(`[data-drawer-nav="${target}"]`).first(); if(!(await b.count()))throw Error(`missing drawer ${target}`); await b.click();await page.waitForTimeout(70);if((await active())!==target)throw Error(`drawer ${target}->${await active()}`);await noOverflow(target)
+              if((await page.locator('#sideDrawer').getAttribute('aria-hidden'))!=='false'){await page.locator('#menuButton').click();await page.waitForTimeout(60)}
+              const b=page.locator(`[data-drawer-nav="${target}"]`).first(); if(!(await b.count()))throw Error(`missing drawer ${target}`); await b.click(); await waitForScreen(target); await noOverflow(target)
             }
 
             const stress=await page.evaluate(async()=>{
@@ -78,7 +78,7 @@ jobs:
               const t=performance.now();await loadAppData();renderAll();return{ms:performance.now()-t,count:expenses.length};
             });
             if(stress.count<2500)throw Error(`stress count ${stress.count}`); if(stress.ms>2500)throw Error(`stress render ${stress.ms.toFixed(0)}ms`);
-            const heavy={}; for(const target of ['home','activity','reports','insights','search','calendar']){const t=Date.now();await page.evaluate(x=>showScreen(x),target);await page.waitForTimeout(70);heavy[target]=Date.now()-t;if((await active())!==target)throw Error(`stress ${target} failed`);await noOverflow(`stress-${target}`)}
+            const heavy={}; for(const target of ['home','activity','reports','insights','search','calendar']){const t=Date.now();await page.evaluate(x=>showScreen(x),target);await waitForScreen(target);heavy[target]=Date.now()-t;await noOverflow(`stress-${target}`)}
 
             const viewport=await page.locator('meta[name="viewport"]').getAttribute('content'); if(!viewport||(!viewport.includes('maximum-scale=1')&&!viewport.includes('user-scalable=no')))throw Error(`zoom protection ${viewport}`);
             if(pageErrors.length)throw Error(`page errors: ${pageErrors.join(' | ')}`);
