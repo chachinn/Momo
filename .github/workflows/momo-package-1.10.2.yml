@@ -1,0 +1,54 @@
+name: Package clean Momo 1.10.2 release
+
+on:
+  push:
+    paths:
+      - .github/workflows/momo-package-1.10.2.yml
+
+permissions:
+  contents: read
+
+jobs:
+  package:
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    steps:
+      - uses: actions/checkout@v4
+      - name: Verify release source
+        run: |
+          grep -q 'content="1.10.2"' index.html
+          grep -q 'Momo 1.10.2' app.js
+          grep -q '"1.10.2";' service-worker.js
+          grep -q 'const DB_VERSION = 4;' app.js
+          node --check app.js
+          node --check service-worker.js
+          node --check firebase-momo.js
+          node --check scripts/send-reminders.mjs
+      - name: Build full production tree
+        run: |
+          mkdir -p release/.github/workflows release/scripts release/icons
+          cp app.js firebase-momo.js index.html manifest.json service-worker.js styles.css release/
+          cp .github/workflows/momo-reminders.yml release/.github/workflows/
+          cp scripts/send-reminders.mjs release/scripts/
+          cp icons/apple-touch-icon.png icons/icon-192.png icons/icon-512.png release/icons/
+          test "$(find release -type f | wc -l | tr -d ' ')" -eq 12
+          find release -type f | sort
+      - name: Build changed-files tree
+        run: |
+          mkdir -p changed-files
+          cp app.js index.html service-worker.js changed-files/
+          test "$(find changed-files -type f | wc -l | tr -d ' ')" -eq 3
+      - name: Upload full clean release
+        uses: actions/upload-artifact@v4
+        with:
+          name: Momo_v1.10.2_RELEASE
+          path: release/
+          if-no-files-found: error
+          retention-days: 1
+      - name: Upload changed files only
+        uses: actions/upload-artifact@v4
+        with:
+          name: Momo_v1.10.2_CHANGED_FILES
+          path: changed-files/
+          if-no-files-found: error
+          retention-days: 1
