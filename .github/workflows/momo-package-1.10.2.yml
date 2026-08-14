@@ -43,6 +43,7 @@ jobs:
         with:
           name: Momo_v1.10.2_RELEASE
           path: release/
+          include-hidden-files: true
           if-no-files-found: error
           retention-days: 1
       - name: Upload changed files only
