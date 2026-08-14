@@ -278,9 +278,7 @@ async function writeCurrentDeviceToCloud({ automatic = false } = {}) {
 async function uploadCloudBackup() {
   if (!isRealAccountUser() || busy || cloudAutoBackupRunning) return;
   const ok = window.confirm(
-    "Replace your existing cloud copy with the Momo data currently on this device?
-
-This overwrites the previous cloud backup. Receipt photos and custom wallpaper images stay on this device and are not uploaded."
+    "Replace your existing cloud copy with the Momo data currently on this device?\n\nThis overwrites the previous cloud backup. Receipt photos and custom wallpaper images stay on this device and are not uploaded."
   );
   if (!ok) return;
 
