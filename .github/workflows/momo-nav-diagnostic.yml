@@ -1,0 +1,20 @@
+name: Momo drawer navigation diagnostic
+on:
+  push:
+    paths:
+      - .github/workflows/momo-nav-diagnostic.yml
+permissions:
+  contents: read
+jobs:
+  trace:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - name: Locate navigation code
+        run: |
+          echo '--- showScreen ---'
+          grep -n -C 8 'function showScreen\|showScreen =' app.js | head -n 120 || true
+          echo '--- drawer nav ---'
+          grep -n -C 12 'data-drawer-nav\|drawerNav\|dataset.drawerNav' app.js | head -n 240 || true
+          echo '--- data-nav handler ---'
+          grep -n -C 8 'dataset.nav\|\[data-nav\]' app.js | head -n 180 || true
