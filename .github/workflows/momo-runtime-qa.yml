@@ -1,4 +1,4 @@
-name: Momo 1.10.1 mobile runtime QA
+name: Momo 1.10.2 mobile runtime QA
 
 on:
   push:
@@ -14,6 +14,13 @@ jobs:
     timeout-minutes: 15
     steps:
       - uses: actions/checkout@v4
+      - name: Verify fixed production build
+        run: |
+          grep -q 'content="1.10.2"' index.html
+          grep -q 'Momo 1.10.2' app.js
+          grep -q '"1.10.2";' service-worker.js
+          grep -q 'const DB_VERSION = 4;' app.js
+          ! grep -q 'convertToPHP(' app.js
       - name: Install browser test runtime
         run: |
           npm init -y >/dev/null 2>&1
@@ -83,7 +90,7 @@ jobs:
             const viewport=await page.locator('meta[name="viewport"]').getAttribute('content'); if(!viewport||(!viewport.includes('maximum-scale=1')&&!viewport.includes('user-scalable=no')))throw Error(`zoom protection ${viewport}`);
             if(pageErrors.length)throw Error(`page errors: ${pageErrors.join(' | ')}`);
             const meaningful=consoleErrors.filter(x=>!/firebase|ERR_FAILED|net::|favicon/i.test(x)); if(meaningful.length)throw Error(`console errors: ${meaningful.join(' | ')}`);
-            const report={result:'PASS',startupMs,contextTipVerified,stressRecords:stress.count,stressLoadRenderMs:Number(stress.ms.toFixed(1)),heavyScreenTimesMs:heavy,drawerTargetsTested:must.length,pageErrors,ignoredNetworkErrors:consoleErrors.filter(x=>/firebase|ERR_FAILED|net::|favicon/i.test(x))};
+            const report={result:'PASS',version:'1.10.2',startupMs,contextTipVerified,stressRecords:stress.count,stressLoadRenderMs:Number(stress.ms.toFixed(1)),heavyScreenTimesMs:heavy,drawerTargetsTested:must.length,pageErrors,ignoredNetworkErrors:consoleErrors.filter(x=>/firebase|ERR_FAILED|net::|favicon/i.test(x))};
             fs.writeFileSync('runtime-qa-report.json',JSON.stringify(report,null,2));console.log(JSON.stringify(report,null,2));await browser.close();
           })().catch(e=>{console.error(e);process.exit(1)});
           JS
@@ -92,7 +99,7 @@ jobs:
         if: always()
         uses: actions/upload-artifact@v4
         with:
-          name: momo-runtime-qa-report
+          name: momo-runtime-qa-report-1.10.2
           path: runtime-qa-report.json
           if-no-files-found: warn
           retention-days: 1
