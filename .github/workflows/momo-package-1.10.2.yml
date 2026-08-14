@@ -31,7 +31,7 @@ jobs:
           cp .github/workflows/momo-reminders.yml release/.github/workflows/
           cp scripts/send-reminders.mjs release/scripts/
           cp icons/apple-touch-icon.png icons/icon-192.png icons/icon-512.png release/icons/
-          test "$(find release -type f | wc -l | tr -d ' ')" -eq 12
+          test "$(find release -type f | wc -l | tr -d ' ')" -eq 11
           find release -type f | sort
       - name: Build changed-files tree
         run: |
