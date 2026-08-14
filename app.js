@@ -1,6 +1,6 @@
 // ========================================
 // MOMO
-// Momo 1.10.1 — Smart Money Suite + Clean Navigation + Stability Polish
+// Momo 1.10.2 — Activity Fix + Smart Money Suite + Stability Polish
 // CLEAN FOUNDATION + FUNCTIONAL TRIPS
 // ========================================
 
@@ -17150,9 +17150,10 @@ function updateActivityFilteredSummary(
           expense
         ) =>
           sum +
-          convertToPHP(
+          convertCurrency(
             expense.amount,
-            expense.currency
+            expense.currency,
+            "PHP"
           ),
         0
       );
