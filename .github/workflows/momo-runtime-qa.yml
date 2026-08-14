@@ -31,7 +31,7 @@ jobs:
 
       - name: Run mobile startup navigation and large-history QA
         run: |
-          cat > /tmp/momo-runtime-qa.cjs <<'JS'
+          cat > momo-runtime-qa.cjs <<'JS'
           const { chromium } = require('playwright');
           const fs = require('fs');
 
@@ -56,7 +56,6 @@ jobs:
             await page.waitForTimeout(1800);
             const startupMs=Date.now()-start;
 
-            // Fresh-install path may show the welcome tour; verify it is usable and dismiss it.
             const tour = page.locator('#welcomeTour');
             if (await tour.count() && await tour.isVisible().catch(()=>false)) {
               const skip = page.locator('#skipWelcomeTour');
@@ -79,13 +78,11 @@ jobs:
               if (overflow > 3) throw new Error(`${target} has horizontal overflow of ${overflow}px`);
             }
 
-            // Add is intentionally a normal app screen.
             await page.locator('.bottom-nav [data-nav="add"]').click();
             await page.waitForTimeout(80);
             if ((await activeScreen()) !== 'add') throw new Error(`Add opened ${await activeScreen()}`);
             if (!(await page.locator('#expenseForm').isVisible())) throw new Error('Expense form is not visible');
 
-            // Hamburger: one shortcut grid and every current section opens.
             await page.locator('#menuButton').click();
             await page.waitForTimeout(80);
             if (!(await page.locator('#sideDrawer').getAttribute('aria-hidden') === 'false')) throw new Error('Drawer did not open');
@@ -94,8 +91,11 @@ jobs:
             const drawerTargets = await page.locator('[data-drawer-nav]').evaluateAll(nodes => [...new Set(nodes.map(n=>n.getAttribute('data-drawer-nav')))]);
             const mustOpen = ['insights','search','future','review','budgets','recurring','savings','payday','payables','activity','receipts','reports','reminders','backup','trips','settlement','converter','dashboard','account','guide'];
             for (const target of mustOpen) {
-              await page.locator('#menuButton').click().catch(()=>{});
-              await page.waitForTimeout(30);
+              const drawerOpen = await page.locator('#sideDrawer').getAttribute('aria-hidden') === 'false';
+              if (!drawerOpen) {
+                await page.locator('#menuButton').click();
+                await page.waitForTimeout(40);
+              }
               const button = page.locator(`[data-drawer-nav="${target}"]`).first();
               if (!(await button.count())) throw new Error(`Drawer target ${target} missing`);
               await button.click();
@@ -103,10 +103,9 @@ jobs:
               if ((await activeScreen()) !== target) throw new Error(`Drawer ${target} opened ${await activeScreen()}`);
             }
 
-            // Populate a realistically large local history directly into IndexedDB.
             await page.goto('http://127.0.0.1:8765/', {waitUntil:'domcontentloaded'});
             await page.waitForTimeout(800);
-            if (await tour.count() && await tour.isVisible().catch(()=>false)) await page.locator('#skipWelcomeTour').click();
+            if (await page.locator('#welcomeTour').isVisible().catch(()=>false)) await page.locator('#skipWelcomeTour').click();
 
             const largeHistory = await page.evaluate(async () => {
               const openDB = () => new Promise((resolve,reject) => {
@@ -141,7 +140,6 @@ jobs:
 
             if (largeHistory.ms > 2500) throw new Error(`2500-record load+render too slow: ${largeHistory.ms.toFixed(0)}ms`);
 
-            // Exercise the heaviest user-facing screens after the large load.
             const heavyTimes={};
             for (const target of ['home','activity','reports','insights','search','calendar']) {
               const t=Date.now();
@@ -175,7 +173,7 @@ jobs:
             await browser.close();
           })().catch(err => { console.error(err); process.exit(1); });
           JS
-          node /tmp/momo-runtime-qa.cjs
+          node momo-runtime-qa.cjs
 
       - name: Upload runtime QA report
         if: always()
