@@ -45,7 +45,6 @@ jobs:
             await page.waitForTimeout(100); const startupMs=Date.now()-t0;
             if((await active())!=='home')throw Error(`startup=${await active()}`);
 
-            // Verify one real first-use context tip, then suppress later tutorial tips so they do not mask navigation QA.
             await page.locator('.bottom-nav [data-nav="budgets"]').click(); await page.waitForTimeout(180);
             let contextTipVerified=false;
             if(await page.locator('#contextTipModal').isVisible().catch(()=>false)){
@@ -55,8 +54,12 @@ jobs:
 
             const expected=['home','budgets','add','trips','calendar'];
             const names=await page.locator('.bottom-nav .nav-item').evaluateAll(n=>n.map(x=>x.dataset.nav)); if(JSON.stringify(names)!==JSON.stringify(expected))throw Error(`bottom nav ${JSON.stringify(names)}`);
-            for(const target of expected){await page.locator(`.bottom-nav [data-nav="${target}"]`).click();await page.waitForTimeout(70);if((await active())!==target)throw Error(`tab ${target}->${await active()}`);await noOverflow(target)}
-            if(!(await page.locator('#expenseForm').isVisible()))throw Error('Add expense form hidden');
+            for(const target of expected){
+              await page.locator(`.bottom-nav [data-nav="${target}"]`).click(); await page.waitForTimeout(70);
+              if((await active())!==target)throw Error(`tab ${target}->${await active()}`);
+              if(target==='add' && !(await page.locator('#expenseForm').isVisible()))throw Error('Add expense form hidden while Add is active');
+              await noOverflow(target);
+            }
 
             await page.locator('#menuButton').click(); await page.waitForTimeout(80);
             if((await page.locator('#sideDrawer').getAttribute('aria-hidden'))!=='false')throw Error('drawer failed to open');
@@ -67,7 +70,6 @@ jobs:
               const b=page.locator(`[data-drawer-nav="${target}"]`).first(); if(!(await b.count()))throw Error(`missing drawer ${target}`); await b.click();await page.waitForTimeout(70);if((await active())!==target)throw Error(`drawer ${target}->${await active()}`);await noOverflow(target)
             }
 
-            // Stress local-first data model with 2,500 expenses in IndexedDB and render the app.
             const stress=await page.evaluate(async()=>{
               const db=await new Promise((ok,no)=>{const q=indexedDB.open('momo_database',4);q.onsuccess=()=>ok(q.result);q.onerror=()=>no(q.error)});
               const tx=db.transaction('expenses','readwrite'),s=tx.objectStore('expenses'),y=new Date().getFullYear(),stamp=new Date().toISOString(),cats=['Bills','Food & Drinks','Shopping','Transportation','Other'];
