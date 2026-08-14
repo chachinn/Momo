@@ -1,10 +1,10 @@
 // ========================================
 // MOMO SERVICE WORKER
-// Momo 1.10.2 — Activity stability fix + clean navigation + stable PWA updates
+// Momo 1.10.3 — daily cloud auto backup + stable PWA updates
 // ========================================
 
 const APP_VERSION =
-  "1.10.2";
+  "1.10.3";
 
 
 const CACHE_NAME =
