@@ -1,0 +1,166 @@
+name: Momo Smart Money runtime QA
+
+on:
+  push:
+    branches:
+      - agent/momo-smart-money-v1
+    paths:
+      - .github/workflows/momo-smart-money-runtime-qa.yml
+
+permissions:
+  contents: write
+
+jobs:
+  harden-and-test:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: agent/momo-smart-money-v1
+          fetch-depth: 0
+
+      - name: Decouple Smart Money from Firebase and patch real field names
+        shell: python
+        run: |
+          from pathlib import Path
+          import re
+
+          firebase = Path('firebase-momo.js')
+          core = Path('firebase-momo-core.js')
+          smart = Path('smart-money.js')
+          index = Path('index.html')
+          sw = Path('service-worker.js')
+
+          # Smart Money is local-first and must not depend on Firebase loading.
+          if core.exists():
+              firebase.write_text(core.read_text(encoding='utf-8'), encoding='utf-8')
+              core.unlink()
+
+          smart_text = smart.read_text(encoding='utf-8')
+          smart_text = smart_text.replace('record?.nextDate ?? record?.dueDate', 'record?.nextDate ?? record?.nextDueDate ?? record?.dueDate')
+          smart_text = smart_text.replace('input[id*="merchant" i],input[name*="merchant" i],', 'input#expenseTitle,input[id*="merchant" i],input[name*="merchant" i],')
+          smart.write_text(smart_text, encoding='utf-8')
+
+          index_text = index.read_text(encoding='utf-8')
+          if 'src="smart-money.js"' not in index_text:
+              index_text = index_text.replace('</body>', '  <script type="module" src="smart-money.js"></script>\n</body>')
+          index.write_text(index_text, encoding='utf-8')
+
+          sw_text = sw.read_text(encoding='utf-8')
+          sw_text = sw_text.replace('  "./firebase-momo-core.js",\n', '')
+          sw_text = re.sub(r'\n\s*url\.pathname\.endsWith\(\n\s*"/firebase-momo-core\.js"\n\s*\) \|\|', '', sw_text)
+          sw.write_text(sw_text, encoding='utf-8')
+
+      - name: Static release gates
+        run: |
+          node --check app.js
+          node --check firebase-momo.js
+          node --check smart-money.js
+          node --check service-worker.js
+          node --check scripts/send-reminders.mjs
+          test ! -e firebase-momo-core.js
+          grep -q 'src="smart-money.js"' index.html
+          grep -q '"./smart-money.js"' service-worker.js
+          grep -q '"./smart-money.css"' service-worker.js
+          grep -q 'nextDueDate' smart-money.js
+          grep -q 'input#expenseTitle' smart-money.js
+          grep -q 'const DB_VERSION = 4;' app.js
+          grep -q 'momo-notifications' firebase-momo.js
+          grep -q 'CLOUD_AUTO_BACKUP_HOUR = 8' firebase-momo.js
+
+      - name: Install browser QA dependency
+        run: |
+          npm --silent --no-save install playwright@1.55.0
+          npx playwright install chromium
+
+      - name: Mobile populated-data runtime QA
+        run: |
+          python3 -m http.server 4173 >/tmp/momo-http.log 2>&1 &
+          cat >/tmp/momo-smart-qa.mjs <<'EOF'
+          import { chromium } from 'playwright';
+          import assert from 'node:assert/strict';
+
+          const browser = await chromium.launch({ headless: true });
+          const context = await browser.newContext({ viewport: { width: 390, height: 844 }, isMobile: true });
+          const page = await context.newPage();
+          const pageErrors = [];
+          page.on('pageerror', (error) => pageErrors.push(String(error)));
+
+          await page.goto('http://127.0.0.1:4173/index.html', { waitUntil: 'domcontentloaded' });
+          await page.waitForSelector('[data-screen="home"]', { state: 'visible' });
+          await page.waitForSelector('#momoSmartMoneySection', { timeout: 15000 });
+          await page.waitForFunction(() => Boolean(window.MomoSmartMoney), null, { timeout: 15000 });
+
+          const overflow = await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);
+          assert.ok(overflow <= 1, `horizontal overflow: ${overflow}px`);
+
+          await page.evaluate(async () => {
+            const db = await new Promise((resolve, reject) => {
+              const request = indexedDB.open('momo_database');
+              request.onsuccess = () => resolve(request.result);
+              request.onerror = () => reject(request.error);
+            });
+            const tx = db.transaction('expenses', 'readwrite');
+            const store = tx.objectStore('expenses');
+            const today = new Date();
+            for (let i = 0; i < 2500; i += 1) {
+              const d = new Date(today);
+              d.setDate(today.getDate() - (i % 115) - 1);
+              store.put({
+                id: `smart-qa-${i}`,
+                type: 'expense',
+                title: i % 17 === 0 ? 'Watsons' : `Merchant ${i % 80}`,
+                amount: 40 + (i % 900),
+                currency: 'PHP',
+                category: i % 17 === 0 ? 'Personal Care' : ['Food','Transport','Shopping','Bills'][i % 4],
+                date: d.toISOString().slice(0,10),
+                createdAt: d.toISOString(),
+                updatedAt: d.toISOString()
+              });
+            }
+            const stamp = today.toISOString().slice(0,10);
+            store.put({ id:'smart-dup-a', type:'expense', title:'Duplicate Cafe', amount:499, currency:'PHP', category:'Food', date:stamp, createdAt:new Date().toISOString() });
+            store.put({ id:'smart-dup-b', type:'expense', title:'Duplicate Cafe', amount:499, currency:'PHP', category:'Food', date:stamp, createdAt:new Date().toISOString() });
+            await new Promise((resolve, reject) => { tx.oncomplete = resolve; tx.onerror = () => reject(tx.error); tx.onabort = () => reject(tx.error); });
+            db.close();
+          });
+
+          const elapsed = await page.evaluate(async () => {
+            const start = performance.now();
+            await window.MomoSmartMoney.refresh();
+            return performance.now() - start;
+          });
+          assert.ok(elapsed < 2000, `Smart Money refresh too slow: ${elapsed.toFixed(1)}ms`);
+
+          const smartText = await page.locator('#momoSmartMoneySection').innerText();
+          assert.match(smartText, /MOMO KNOWS/i);
+          assert.match(smartText, /Possible duplicate expense/i);
+
+          const addButton = page.locator('[data-nav="add"]').first();
+          if (await addButton.count()) {
+            await addButton.click();
+            await page.waitForTimeout(150);
+          }
+          const title = page.locator('#expenseTitle');
+          await title.fill('Watsons');
+          await title.dispatchEvent('input');
+          await page.waitForTimeout(100);
+          const hint = page.locator('.momo-smart-inline-hint');
+          assert.ok(await hint.count(), 'learned merchant/category hint did not appear');
+          assert.match(await hint.first().innerText(), /Personal Care/i);
+
+          assert.equal(pageErrors.length, 0, `page errors: ${pageErrors.join(' | ')}`);
+          console.log(`PASS - mobile runtime, 2502 populated expenses, Smart Money refresh ${elapsed.toFixed(1)}ms, no overflow/page errors`);
+          await browser.close();
+          EOF
+          node /tmp/momo-smart-qa.mjs
+
+      - name: Clean temporary QA workflow and publish hardened branch
+        run: |
+          rm .github/workflows/momo-smart-money-runtime-qa.yml
+          git config user.name "Momo Release Bot"
+          git config user.email "momo-release-bot@users.noreply.github.com"
+          git add firebase-momo.js smart-money.js index.html service-worker.js firebase-momo-core.js .github/workflows/momo-smart-money-runtime-qa.yml
+          git diff --cached --check
+          git commit -m "Harden Momo Version 1 Smart Money runtime"
+          git push origin HEAD:agent/momo-smart-money-v1
