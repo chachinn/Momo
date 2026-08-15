@@ -102,7 +102,7 @@ jobs:
             tx.objectStore('settings').put({key:'savings_goals',value:[{id:'jar',name:'Japan Jar',targetAmount:30000,currency:'PHP',targetDate:target.toISOString().slice(0,10),jarMode:true,monthlyPlan:5000,protectedJar:true,contributions:[{id:'x',amount:1500,date:`${key}-05`}]}]});
             await new Promise((res,rej)=>{tx.oncomplete=res;tx.onerror=()=>rej(tx.error)}); db.close();
           });
-          const t=performance.now(); await window.MomoSmartMoney.refresh(); const ms=performance.now()-t;
+          const ms = await page.evaluate(async()=>{const t=performance.now();await window.MomoSmartMoney.refresh();return performance.now()-t;});
           const r=await page.evaluate(()=>window.MomoSmartMoney.buildInsights());
           assert.ok(r.insights.length>=3);
           assert.ok(r.safe.protectedAmount>=3500);
@@ -111,8 +111,10 @@ jobs:
           assert.ok(r.insights.some(x=>/highest-interest/.test(x.body)&&/Card A/.test(x.body)));
           assert.ok(r.insights.some(x=>/Possible duplicate/.test(x.title)));
           assert.ok(r.insights.some(x=>/Headphones/.test(x.title)));
-          assert.ok(document.getElementById('momoSafeToday')?.textContent?.trim()!=='—');
-          assert.ok(document.documentElement.scrollWidth-document.documentElement.clientWidth<=1);
+          const ui=await page.evaluate(()=>({safe:document.getElementById('momoSafeToday')?.textContent?.trim(),overflow:document.documentElement.scrollWidth-document.documentElement.clientWidth,body:document.body.innerText}));
+          assert.ok(ui.safe&&ui.safe!=='—');
+          assert.ok(ui.overflow<=1);
+          assert.doesNotMatch(ui.body,/1\.11\.0(?:-smart-money)?/i);
           assert.ok(ms<2000);
           const tour=page.locator('#welcomeTour');
           if(await tour.count()&&await tour.isVisible()){for(let i=0;i<10&&await tour.isVisible();i++){const bs=tour.locator('button:visible');const pref=bs.filter({hasText:/skip|next|done|finish|start|got it|close/i});await (await pref.count()?pref.last():bs.last()).click();await page.waitForTimeout(50)}}
