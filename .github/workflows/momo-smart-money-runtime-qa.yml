@@ -114,6 +114,20 @@ jobs:
           assert.ok(analysis?.baseline?.sampleCount >= 2000, 'populated baseline did not load');
           assert.ok(Array.isArray(analysis?.duplicates) && analysis.duplicates.length > 0, 'duplicate detector did not identify populated duplicate');
           assert.ok(Array.isArray(analysis?.recurringCandidates), 'recurring discovery did not return a result set');
+
+          const welcomeTour = page.locator('#welcomeTour');
+          if (await welcomeTour.count() && await welcomeTour.isVisible()) {
+            for (let step = 0; step < 10 && await welcomeTour.isVisible(); step += 1) {
+              const buttons = welcomeTour.locator('button:visible');
+              assert.ok(await buttons.count(), 'Welcome Tour blocks navigation without a visible action');
+              const preferred = buttons.filter({ hasText: /skip|close|done|finish|got it|start|next/i });
+              const action = await preferred.count() ? preferred.last() : buttons.last();
+              await action.click({ timeout: 5000 });
+              await page.waitForTimeout(80);
+            }
+            assert.ok(!(await welcomeTour.isVisible()), 'Welcome Tour could not be completed through visible controls');
+          }
+
           const addCandidates = page.locator('[data-nav="add"]');
           let addButton = null;
           for (let i = 0; i < await addCandidates.count(); i += 1) {
