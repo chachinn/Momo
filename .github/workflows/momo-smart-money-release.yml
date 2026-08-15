@@ -1,0 +1,67 @@
+name: Momo Smart Money Release
+
+on:
+  push:
+    branches:
+      - agent/momo-smart-money-v1-11
+    paths:
+      - smart-money.js
+      - scripts/momo-smart-money-release.mjs
+      - .github/workflows/momo-smart-money-release.yml
+  workflow_dispatch:
+
+permissions:
+  contents: write
+
+jobs:
+  release:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Check out branch
+        uses: actions/checkout@v4
+        with:
+          ref: agent/momo-smart-money-v1-11
+          fetch-depth: 0
+
+      - name: Apply guarded release patch
+        run: node scripts/momo-smart-money-release.mjs
+
+      - name: JavaScript syntax checks
+        run: |
+          node --check app.js
+          node --check firebase-momo.js
+          node --check service-worker.js
+          node --check smart-money.js
+          node --check scripts/send-reminders.mjs
+
+      - name: Production structure checks
+        run: |
+          test -f index.html
+          test -f styles.css
+          test -f manifest.json
+          test -f icons/icon-192.png
+          test -f icons/icon-512.png
+          test -f icons/apple-touch-icon.png
+          test -f .github/workflows/momo-reminders.yml
+          test -f scripts/send-reminders.mjs
+          test ! -e scripts/momo-smart-money-release.mjs
+          test ! -e .github/workflows/momo-smart-money-release.yml
+          grep -q 'content="1.11.0"' index.html
+          grep -q 'const DB_VERSION = 4;' app.js
+          grep -q 'smart-money.js' index.html
+          grep -q 'smart-money.js' service-worker.js
+
+      - name: Review release diff
+        run: |
+          git status --short
+          git diff --check
+          git diff --stat
+          git diff -- index.html app.js service-worker.js smart-money.js
+
+      - name: Commit finished release branch
+        run: |
+          git config user.name "github-actions[bot]"
+          git config user.email "41898282+github-actions[bot]@users.noreply.github.com"
+          git add -A
+          git commit -m "Release Momo 1.11.0 Smart Money" || exit 0
+          git push origin HEAD:agent/momo-smart-money-v1-11
