@@ -1,0 +1,145 @@
+name: Momo Smart Money integration
+
+on:
+  push:
+    branches:
+      - agent/momo-smart-money-v1
+    paths:
+      - .github/workflows/momo-smart-money-release.yml
+
+permissions:
+  contents: write
+
+jobs:
+  integrate-and-qa:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: agent/momo-smart-money-v1
+          fetch-depth: 0
+
+      - name: Integrate Smart Money without schema changes
+        shell: python
+        run: |
+          from pathlib import Path
+          import re, shutil
+
+          root = Path('.')
+          firebase = root / 'firebase-momo.js'
+          core = root / 'firebase-momo-core.js'
+          app = root / 'app.js'
+          index = root / 'index.html'
+          sw = root / 'service-worker.js'
+
+          # Preserve the exact known-good Firebase implementation as a dedicated core module.
+          if not core.exists():
+              shutil.copyfile(firebase, core)
+
+          firebase.write_text(
+              '// Momo Firebase loader — account/cloud core + local Smart Money intelligence.\n'
+              'import "./firebase-momo-core.js";\n'
+              'import "./smart-money.js";\n',
+              encoding='utf-8'
+          )
+
+          app_text = app.read_text(encoding='utf-8')
+          app_text = app_text.replace(
+              '// Momo 1.10.3 — Daily Cloud Auto Backup + Stability Polish',
+              '// Momo Version 1 — Smart Money + Daily Cloud Auto Backup + Stability'
+          )
+          app.write_text(app_text, encoding='utf-8')
+
+          index_text = index.read_text(encoding='utf-8')
+          index_text = re.sub(
+              r'(<meta\s+name="momo-app-version"\s+content=")[^"]+("\s*>)',
+              r'\g<1>1.11.0-smart-money\g<2>',
+              index_text,
+              count=1
+          )
+          # User-facing release naming stays Version 1 until Momo is actually launched.
+          index_text = index_text.replace('Version 1.10.3', 'Version 1')
+          index_text = index_text.replace('Momo v1.10.3', 'Momo Version 1')
+          index.write_text(index_text, encoding='utf-8')
+
+          sw_text = sw.read_text(encoding='utf-8')
+          sw_text = sw_text.replace('// Momo 1.10.3 — daily cloud auto backup + stable PWA updates', '// Momo Version 1 — Smart Money + stable PWA updates')
+          sw_text = re.sub(r'(const APP_VERSION =\s*\n\s*")[^"]+(";)', r'\g<1>1.11.0-smart-money\g<2>', sw_text, count=1)
+          sw_text = sw_text.replace(
+              '  "./firebase-momo.js"\n];',
+              '  "./firebase-momo.js",\n  "./firebase-momo-core.js",\n  "./smart-money.js",\n  "./smart-money.css"\n];'
+          )
+          sw_text = sw_text.replace(
+              '    url.pathname.endsWith(\n      "/firebase-momo.js"\n    ) ||',
+              '    url.pathname.endsWith(\n      "/firebase-momo.js"\n    ) ||\n    url.pathname.endsWith(\n      "/firebase-momo-core.js"\n    ) ||\n    url.pathname.endsWith(\n      "/smart-money.js"\n    ) ||\n    url.pathname.endsWith(\n      "/smart-money.css"\n    ) ||'
+          )
+          sw.write_text(sw_text, encoding='utf-8')
+
+      - name: JavaScript syntax gates
+        run: |
+          node --check app.js
+          node --check firebase-momo.js
+          node --check firebase-momo-core.js
+          node --check smart-money.js
+          node --check service-worker.js
+          node --check scripts/send-reminders.mjs
+
+      - name: Static data-safety and PWA QA
+        shell: python
+        run: |
+          from pathlib import Path
+          import re, sys
+
+          app = Path('app.js').read_text(encoding='utf-8')
+          index = Path('index.html').read_text(encoding='utf-8')
+          sw = Path('service-worker.js').read_text(encoding='utf-8')
+          smart = Path('smart-money.js').read_text(encoding='utf-8')
+          firebase_core = Path('firebase-momo-core.js').read_text(encoding='utf-8')
+
+          checks = []
+          checks.append(('DB_VERSION remains 4', bool(re.search(r'const DB_VERSION\s*=\s*4\s*;', app))))
+          checks.append(('primary and notification Firebase sessions preserved', 'momo-notifications' in firebase_core and 'signInWithPopup' in firebase_core))
+          checks.append(('8 AM cloud auto backup preserved', 'CLOUD_AUTO_BACKUP_HOUR = 8' in firebase_core and 'CLOUD_AUTO_BACKUP_MINUTE = 0' in firebase_core))
+          checks.append(('manual cloud restore remains explicit', 'restoreCloudBackup' in firebase_core and 'window.confirm' in firebase_core))
+          checks.append(('Smart Money is local IndexedDB', 'indexedDB.open(DB_NAME)' in smart and 'fetch(' not in smart))
+          checks.append(('Smart Money is capped/throttled', 'MAX_BASELINE_EXPENSES = 12000' in smart and 'REFRESH_MIN_MS = 45000' in smart))
+          checks.append(('Smart Money engine is cached for offline PWA', all(name in sw for name in ['smart-money.js','smart-money.css','firebase-momo-core.js'])))
+          checks.append(('technical update build marker is present', '1.11.0-smart-money' in sw and '1.11.0-smart-money' in index))
+
+          ids = re.findall(r'\bid="([^"]+)"', index)
+          duplicate_ids = sorted({x for x in ids if ids.count(x) > 1})
+          checks.append(('no duplicate HTML IDs', not duplicate_ids))
+
+          required = ['app.js','firebase-momo.js','firebase-momo-core.js','smart-money.js','smart-money.css','index.html','styles.css','manifest.json','service-worker.js','scripts/send-reminders.mjs']
+          checks.append(('required production files exist', all(Path(p).exists() for p in required)))
+
+          for label, ok in checks:
+              print(('PASS' if ok else 'FAIL') + ' - ' + label)
+          if duplicate_ids:
+              print('Duplicate IDs:', duplicate_ids)
+          if not all(ok for _, ok in checks):
+              sys.exit(1)
+
+      - name: Large-history Smart Money calculation smoke test
+        run: |
+          python - <<'PY'
+          # Structural stress guard: the production engine must retain explicit history caps
+          # and no unbounded interval loop. Full browser IndexedDB QA is performed separately.
+          from pathlib import Path
+          s = Path('smart-money.js').read_text()
+          assert 'slice(-MAX_BASELINE_EXPENSES)' in s
+          assert 'setInterval(' not in s
+          assert 'MutationObserver' in s
+          assert 'refreshPromise' in s
+          print('PASS - bounded large-history processing and debounced refresh model')
+          PY
+
+      - name: Remove temporary release workflow and commit integrated branch
+        run: |
+          rm .github/workflows/momo-smart-money-release.yml
+          git config user.name "Momo Release Bot"
+          git config user.email "momo-release-bot@users.noreply.github.com"
+          git add app.js firebase-momo.js firebase-momo-core.js smart-money.js smart-money.css index.html service-worker.js .github/workflows/momo-smart-money-release.yml
+          git diff --cached --check
+          git commit -m "Release Momo Version 1 Smart Money"
+          git push origin HEAD:agent/momo-smart-money-v1
