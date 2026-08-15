@@ -27,7 +27,7 @@ function endOfMonth(date) { return new Date(date.getFullYear(), date.getMonth() 
 function daysBetween(a, b) { return Math.round((startOfDay(b) - startOfDay(a)) / 86400000); }
 function daysInMonth(date) { return new Date(date.getFullYear(), date.getMonth() + 1, 0).getDate(); }
 function safeDate(raw) { const d = raw instanceof Date ? raw : new Date(raw || 0); return Number.isNaN(d.getTime()) ? null : d; }
-function dueDate(record) { return safeDate(record?.nextDate ?? record?.dueDate ?? record?.renewalDate ?? record?.date ?? record?.plannedDate ?? record?.targetDate); }
+function dueDate(record) { return safeDate(record?.nextDate ?? record?.nextDueDate ?? record?.dueDate ?? record?.renewalDate ?? record?.date ?? record?.plannedDate ?? record?.targetDate); }
 function isInactive(record) { return record?.active === false || record?.enabled === false || ["cancelled", "canceled", "paid", "done", "completed", "archived"].includes(normalize(record?.status)); }
 
 function openDb() { return new Promise((resolve, reject) => { const req = indexedDB.open(DB_NAME); req.onsuccess = () => resolve(req.result); req.onerror = () => reject(req.error); }); }
@@ -218,7 +218,7 @@ function updateSafeToSpend(analysis) {
   amountEl.textContent = money.format(todaySafe); explanationEl.textContent = `After known bills, protected savings, payable minimums, and this month’s spending, about ${money.format(monthAvailable)} remains flexible across ${remainingDays} day${remainingDays === 1 ? "" : "s"}.`;
 }
 
-function merchantInputCandidates() { return [...document.querySelectorAll('input[id*="merchant" i],input[name*="merchant" i],input[id*="store" i],input[name*="store" i],input[id*="expenseName" i],input[name*="expenseName" i]')]; }
+function merchantInputCandidates() { return [...document.querySelectorAll('input#expenseTitle,input[id*="merchant" i],input[name*="merchant" i],input[id*="store" i],input[name*="store" i],input[id*="expenseName" i],input[name*="expenseName" i]')]; }
 function categoryInputCandidates() { return [...document.querySelectorAll('select[id*="category" i],select[name*="category" i],input[id*="category" i],input[name*="category" i]')]; }
 function attachMerchantLearning() {
   for (const input of merchantInputCandidates()) {

@@ -17,7 +17,6 @@ const CORE_SHELL = [
   "./styles.css",
   "./app.js",
   "./firebase-momo.js",
-  "./firebase-momo-core.js",
   "./smart-money.js",
   "./smart-money.css"
 ];
@@ -185,9 +184,6 @@ function isAppShellRequest(
     ) ||
     url.pathname.endsWith(
       "/firebase-momo.js"
-    ) ||
-    url.pathname.endsWith(
-      "/firebase-momo-core.js"
     ) ||
     url.pathname.endsWith(
       "/smart-money.js"
