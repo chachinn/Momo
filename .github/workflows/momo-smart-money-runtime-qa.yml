@@ -114,9 +114,15 @@ jobs:
           assert.ok(analysis?.baseline?.sampleCount >= 2000, 'populated baseline did not load');
           assert.ok(Array.isArray(analysis?.duplicates) && analysis.duplicates.length > 0, 'duplicate detector did not identify populated duplicate');
           assert.ok(Array.isArray(analysis?.recurringCandidates), 'recurring discovery did not return a result set');
-          const addButton = page.locator('[data-nav="add"]:visible').first();
-          assert.ok(await addButton.count(), 'visible Add navigation control not found');
-          await addButton.click();
+          const addCandidates = page.locator('[data-nav="add"]');
+          let addButton = null;
+          for (let i = 0; i < await addCandidates.count(); i += 1) {
+            const candidate = addCandidates.nth(i);
+            const box = await candidate.boundingBox();
+            if (box && box.width > 0 && box.height > 0 && box.x < 390 && box.x + box.width > 0 && box.y < 844 && box.y + box.height > 0) { addButton = candidate; break; }
+          }
+          assert.ok(addButton, 'on-screen Add navigation control not found');
+          await addButton.click({ timeout: 5000 });
           await page.waitForSelector('[data-screen="add"]', { state: 'visible', timeout: 5000 });
           const title = page.locator('#expenseTitle');
           await title.fill('Watsons');
