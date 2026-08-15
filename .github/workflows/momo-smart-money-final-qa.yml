@@ -1,0 +1,223 @@
+name: Momo Smart Money final depth QA
+
+on:
+  push:
+    branches:
+      - agent/momo-smart-money-v1
+    paths:
+      - .github/workflows/momo-smart-money-final-qa.yml
+
+permissions:
+  contents: write
+
+jobs:
+  final-depth-qa:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+        with:
+          ref: agent/momo-smart-money-v1
+          fetch-depth: 0
+
+      - name: Align Smart Money with production record shapes
+        shell: python
+        run: |
+          from pathlib import Path
+          p = Path('smart-money.js')
+          s = p.read_text(encoding='utf-8')
+
+          old = '''function monthlyBudgetTotal(budgets, now) {
+  let total = 0;
+  for (const budget of budgets) {
+    if (isInactive(budget)) continue;
+    const period = normalize(budget?.period ?? budget?.frequency ?? "month");
+    if (period && !period.includes("month") && !period.includes("monthly")) continue;
+    const rawDate = safeDate(budget?.month ?? budget?.startDate ?? budget?.date);
+    if (rawDate && (rawDate.getFullYear() !== now.getFullYear() || rawDate.getMonth() !== now.getMonth())) continue;
+    total += asNumber(budget?.amount ?? budget?.limit ?? budget?.budget);
+  }
+  return total;
+}'''
+          new = '''function monthlyBudgetTotal(budgets, now) {
+  let total = 0;
+  for (const budget of budgets) {
+    if (isInactive(budget)) continue;
+    const period = normalize(budget?.period ?? budget?.frequency ?? "month");
+    if (period && !period.includes("month") && !period.includes("monthly")) continue;
+    const rawDate = safeDate(budget?.month ?? budget?.startDate ?? budget?.date);
+    if (rawDate && (rawDate.getFullYear() !== now.getFullYear() || rawDate.getMonth() !== now.getMonth())) continue;
+    total += toPhp({ amount: budget?.amount ?? budget?.limit ?? budget?.budget, currency: budget?.currency || "PHP" });
+  }
+  return total;
+}'''
+          assert old in s
+          s = s.replace(old, new)
+
+          old = '''function savingsInfo(settings, now) {
+  const raw = findSetting(settings, ["savings_goals", "peach_jar", "savings"]); const goals = flattenRecords(raw); let protectedAmount = 0; let bestPacing = null;
+  for (const goal of goals) {
+    if (isInactive(goal)) continue;
+    const current = asNumber(goal?.currentAmount ?? goal?.saved ?? goal?.current ?? goal?.balance); const target = asNumber(goal?.targetAmount ?? goal?.target ?? goal?.goalAmount); const monthly = asNumber(goal?.monthlyContribution ?? goal?.plannedContribution ?? goal?.contribution);
+    if (goal?.protected === true || goal?.protect === true) protectedAmount += monthly;
+    const targetDate = safeDate(goal?.targetDate ?? goal?.dueDate); if (!target || !targetDate || targetDate <= now) continue;
+    const monthsLeft = Math.max(1, (targetDate.getFullYear() - now.getFullYear()) * 12 + targetDate.getMonth() - now.getMonth() + 1); const neededMonthly = Math.max(0, target - current) / monthsLeft; const delta = monthly - neededMonthly;
+    const candidate = { name: text(goal?.name ?? goal?.title) || "Savings goal", current, target, monthly, neededMonthly, delta, targetDate };
+    if (!bestPacing || Math.abs(candidate.delta) > Math.abs(bestPacing.delta)) bestPacing = candidate;
+  }
+  return { goals, protectedAmount, pacing: bestPacing };
+}'''
+          new = '''function savingsInfo(settings, now) {
+  const raw = findSetting(settings, ["savings_goals", "peach_jar", "savings"]); const goals = flattenRecords(raw); let protectedAmount = 0; let bestPacing = null;
+  const monthKey = `${now.getFullYear()}-${String(now.getMonth() + 1).padStart(2, "0")}`;
+  for (const goal of goals) {
+    if (isInactive(goal)) continue;
+    const contributions = Array.isArray(goal?.contributions) ? goal.contributions : [];
+    const contributed = contributions.reduce((sum, item) => sum + asNumber(item?.amount), 0);
+    const contributedThisMonth = contributions.filter((item) => text(item?.date).startsWith(monthKey)).reduce((sum, item) => sum + asNumber(item?.amount), 0);
+    const current = asNumber(goal?.currentAmount ?? goal?.saved ?? goal?.current ?? goal?.balance ?? contributed);
+    const target = asNumber(goal?.targetAmount ?? goal?.target ?? goal?.goalAmount);
+    const monthly = asNumber(goal?.monthlyPlan ?? goal?.monthlyContribution ?? goal?.plannedContribution ?? goal?.contribution);
+    const protectedJar = goal?.protectedJar === true || goal?.protected === true || goal?.protect === true;
+    if (protectedJar && monthly > 0) protectedAmount += toPhp({ amount: Math.max(0, monthly - contributedThisMonth), currency: goal?.currency || "PHP" });
+    const targetDate = safeDate(goal?.targetDate ?? goal?.dueDate); if (!target || !targetDate || targetDate <= now) continue;
+    const monthsLeft = Math.max(1, (targetDate.getFullYear() - now.getFullYear()) * 12 + targetDate.getMonth() - now.getMonth() + 1);
+    const neededMonthly = Math.max(0, target - current) / monthsLeft; const delta = monthly - neededMonthly;
+    const candidate = { name: text(goal?.name ?? goal?.title) || "Savings goal", current, target, monthly, neededMonthly, delta, targetDate, protectedJar };
+    if (!bestPacing || Math.abs(candidate.delta) > Math.abs(bestPacing.delta)) bestPacing = candidate;
+  }
+  return { goals, protectedAmount, pacing: bestPacing };
+}'''
+          assert old in s
+          s = s.replace(old, new)
+
+          old = '''function payableInfo(settings, cards) {
+  const raw = findSetting(settings, ["payables", "payable", "loans", "debts"]); const records = [...flattenRecords(raw), ...cards].filter((x) => !isInactive(x));
+  const normalized = records.map((p) => ({ name: text(p?.name ?? p?.title ?? p?.issuer ?? p?.cardName) || "Payable", balance: asNumber(p?.remainingBalance ?? p?.balance ?? p?.remaining ?? p?.amount), apr: asNumber(p?.apr ?? p?.interestRate ?? p?.rate), minimum: asNumber(p?.minimumPayment ?? p?.minPayment ?? p?.monthlyPayment) })).filter((p) => p.balance > 0);
+  const total = normalized.reduce((sum, p) => sum + p.balance, 0); const monthlyMinimum = normalized.reduce((sum, p) => sum + p.minimum, 0); const snowball = [...normalized].sort((a, b) => a.balance - b.balance)[0] || null; const avalanche = [...normalized].sort((a, b) => b.apr - a.apr)[0] || null;
+  return { records: normalized, total, monthlyMinimum, snowball, avalanche };
+}'''
+          new = '''function payableInfo(settings, cards) {
+  const raw = findSetting(settings, ["payables", "payable", "loans", "debts"]); const records = [...flattenRecords(raw), ...cards].filter((x) => !isInactive(x));
+  const normalized = records.map((p) => {
+    const currency = p?.currency || "PHP";
+    const balanceRaw = asNumber(p?.remainingBalance ?? p?.balance ?? p?.remaining ?? p?.amount);
+    const minimumRaw = asNumber(p?.regularPayment ?? p?.minimumDue ?? p?.minimumPayment ?? p?.minPayment ?? p?.monthlyPayment);
+    return { name: text(p?.name ?? p?.title ?? p?.issuer ?? p?.cardName) || "Payable", balance: toPhp({ amount: balanceRaw, currency }), apr: asNumber(p?.interestAPR ?? p?.apr ?? p?.interestRate ?? p?.rate), minimum: toPhp({ amount: minimumRaw, currency }), currency };
+  }).filter((p) => p.balance > 0);
+  const total = normalized.reduce((sum, p) => sum + p.balance, 0); const monthlyMinimum = normalized.reduce((sum, p) => sum + p.minimum, 0); const snowball = [...normalized].sort((a, b) => a.balance - b.balance)[0] || null; const avalanche = [...normalized].sort((a, b) => b.apr - a.apr)[0] || null;
+  return { records: normalized, total, monthlyMinimum, snowball, avalanche };
+}'''
+          assert old in s
+          s = s.replace(old, new)
+          p.write_text(s, encoding='utf-8')
+
+      - name: Static safety gates
+        run: |
+          node --check app.js
+          node --check firebase-momo.js
+          node --check smart-money.js
+          node --check service-worker.js
+          node --check scripts/send-reminders.mjs
+          grep -q 'const DB_VERSION = 4;' app.js
+          grep -q 'monthlyPlan' smart-money.js
+          grep -q 'protectedJar' smart-money.js
+          grep -q 'interestAPR' smart-money.js
+          grep -q 'regularPayment' smart-money.js
+          grep -q 'minimumDue' smart-money.js
+          grep -q 'contributions' smart-money.js
+          grep -q 'momo-notifications' firebase-momo.js
+          grep -q 'CLOUD_AUTO_BACKUP_HOUR = 8' firebase-momo.js
+          grep -q 'src="smart-money.js"' index.html
+          test ! -e firebase-momo-core.js
+
+      - name: Install Playwright
+        run: |
+          npm --silent --no-save install playwright@1.55.0
+          npx playwright install chromium
+
+      - name: Deep Smart Money + navigation QA
+        run: |
+          python3 -m http.server 4173 >/tmp/momo-http.log 2>&1 &
+          cat >.momo-final-qa.mjs <<'EOF'
+          import { chromium } from 'playwright';
+          import assert from 'node:assert/strict';
+          const browser = await chromium.launch({ headless:true });
+          const context = await browser.newContext({ viewport:{width:390,height:844}, isMobile:true });
+          const page = await context.newPage();
+          const errors=[]; page.on('pageerror',e=>errors.push(String(e)));
+          await page.goto('http://127.0.0.1:4173/index.html',{waitUntil:'domcontentloaded'});
+          await page.waitForFunction(()=>Boolean(window.MomoSmartMoney),null,{timeout:15000});
+
+          await page.evaluate(async()=>{
+            const db=await new Promise((resolve,reject)=>{const r=indexedDB.open('momo_database');r.onsuccess=()=>resolve(r.result);r.onerror=()=>reject(r.error);});
+            const today=new Date(); const month=`${today.getFullYear()}-${String(today.getMonth()+1).padStart(2,'0')}`;
+            const future=(days)=>{const d=new Date(today);d.setDate(d.getDate()+days);return d.toISOString().slice(0,10)};
+            const target=new Date(today);target.setMonth(target.getMonth()+6);
+            const stores=['expenses','budgets','recurring','planned','cards','settings'];
+            for(const name of stores){const tx=db.transaction(name,'readwrite');tx.objectStore(name).clear();await new Promise((res,rej)=>{tx.oncomplete=res;tx.onerror=()=>rej(tx.error)});}
+            const tx=db.transaction(stores,'readwrite');
+            const exp=tx.objectStore('expenses');
+            for(let i=0;i<2500;i++){const d=new Date(today);d.setDate(d.getDate()-(i%115)-1);exp.put({id:`deep-${i}`,type:'expense',title:i%15===0?'Watsons':`Merchant ${i%90}`,amount:50+(i%500),currency:'PHP',category:i%15===0?'Personal Care':'Food',date:d.toISOString().slice(0,10),createdAt:d.toISOString()});}
+            exp.put({id:'dup1',type:'expense',title:'Cafe Momo',amount:350,currency:'PHP',category:'Food',date:today.toISOString().slice(0,10),createdAt:today.toISOString()});
+            exp.put({id:'dup2',type:'expense',title:'Cafe Momo',amount:350,currency:'PHP',category:'Food',date:today.toISOString().slice(0,10),createdAt:today.toISOString()});
+            tx.objectStore('budgets').put({id:'budget1',name:'Monthly',amount:50000,currency:'PHP',period:'monthly'});
+            tx.objectStore('recurring').put({id:'rec1',title:'Internet',amount:1899,currency:'PHP',nextDueDate:future(3),frequency:'monthly'});
+            tx.objectStore('planned').put({id:'future1',title:'Headphones',amount:5000,currency:'PHP',targetDate:future(8),status:'planned'});
+            tx.objectStore('cards').put({id:'card1',name:'Card A',type:'credit-card',balance:12000,currency:'PHP',regularPayment:1500,minimumDue:900,interestAPR:24});
+            tx.objectStore('cards').put({id:'loan1',name:'Loan B',type:'loan',balance:6000,currency:'PHP',regularPayment:1200,interestAPR:8});
+            tx.objectStore('settings').put({key:'monthly_income',value:{[month]:60000}});
+            tx.objectStore('settings').put({key:'savings_goals',value:[{id:'jar1',name:'Japan Jar',targetAmount:30000,currency:'PHP',targetDate:target.toISOString().slice(0,10),jarMode:true,monthlyPlan:5000,protectedJar:true,contributions:[{id:'c1',amount:1500,date:`${month}-05`}]}]});
+            await new Promise((res,rej)=>{tx.oncomplete=res;tx.onerror=()=>rej(tx.error);tx.onabort=()=>rej(tx.error)}); db.close();
+          });
+
+          const elapsed=await page.evaluate(async()=>{const t=performance.now();await window.MomoSmartMoney.refresh();return performance.now()-t});
+          assert.ok(elapsed<2000,`refresh ${elapsed}ms`);
+          const a=await page.evaluate(()=>window.MomoSmartMoney.getAnalysis());
+          assert.equal(a.forecast.income,60000);
+          assert.ok(a.forecast.base===60000 && Number.isFinite(a.forecast.projectedBuffer));
+          assert.ok(a.upcoming.some(x=>x.title==='Internet'));
+          assert.ok(a.futureBuy?.title==='Headphones' && a.futureBuy.amount===5000);
+          assert.ok(a.savings.pacing?.name==='Japan Jar');
+          assert.ok(Math.abs(a.savings.protectedAmount-3500)<0.01,`protected ${a.savings.protectedAmount}`);
+          assert.equal(a.payables.records.length,2);
+          assert.equal(a.payables.snowball.name,'Loan B');
+          assert.equal(a.payables.avalanche.name,'Card A');
+          assert.ok(Math.abs(a.payables.monthlyMinimum-2700)<0.01,`minimum ${a.payables.monthlyMinimum}`);
+          assert.ok(a.duplicates.length>0);
+          assert.ok(Array.isArray(a.recurringCandidates));
+          assert.match(await page.locator('#momoSmartMoneySection').innerText(),/MOMO KNOWS/i);
+          assert.ok((await page.evaluate(()=>document.documentElement.scrollWidth-document.documentElement.clientWidth))<=1);
+          assert.doesNotMatch(await page.locator('body').innerText(),/1\.11\.0(?:-smart-money)?/i);
+
+          const tour=page.locator('#welcomeTour');
+          if(await tour.count()&&await tour.isVisible()){
+            for(let i=0;i<10&&await tour.isVisible();i++){const buttons=tour.locator('button:visible');const pref=buttons.filter({hasText:/skip|close|done|finish|got it|start|next/i});await (await pref.count()?pref.last():buttons.last()).click();await page.waitForTimeout(60);}
+          }
+          assert.ok(!(await tour.isVisible()));
+          for(const target of ['home','budgets','trips','calendar']){
+            const all=page.locator(`[data-nav="${target}"]`); let on=null;
+            for(let i=0;i<await all.count();i++){const b=await all.nth(i).boundingBox();if(b&&b.x<390&&b.x+b.width>0&&b.y<844&&b.y+b.height>0){on=all.nth(i);break;}}
+            assert.ok(on,`on-screen nav ${target}`); await on.click(); await page.waitForTimeout(80);
+          }
+          const addAll=page.locator('[data-nav="add"]');let add=null;
+          for(let i=0;i<await addAll.count();i++){const b=await addAll.nth(i).boundingBox();if(b&&b.x<390&&b.x+b.width>0&&b.y<844&&b.y+b.height>0){add=addAll.nth(i);break;}}
+          assert.ok(add);await add.click();await page.waitForSelector('[data-screen="add"]',{state:'visible'});
+          await page.locator('#expenseTitle').fill('Watsons');await page.locator('#expenseTitle').dispatchEvent('input');await page.waitForTimeout(80);
+          assert.match(await page.locator('.momo-smart-inline-hint').first().innerText(),/Personal Care/i);
+          assert.equal(errors.length,0,errors.join(' | '));
+          console.log(`PASS final deep Smart Money QA · 2502 expenses · ${elapsed.toFixed(1)}ms · forecast/upcoming/future-buy/jar/payables/duplicates/merchant learning/nav all verified`);
+          await browser.close();
+          EOF
+          node ./.momo-final-qa.mjs
+          rm .momo-final-qa.mjs
+
+      - name: Remove final QA helper and publish clean branch
+        run: |
+          rm .github/workflows/momo-smart-money-final-qa.yml
+          rm -f .momo-final-qa.mjs
+          git config user.name "Momo Release Bot"
+          git config user.email "momo-release-bot@users.noreply.github.com"
+          git add -A smart-money.js .github/workflows/momo-smart-money-final-qa.yml
+          git diff --cached --check
+          git commit -m "Align Momo Smart Money with production data shapes"
+          git push origin HEAD:agent/momo-smart-money-v1
