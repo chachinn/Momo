@@ -23,8 +23,6 @@
 
   let refreshTimer = 0;
   let lastSnapshotSignature = "";
-  let observer = null;
-
   const money = (value) => new Intl.NumberFormat("en-PH", {
     style: "currency",
     currency: "PHP",
@@ -633,21 +631,23 @@
   }
 
   function watchForChanges() {
-    if (observer || !document.body) return;
-    observer = new MutationObserver((mutations) => {
-      if (mutations.some((mutation) => mutation.type === "childList" && mutation.addedNodes.length)) {
-        scheduleRefresh();
-      }
-    });
-    observer.observe(document.body, { childList: true, subtree: true });
-    window.addEventListener("focus", scheduleRefresh, { passive: true });
-    window.addEventListener("online", scheduleRefresh, { passive: true });
-    document.addEventListener("visibilitychange", () => {
-      if (document.visibilityState === "visible") scheduleRefresh();
-    });
-  }
+  window.addEventListener("focus", scheduleRefresh, { passive: true });
+  window.addEventListener("online", scheduleRefresh, { passive: true });
+  document.addEventListener("visibilitychange", () => {
+    if (document.visibilityState === "visible") scheduleRefresh();
+  });
 
-  function boot() {
+  // Refresh after real user data actions instead of observing every DOM
+  // mutation. This prevents Momo Knows from creating a render/observer
+  // feedback loop on long-running sessions with large histories.
+  document.addEventListener("submit", () => {
+    window.setTimeout(scheduleRefresh, 650);
+  }, true);
+
+  document.addEventListener("momo-data-changed", scheduleRefresh);
+}
+
+function boot() {
     ensureStyles();
     ensureSection();
     watchForChanges();
