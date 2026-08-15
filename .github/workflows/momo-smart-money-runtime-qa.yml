@@ -24,27 +24,22 @@ jobs:
         run: |
           from pathlib import Path
           import re
-
           firebase = Path('firebase-momo.js')
           core = Path('firebase-momo-core.js')
           smart = Path('smart-money.js')
           index = Path('index.html')
           sw = Path('service-worker.js')
-
           if core.exists():
               firebase.write_text(core.read_text(encoding='utf-8'), encoding='utf-8')
               core.unlink()
-
           smart_text = smart.read_text(encoding='utf-8')
           smart_text = smart_text.replace('record?.nextDate ?? record?.dueDate', 'record?.nextDate ?? record?.nextDueDate ?? record?.dueDate')
           smart_text = smart_text.replace('input[id*="merchant" i],input[name*="merchant" i],', 'input#expenseTitle,input[id*="merchant" i],input[name*="merchant" i],')
           smart.write_text(smart_text, encoding='utf-8')
-
           index_text = index.read_text(encoding='utf-8')
           if 'src="smart-money.js"' not in index_text:
               index_text = index_text.replace('</body>', '  <script type="module" src="smart-money.js"></script>\n</body>')
           index.write_text(index_text, encoding='utf-8')
-
           sw_text = sw.read_text(encoding='utf-8')
           sw_text = sw_text.replace('  "./firebase-momo-core.js",\n', '')
           sw_text = re.sub(r'\n\s*url\.pathname\.endsWith\(\n\s*"/firebase-momo-core\.js"\n\s*\) \|\|', '', sw_text)
@@ -78,22 +73,18 @@ jobs:
           cat >.momo-smart-qa.mjs <<'EOF'
           import { chromium } from 'playwright';
           import assert from 'node:assert/strict';
-
           const browser = await chromium.launch({ headless: true });
           const context = await browser.newContext({ viewport: { width: 390, height: 844 }, isMobile: true });
           const page = await context.newPage();
           const pageErrors = [];
           page.on('pageerror', (error) => pageErrors.push(String(error)));
-
           await page.goto('http://127.0.0.1:4173/index.html', { waitUntil: 'domcontentloaded' });
           await page.waitForSelector('[data-screen="home"]', { state: 'visible' });
           await page.waitForSelector('#momoSmartMoneySection', { timeout: 15000 });
           await page.waitForFunction(() => Boolean(window.MomoSmartMoney), null, { timeout: 15000 });
-
           const overflow = await page.evaluate(() => document.documentElement.scrollWidth - document.documentElement.clientWidth);
           assert.ok(overflow <= 1, `horizontal overflow: ${overflow}px`);
           assert.doesNotMatch(await page.locator('body').innerText(), /1\.11\.0(?:-smart-money)?/i, 'internal build marker leaked into user-facing UI');
-
           await page.evaluate(async () => {
             const db = await new Promise((resolve, reject) => {
               const request = indexedDB.open('momo_database');
@@ -106,17 +97,7 @@ jobs:
             for (let i = 0; i < 2500; i += 1) {
               const d = new Date(today);
               d.setDate(today.getDate() - (i % 115) - 1);
-              store.put({
-                id: `smart-qa-${i}`,
-                type: 'expense',
-                title: i % 17 === 0 ? 'Watsons' : `Merchant ${i % 80}`,
-                amount: 40 + (i % 900),
-                currency: 'PHP',
-                category: i % 17 === 0 ? 'Personal Care' : ['Food','Transport','Shopping','Bills'][i % 4],
-                date: d.toISOString().slice(0,10),
-                createdAt: d.toISOString(),
-                updatedAt: d.toISOString()
-              });
+              store.put({ id:`smart-qa-${i}`, type:'expense', title:i % 17 === 0 ? 'Watsons' : `Merchant ${i % 80}`, amount:40 + (i % 900), currency:'PHP', category:i % 17 === 0 ? 'Personal Care' : ['Food','Transport','Shopping','Bills'][i % 4], date:d.toISOString().slice(0,10), createdAt:d.toISOString(), updatedAt:d.toISOString() });
             }
             const stamp = today.toISOString().slice(0,10);
             store.put({ id:'smart-dup-a', type:'expense', title:'Duplicate Cafe', amount:499, currency:'PHP', category:'Food', date:stamp, createdAt:new Date().toISOString() });
@@ -124,28 +105,19 @@ jobs:
             await new Promise((resolve, reject) => { tx.oncomplete = resolve; tx.onerror = () => reject(tx.error); tx.onabort = () => reject(tx.error); });
             db.close();
           });
-
-          const elapsed = await page.evaluate(async () => {
-            const start = performance.now();
-            await window.MomoSmartMoney.refresh();
-            return performance.now() - start;
-          });
+          const elapsed = await page.evaluate(async () => { const start = performance.now(); await window.MomoSmartMoney.refresh(); return performance.now() - start; });
           assert.ok(elapsed < 2000, `Smart Money refresh too slow: ${elapsed.toFixed(1)}ms`);
-
           const smartText = await page.locator('#momoSmartMoneySection').innerText();
           assert.match(smartText, /MOMO KNOWS/i);
           assert.match(smartText, /Possible duplicate expense/i);
-
           const analysis = await page.evaluate(() => window.MomoSmartMoney.getAnalysis());
           assert.ok(analysis?.baseline?.sampleCount >= 2000, 'populated baseline did not load');
           assert.ok(Array.isArray(analysis?.duplicates) && analysis.duplicates.length > 0, 'duplicate detector did not identify populated duplicate');
           assert.ok(Array.isArray(analysis?.recurringCandidates), 'recurring discovery did not return a result set');
-
-          const addButton = page.locator('[data-nav="add"]').first();
-          if (await addButton.count()) {
-            await addButton.click();
-            await page.waitForTimeout(150);
-          }
+          const addButton = page.locator('[data-nav="add"]:visible').first();
+          assert.ok(await addButton.count(), 'visible Add navigation control not found');
+          await addButton.click();
+          await page.waitForSelector('[data-screen="add"]', { state: 'visible', timeout: 5000 });
           const title = page.locator('#expenseTitle');
           await title.fill('Watsons');
           await title.dispatchEvent('input');
@@ -153,7 +125,6 @@ jobs:
           const hint = page.locator('.momo-smart-inline-hint');
           assert.ok(await hint.count(), 'learned merchant/category hint did not appear');
           assert.match(await hint.first().innerText(), /Personal Care/i);
-
           assert.equal(pageErrors.length, 0, `page errors: ${pageErrors.join(' | ')}`);
           console.log(`PASS - mobile runtime, 2502 populated expenses, Smart Money refresh ${elapsed.toFixed(1)}ms, no overflow/page errors`);
           await browser.close();
