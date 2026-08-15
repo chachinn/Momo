@@ -1,6 +1,6 @@
 // ========================================
 // MOMO
-// Momo 1.10.3 — Daily Cloud Auto Backup + Stability Polish
+// Momo Version 1 — Smart Money + Daily Cloud Auto Backup + Stability
 // CLEAN FOUNDATION + FUNCTIONAL TRIPS
 // ========================================
 
